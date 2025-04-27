@@ -10,6 +10,13 @@ spec:
     - host: mark.dev # mark.onthewifi.com
       http:
         paths:
+          - path: /api/smart
+            pathType: Prefix
+            backend:
+              service:
+                name: smart-svc
+                port:
+                  number: 3000
           - path: /
             pathType: Prefix
             backend:

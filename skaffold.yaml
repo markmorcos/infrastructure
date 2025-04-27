@@ -1,0 +1,25 @@
+apiVersion: skaffold/v4beta8
+kind: Config
+manifests:
+  rawYaml:
+    - ./k8s/*
+deploy:
+  kubectl: {}
+build:
+  local:
+    push: true
+  artifacts:
+    - image: markmorcos/home-server-landing
+      context: landing
+      sync:
+        manual:
+          - src: "**/*.svelte"
+            dest: .
+          - src: "**/*.ts"
+            dest: .
+          - src: "**/*.css"
+            dest: .
+          - src: "**/*.html"
+            dest: .
+      docker:
+        dockerfile: Dockerfile

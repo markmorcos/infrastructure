@@ -12,3 +12,17 @@ services:
           target: /app
           ignore:
             - node_modules
+
+  smart:
+    build:
+      context: ./smart
+      dockerfile: Dockerfile.development
+    ports:
+      - "5173:5173"
+    develop:
+      watch:
+        - action: sync
+          path: ./smart
+          target: /app
+          ignore:
+            - node_modules

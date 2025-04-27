@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smart-depl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smart
+  template:
+    metadata:
+      labels:
+        app: smart
+    spec:
+      containers:
+        - name: smart
+          image: markmorcos/home-server-smart:latest
+          env:
+            - name: RAILS_ENV
+              value: production
+            - name: RAILS_LOG_TO_STDOUT
+              value: "true"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smart-svc
+spec:
+  selector:
+    app: smart
+  ports:
+    - name: api
+      protocol: TCP
+      port: 3000
+      targetPort: 3000

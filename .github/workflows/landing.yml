@@ -17,8 +17,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: |
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: |
           cd landing
           npm ci
           npm run build
@@ -28,7 +31,8 @@ jobs:
     needs: [build]
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Build and push Docker image
         env:
@@ -37,19 +41,21 @@ jobs:
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: |
           cd landing
-          docker build -t markmorcos/home-server-landing:$IMAGE_TAG -f Dockerfile.production .
           docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-          docker push markmorcos/home-server-landing:$IMAGE_TAG 
-          docker tag markmorcos/home-server-landing:$IMAGE_TAG markmorcos/home-server-landing:latest
+          docker build -t markmorcos/home-server-landing:$IMAGE_TAG -t markmorcos/home-server-landing:latest -f Dockerfile.production .
+          docker push markmorcos/home-server-landing:$IMAGE_TAG
           docker push markmorcos/home-server-landing:latest
 
       - name: Deploy to Raspberry Pi
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE_TAG: ${{ github.sha }}
         with:
           host: ${{ secrets.RASPBERRY_PI_HOST }}
           key: ${{ secrets.RASPBERRY_PI_SSH_KEY }}
+          envs: IMAGE_TAG
           script: |
             cd /home/pi/landing
             git pull
             docker pull markmorcos/home-server-landing:latest
-            k3s kubectl apply -f k8s/landing-depl.yaml
+            k3s kubectl set image deployment/landing-depl landing=markmorcos/home-server-landing:$IMAGE_TAG

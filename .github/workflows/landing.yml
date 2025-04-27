@@ -1,0 +1,61 @@
+name: landing
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - "landing/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "landing/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          cd landing
+          npm ci
+          npm run build
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and push Docker image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          cd landing
+          docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+          docker build -t markmorcos/home-server-landing:$IMAGE_TAG -t markmorcos/home-server-landing:latest -f Dockerfile.production .
+          docker push markmorcos/home-server-landing:$IMAGE_TAG
+          docker push markmorcos/home-server-landing:latest
+
+      - name: Deploy to Raspberry Pi
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        with:
+          host: ${{ secrets.RASPBERRY_PI_HOST }}
+          key: ${{ secrets.RASPBERRY_PI_SSH_KEY }}
+          envs: IMAGE_TAG
+          script: |
+            cd /home/pi/landing
+            git pull
+            docker pull markmorcos/home-server-landing:latest
+            k3s kubectl set image deployment/landing-depl landing=markmorcos/home-server-landing:$IMAGE_TAG

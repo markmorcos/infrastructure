@@ -1,44 +1,33 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { fade, fly } from "svelte/transition";
-
-  let showContent = false;
-
-  onMount(() => {
-    setTimeout(() => {
-      showContent = true;
-    }, 500);
-  });
 </script>
 
 <main>
   <div class="container" in:fade={{ duration: 1000 }}>
-    {#if showContent}
-      <div class="content" in:fly={{ y: 50, duration: 800 }}>
-        <h1>Home Server</h1>
-        <p class="subtitle">Your personal cloud</p>
+    <div class="content" in:fly={{ y: 50, duration: 800 }}>
+      <h1>Home Server</h1>
+      <p class="subtitle">Your personal cloud</p>
 
-        <div class="features">
-          <div class="feature" in:fly={{ y: 50, duration: 800, delay: 200 }}>
-            <div class="icon">🏠</div>
-            <h3>Self-Hosted</h3>
-            <p>Complete control over your data</p>
-          </div>
+      <div class="features">
+        <div class="feature" in:fly={{ y: 50, duration: 800, delay: 200 }}>
+          <div class="icon">🏠</div>
+          <h3>Self-Hosted</h3>
+          <p>Complete control over your data</p>
+        </div>
 
-          <div class="feature" in:fly={{ y: 50, duration: 800, delay: 400 }}>
-            <div class="icon">⚡</div>
-            <h3>Powerful</h3>
-            <p>Run multiple services seamlessly</p>
-          </div>
+        <div class="feature" in:fly={{ y: 50, duration: 800, delay: 400 }}>
+          <div class="icon">⚡</div>
+          <h3>Powerful</h3>
+          <p>Run multiple services seamlessly</p>
+        </div>
 
-          <div class="feature" in:fly={{ y: 50, duration: 800, delay: 600 }}>
-            <div class="icon">🔒</div>
-            <h3>Secure</h3>
-            <p>Your data stays with you</p>
-          </div>
+        <div class="feature" in:fly={{ y: 50, duration: 800, delay: 600 }}>
+          <div class="icon">🔒</div>
+          <h3>Secure</h3>
+          <p>Your data stays with you</p>
         </div>
       </div>
-    {/if}
+    </div>
   </div>
 </main>
 

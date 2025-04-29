@@ -56,10 +56,4 @@ jobs:
           username: ${{ secrets.RASPBERRY_PI_USERNAME }}
           key: ${{ secrets.RASPBERRY_PI_SSH_KEY }}
           envs: IMAGE_TAG
-          script: |
-            set -e
-            cd ~/Projects/home-server
-            git pull
-            docker pull markmorcos/home-server-landing:latest
-            kubectl apply -f k8s/ --recursive
-            kubectl rollout restart deployment landing-deployment
+          script: ./deploy.sh

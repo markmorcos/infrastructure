@@ -53,7 +53,7 @@ jobs:
           envs: IMAGE_TAG
           script: |
             set -e
-            cd ~/Projects/home-server/landing
+            cd ~/Projects/home-server
             git pull
             docker pull markmorcos/home-server-landing:latest
             kubectl apply -f k8s/ --recursive

@@ -1,26 +1,22 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ingress-svc
+  name: ingress-service
   annotations:
     nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+    cert-manager.io/cluster-issuer: "home-server-issuer"
+    kubernetes.io/ingress.class: "nginx"
 spec:
   ingressClassName: nginx
   rules:
-    - host: mark.dev # mark.onthewifi.com
+    - host: mark.onthewifi.com
       http:
         paths:
-          - path: /api/smart
-            pathType: Prefix
-            backend:
-              service:
-                name: smart-svc
-                port:
-                  number: 3000
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: landing-svc
+                name: landing-service
                 port:
                   number: 5173

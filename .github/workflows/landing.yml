@@ -52,10 +52,13 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         with:
           host: ${{ secrets.RASPBERRY_PI_HOST }}
+          username: ${{ secrets.RASPBERRY_PI_USERNAME }}
           key: ${{ secrets.RASPBERRY_PI_SSH_KEY }}
           envs: IMAGE_TAG
           script: |
-            cd /home/pi/landing
+            set -e
+            cd ~/Projects/home-server/landing
             git pull
             docker pull markmorcos/home-server-landing:latest
-            k3s kubectl set image deployment/landing-depl landing=markmorcos/home-server-landing:$IMAGE_TAG
+            k3s kubectl apply -f k8s/landing/landing-deployment.yaml
+            k3s kubectl set image deployment/landing-deployment landing=markmorcos/home-server-landing:$IMAGE_TAG

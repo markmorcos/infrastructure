@@ -1,13 +1,12 @@
 # Home Server
 
-A Kubernetes-based home server with a Svelte landing page and a smart home dashboard.
+A Kubernetes-based home server with a Svelte landing page.
 
 ## Project Structure
 
 - `.github/workflows/`: CI/CD workflows
 - `k8s/`: Kubernetes manifests
 - `landing/`: Svelte + Vite frontend landing page
-- `smart/`: SvelteKit-based smart home dashboard application
 - `*.sh`: Shell scripts for setup, running, and cleanup
 
 ## Components
@@ -16,31 +15,12 @@ A Kubernetes-based home server with a Svelte landing page and a smart home dashb
 
 A simple Svelte-based landing page for the home server.
 
-### Smart Home Dashboard
-
-A modern SvelteKit application for managing smart home devices, including Google Nest and smart bulbs.
-
-Features:
-
-- Dashboard for monitoring and controlling smart home devices
-- Device and scene management
-- Integration with Google Nest and smart bulb platforms
-- Responsive UI with dark mode support
-
 ## Development
 
 ### Landing Page
 
 ```bash
 cd landing
-npm install
-npm run dev
-```
-
-### Smart Home Dashboard
-
-```bash
-cd smart
 npm install
 npm run dev
 ```

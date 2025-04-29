@@ -4,10 +4,10 @@ on:
   workflow_dispatch: {}
   push:
     branches: [main]
-    paths: ["landing/**"]
+    paths: ["k8s/**", "landing/**"]
   pull_request:
     branches: [main]
-    paths: ["landing/**"]
+    paths: ["k8s/**", "landing/**"]
 
 jobs:
   build:

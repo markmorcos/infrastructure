@@ -3,15 +3,11 @@ name: landing
 on:
   workflow_dispatch: {}
   push:
-    branches:
-      - main
-    paths:
-      - "landing/**"
+    branches: [main]
+    paths: ["landing/**"]
   pull_request:
-    branches:
-      - main
-    paths:
-      - "landing/**"
+    branches: [main]
+    paths: ["landing/**"]
 
 jobs:
   build:

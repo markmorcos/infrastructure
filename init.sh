@@ -37,6 +37,6 @@ kubectl wait --for=condition=available deployment/cert-manager -n cert-manager -
 
 # Apply Kubernetes manifests
 echo "Applying Kubernetes manifests..."
-kubectl apply -f k8s/
+kubectl apply -f k8s/ --recursive
 
 echo "Home server initialization complete!"

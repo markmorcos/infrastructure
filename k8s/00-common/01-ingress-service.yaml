@@ -16,7 +16,7 @@ spec:
     - host: mark.onthewifi.com
       http:
         paths:
-          - path: /(?!(.well-known))(/|$)(.*)
+          - path: /
             pathType: Prefix
             backend:
               service:

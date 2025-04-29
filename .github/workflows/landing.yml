@@ -38,9 +38,14 @@ jobs:
         run: |
           cd landing
           docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-          docker build -t markmorcos/home-server-landing:$IMAGE_TAG -t markmorcos/home-server-landing:latest -f Dockerfile.production .
-          docker push markmorcos/home-server-landing:$IMAGE_TAG
-          docker push markmorcos/home-server-landing:latest
+          docker buildx create --use
+          docker buildx build \
+            --platform linux/arm64,linux/amd64 \
+            -t markmorcos/home-server-landing:$IMAGE_TAG \
+            -t markmorcos/home-server-landing:latest \
+            --push \
+            -f Dockerfile.production \
+            .
 
       - name: Deploy to Raspberry Pi
         uses: appleboy/ssh-action@v1.0.3
@@ -57,4 +62,4 @@ jobs:
             git pull
             docker pull markmorcos/home-server-landing:latest
             kubectl apply -f k8s/ --recursive
-            kubectl set image deployment/landing-deployment landing=markmorcos/home-server-landing:$IMAGE_TAG
+            kubectl rollout restart deployment landing-deployment

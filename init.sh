@@ -27,7 +27,7 @@ if ! helm list -n cert-manager | grep -q cert-manager; then
     echo "Installing cert-manager..."
     helm repo add jetstack https://charts.jetstack.io
     helm repo update
-    helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace
+    helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set crds.enabled=true
 fi
 
 # Wait for ingress-nginx and cert-manager to be ready

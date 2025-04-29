@@ -56,5 +56,5 @@ jobs:
             cd ~/Projects/home-server/landing
             git pull
             docker pull markmorcos/home-server-landing:latest
-            k3s kubectl apply -f k8s/landing/landing-deployment.yaml
-            k3s kubectl set image deployment/landing-deployment landing=markmorcos/home-server-landing:$IMAGE_TAG
+            kubectl apply -f k8s/ --recursive
+            kubectl set image deployment/landing-deployment landing=markmorcos/home-server-landing:$IMAGE_TAG

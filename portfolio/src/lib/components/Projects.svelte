@@ -22,7 +22,7 @@
       <h3>Portfolio Website</h3>
       <p>This modern, responsive portfolio built with Svelte</p>
       <a
-        href="https://github.com/markmorcos/home-server/portfolio"
+        href="https://github.com/markmorcos/home-server/tree/main/portfolio"
         target="_blank"
         class="project-link">View project →</a
       >

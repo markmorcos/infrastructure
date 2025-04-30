@@ -16,10 +16,20 @@ spec:
     - host: mark.onthewifi.com
       http:
         paths:
+          - path: /api/fr-youhanna-makin
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: fr-youhanna-makin-service
+                port:
+                  number: 3000
+    - host: mark.onthewifi.com
+      http:
+        paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: landing-service
+                name: portfolio-service
                 port:
                   number: 5173

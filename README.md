@@ -1,26 +1,26 @@
 # Home Server
 
-A Kubernetes-based home server with a Svelte landing page.
+A Kubernetes-based home server with a Svelte portfolio page.
 
 ## Project Structure
 
 - `.github/workflows/`: CI/CD workflows
 - `k8s/`: Kubernetes manifests
-- `landing/`: Svelte + Vite frontend landing page
+- `portfolio/`: Svelte + Vite frontend portfolio page
 - `*.sh`: Shell scripts for setup, running, and cleanup
 
 ## Components
 
-### Landing Page
+### Portfolio Page
 
-A simple Svelte-based landing page for the home server.
+A simple Svelte-based portfolio page for the home server.
 
 ## Development
 
-### Landing Page
+### Portfolio Page
 
 ```bash
-cd landing
+cd portfolio
 npm install
 npm run dev
 ```

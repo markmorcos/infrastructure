@@ -1,14 +1,14 @@
 services:
-  landing:
+  portfolio:
     build:
-      context: ./landing
+      context: ./portfolio
       dockerfile: Dockerfile.development
     ports:
       - "5173:5173"
     develop:
       watch:
         - action: sync
-          path: ./landing
+          path: ./portfolio
           target: /app
           ignore:
             - node_modules

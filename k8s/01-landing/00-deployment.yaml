@@ -1,28 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: landing-deployment
+  name: portfolio-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: landing
+      app: portfolio
   template:
     metadata:
       labels:
-        app: landing
+        app: portfolio
     spec:
       containers:
-        - name: landing
-          image: markmorcos/home-server-landing:latest
+        - name: portfolio
+          image: markmorcos/home-server-portfolio:latest
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: landing-service
+  name: portfolio-service
 spec:
   selector:
-    app: landing
+    app: portfolio
   ports:
     - name: client
       protocol: TCP

@@ -17,8 +17,8 @@
     "moduleDetection": "force"
   },
   "include": [
-    "../landing/src/**/*.ts",
-    "../landing/src/**/*.js",
-    "../landing/src/**/*.svelte"
+    "../portfolio/src/**/*.ts",
+    "../portfolio/src/**/*.js",
+    "../portfolio/src/**/*.svelte"
   ]
 }

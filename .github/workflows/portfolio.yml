@@ -1,13 +1,13 @@
-name: landing
+name: portfolio
 
 on:
   workflow_dispatch: {}
   push:
     branches: [main]
-    paths: ["k8s/**", "landing/**"]
+    paths: ["k8s/**", "portfolio/**"]
   pull_request:
     branches: [main]
-    paths: ["k8s/**", "landing/**"]
+    paths: ["k8s/**", "portfolio/**"]
 
 jobs:
   build:
@@ -18,7 +18,7 @@ jobs:
 
       - name: Build
         run: |
-          cd landing
+          cd portfolio
           npm ci
           npm run build
 
@@ -36,13 +36,13 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         run: |
-          cd landing
+          cd portfolio
           docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
           docker buildx create --use
           docker buildx build \
             --platform linux/arm64,linux/amd64 \
-            -t markmorcos/home-server-landing:$IMAGE_TAG \
-            -t markmorcos/home-server-landing:latest \
+            -t markmorcos/home-server-portfolio:$IMAGE_TAG \
+            -t markmorcos/home-server-portfolio:latest \
             --push \
             -f Dockerfile.production \
             .
@@ -59,6 +59,9 @@ jobs:
           script: |
             set -e
             export KUBECONFIG=$HOME/.kube/config
-            cd ~/Projects/home-server
+            cd ~/Projects
+            git clone https://github.com/markmorcos/home-server.git
+            cd home-server
             git pull
-            kubectl rollout restart deployment landing-deployment
+            kubectl apply -f k8s/ --recursive
+            kubectl rollout restart deployment portfolio-deployment

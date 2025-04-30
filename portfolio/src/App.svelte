@@ -51,12 +51,20 @@
         <div class="project-card">
           <h3>Home Server</h3>
           <p>A self-hosted cloud solution for personal data management</p>
-          <a href="#" class="project-link">View project →</a>
+          <a
+            href="https://github.com/markmorcos/home-server"
+            target="_blank"
+            class="project-link">View project →</a
+          >
         </div>
         <div class="project-card">
           <h3>Portfolio Website</h3>
           <p>This modern, responsive portfolio built with Svelte</p>
-          <a href="#" class="project-link">View project →</a>
+          <a
+            href="https://github.com/markmorcos/home-server/portfolio"
+            target="_blank"
+            class="project-link">View project →</a
+          >
         </div>
       </div>
     </section>

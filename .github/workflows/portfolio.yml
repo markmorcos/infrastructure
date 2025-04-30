@@ -60,7 +60,9 @@ jobs:
             set -e
             export KUBECONFIG=$HOME/.kube/config
             cd ~/Projects
-            git clone https://github.com/markmorcos/home-server.git
+            if [ ! -d "home-server" ]; then
+              git clone https://github.com/markmorcos/home-server.git
+            fi
             cd home-server
             git pull
             kubectl apply -f k8s/ --recursive

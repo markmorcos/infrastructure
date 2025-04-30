@@ -63,7 +63,7 @@ jobs:
             if [ ! -d "home-server" ]; then
               git clone https://github.com/markmorcos/home-server.git
             fi
-            cd home-server
+            cd home-server/portfolio
             git pull
             kubectl apply -f k8s/ --recursive
             kubectl rollout restart deployment portfolio-deployment

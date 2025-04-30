@@ -15,16 +15,3 @@ spec:
       containers:
         - name: portfolio
           image: markmorcos/home-server-portfolio:latest
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: portfolio-service
-spec:
-  selector:
-    app: portfolio
-  ports:
-    - name: client
-      protocol: TCP
-      port: 5173
-      targetPort: 5173

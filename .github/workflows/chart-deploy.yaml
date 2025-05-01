@@ -1,32 +1,54 @@
 name: Publish Helm Chart
 
 on:
+  workflow_dispatch: {}
   push:
     branches: [main]
     paths:
-      - "charts/base-chart/**" # Only trigger when the chart changes
+      - "charts/base-chart/Chart.yaml"
 
 jobs:
-  publish:
+  check-and-publish:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Set chart version
-        run: echo "CHART_VERSION=${GITHUB_SHA::7}" >> $GITHUB_ENV
-
-      - name: Update Chart.yaml with version
+      - name: Get current chart version
+        id: chart_version
         run: |
-          sed -i "s/^version:.*/version: $CHART_VERSION/" charts/base-chart/Chart.yaml
-          sed -i "s/^appVersion:.*/appVersion: $CHART_VERSION/" charts/base-chart/Chart.yaml
+          version=$(grep '^version:' charts/base-chart/Chart.yaml | awk '{print $2}')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Package Helm chart
+      - name: Check if Chart.yaml version changed
+        id: version_changed
+        run: |
+          git fetch origin main
+          if git diff origin/main~1 origin/main -- charts/base-chart/Chart.yaml | grep '^+version:'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip if version didn't change
+        if: steps.version_changed.outputs.changed == 'false'
+        run: echo "Chart version unchanged. Skipping publish."
+
+      - name: Package chart
+        if: steps.version_changed.outputs.changed == 'true'
         run: |
           helm package charts/base-chart --destination packaged
 
-      - name: Push to Docker Hub (OCI)
+      - name: Login to Docker Hub (OCI)
+        if: steps.version_changed.outputs.changed == 'true'
         run: |
-          helm registry login registry-1.docker.io -u ${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKER_PASSWORD }}
-          helm push packaged/base-chart-${CHART_VERSION}.tgz oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }}/charts
+          echo "${{ secrets.DOCKER_PASSWORD }}" | helm registry login registry-1.docker.io \
+            --username ${{ secrets.DOCKER_USERNAME }} \
+            --password-stdin
+
+      - name: Push chart to Docker Hub
+        if: steps.version_changed.outputs.changed == 'true'
+        run: |
+          helm push packaged/base-chart-${{ steps.chart_version.outputs.version }}.tgz \
+            oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }}/charts

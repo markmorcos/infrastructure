@@ -1,0 +1,17 @@
+projectName: default-app
+
+image:
+  repository: nginx
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+
+ingress:
+  enabled: false
+  host: ""
+  path: /
+  tlsSecret: ""
+
+resources: {}

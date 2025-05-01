@@ -1,0 +1,32 @@
+name: Publish Helm Chart
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "charts/base-chart/**" # Only trigger when the chart changes
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set chart version
+        run: echo "CHART_VERSION=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Update Chart.yaml with version
+        run: |
+          sed -i "s/^version:.*/version: $CHART_VERSION/" charts/base-chart/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: $CHART_VERSION/" charts/base-chart/Chart.yaml
+
+      - name: Package Helm chart
+        run: |
+          helm package charts/base-chart --destination packaged
+
+      - name: Push to Docker Hub (OCI)
+        run: |
+          helm registry login registry-1.docker.io -u ${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKER_PASSWORD }}
+          helm push packaged/base-chart-${CHART_VERSION}.tgz oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }}/charts

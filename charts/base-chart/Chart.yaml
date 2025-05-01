@@ -1,0 +1,6 @@
+apiVersion: v2
+name: base-chart
+description: Reusable Helm chart for app services
+type: application
+version: 0.1.1
+appVersion: "1.0.0"

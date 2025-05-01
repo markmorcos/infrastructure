@@ -21,11 +21,13 @@ jobs:
           version=$(grep '^version:' charts/base-chart/Chart.yaml | awk '{print $2}')
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      - name: Fetch previous commit
+        run: git fetch origin main --depth=2
+
       - name: Check if Chart.yaml version changed
         id: version_changed
         run: |
-          git fetch origin main
-          if git diff origin/main~1 origin/main -- charts/base-chart/Chart.yaml | grep '^+version:'; then
+          if git diff HEAD^ -- charts/base-chart/Chart.yaml | grep '^+version:'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -38,17 +40,13 @@ jobs:
       - name: Package chart
         if: steps.version_changed.outputs.changed == 'true'
         run: |
-          helm package charts/base-chart --destination packaged
+          helm package charts/base-chart
 
-      - name: Login to Docker Hub (OCI)
+      - name: Login and push to Docker Hub (OCI)
         if: steps.version_changed.outputs.changed == 'true'
         run: |
           echo "${{ secrets.DOCKER_PASSWORD }}" | helm registry login registry-1.docker.io \
             --username ${{ secrets.DOCKER_USERNAME }} \
             --password-stdin
-
-      - name: Push chart to Docker Hub
-        if: steps.version_changed.outputs.changed == 'true'
-        run: |
-          helm push packaged/base-chart-${{ steps.chart_version.outputs.version }}.tgz \
-            oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }}/charts
+          helm push base-chart-${{ steps.chart_version.outputs.version }}.tgz \
+            oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }}

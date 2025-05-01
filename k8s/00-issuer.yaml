@@ -1,14 +1,13 @@
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
-  name: home-server-issuer
-  namespace: cert-manager
+  name: infrastructure-issuer
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
     email: mark.yehia@gmail.com
     privateKeySecretRef:
-      name: home-server-issuer
+      name: infrastructure-issuer
     solvers:
       - http01:
           ingress:

@@ -1,39 +1,17 @@
-# Home Server
+# Infrastructure
 
-A Kubernetes-based home server with a Svelte portfolio page.
+A Helm-based infrastructure as a service
 
 ## Project Structure
 
 - `.github/workflows/`: CI/CD workflows
+- `charts/`: Helm charts
+  - `base-chart/`: Base Helm chart configuration
+  - `templates/`: Common Kubernetes resource templates
 - `k8s/`: Kubernetes manifests
-- `portfolio/`: Svelte + Vite frontend portfolio page
 - `*.sh`: Shell scripts for setup, running, and cleanup
 
-## Components
-
-### Portfolio Page
-
-A simple Svelte-based portfolio page for the home server.
-
 ## Development
-
-### Portfolio Page
-
-```bash
-cd portfolio
-npm install
-npm run dev
-```
-
-### Using Docker Compose
-
-```bash
-docker compose up
-```
-
-## Setup and Deployment
-
-### Initialize Kubernetes Setup
 
 ```bash
 ./init.sh

@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Values.projectName }}-deployment
+  namespace: {{ .Values.projectName }}
 spec:
   replicas: 1
   selector:
@@ -14,7 +15,4 @@ spec:
     spec:
       containers:
         - name: {{ .Values.projectName }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports:
-            - containerPort: {{ .Values.service.port }}
+          image: "{{ .Values.deployment.image }}:{{ .Values.deployment.tag }}"

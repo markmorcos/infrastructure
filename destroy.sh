@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Destroying home server setup..."
+echo "Destroying infrastructure setup..."
 
 # Delete Kubernetes manifests
 echo "Deleting Kubernetes manifests..."
@@ -18,4 +18,4 @@ helm uninstall ingress-nginx -n ingress-nginx
 echo "Deleting namespaces..."
 kubectl delete namespace cert-manager ingress-nginx
 
-echo "Home server cleanup complete!"
+echo "Infrastructure cleanup complete!"

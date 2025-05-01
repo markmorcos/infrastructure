@@ -12,7 +12,7 @@ if ! command -v helm &> /dev/null; then
     exit 1
 fi
 
-echo "Initializing home server setup..."
+echo "Initializing infrastructure setup..."
 
 # Install ingress-nginx if not already installed
 if ! helm list -n ingress-nginx | grep -q ingress-nginx; then
@@ -39,4 +39,4 @@ kubectl wait --for=condition=available deployment/cert-manager -n cert-manager -
 echo "Applying Kubernetes manifests..."
 kubectl apply -f k8s/ --recursive
 
-echo "Home server initialization complete!"
+echo "Infrastructure initialization complete!"

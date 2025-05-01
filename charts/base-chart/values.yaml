@@ -1,17 +1,14 @@
+chartVersion: 0.1.0
 projectName: default-app
 
-image:
-  repository: nginx
+ingress:
+  host: "mark.onthewifi.com"
+  path: /
+  pathType: Prefix
+
+deployment:
+  image: ubuntu-latest
   tag: latest
-  pullPolicy: IfNotPresent
 
 service:
   port: 80
-
-ingress:
-  enabled: false
-  host: ""
-  path: /
-  tlsSecret: ""
-
-resources: {}

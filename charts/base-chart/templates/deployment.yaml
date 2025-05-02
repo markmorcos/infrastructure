@@ -12,7 +12,7 @@ spec:
     metadata:
       labels:
         app: {{ .Values.projectName }}
-        build-timestamp: "{{ now | date '20060102150405' }}"
+        build-timestamp: '{{ now | date "20060102150405" }}'
     spec:
       containers:
         - name: {{ .Values.projectName }}

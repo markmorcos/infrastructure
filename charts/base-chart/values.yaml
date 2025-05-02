@@ -9,6 +9,7 @@ ingress:
 deployment:
   image: ubuntu-latest
   tag: latest
+  pullPolicy: Always
 
 service:
   port: 80

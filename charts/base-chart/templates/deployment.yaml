@@ -4,7 +4,7 @@ metadata:
   name: {{ .Values.projectName }}-deployment
   namespace: {{ .Values.projectName }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.deployment.replicas | default 1 }}
   selector:
     matchLabels:
       app: {{ .Values.projectName }}

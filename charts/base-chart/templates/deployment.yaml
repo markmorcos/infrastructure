@@ -16,3 +16,4 @@ spec:
       containers:
         - name: {{ .Values.projectName }}
           image: "{{ .Values.deployment.image }}:{{ .Values.deployment.tag }}"
+          imagePullPolicy: {{ .Values.deployment.pullPolicy | default "Always" }}

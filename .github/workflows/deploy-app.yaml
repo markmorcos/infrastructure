@@ -1,0 +1,53 @@
+name: Application Deployment Template
+
+on:
+  workflow_call:
+    inputs:
+      deployment-key:
+        required: true
+        type: string
+      deployment-config:
+        required: true
+        type: string
+      deployment-version:
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and push Docker image
+        run: |
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login --username ${{ secrets.DOCKER_USERNAME }} --password-stdin
+          projectName=$(grep 'projectName:' ${{ inputs.deployment-config }} | cut -d ' ' -f 2)
+
+          docker buildx create --use
+          docker buildx build \
+            --platform linux/arm64,linux/amd64 \
+            -t markmorcos/${projectName}:${{ inputs.deployment-version }} \
+            -t markmorcos/${projectName}:latest \
+            --push \
+            -f Dockerfile \
+            .
+
+      - name: Deploy to production
+        run: |
+          echo "${{ secrets.RASPBERRY_PI_SSH_KEY }}" > /tmp/id_rsa
+          chmod 600 /tmp/id_rsa
+
+          deploymentConfig=${{ inputs.deployment-config }}
+          chartVersion=$(grep 'chartVersion:' $deploymentConfig | cut -d ' ' -f 2)
+          projectName=$(grep 'projectName:' $deploymentConfig | cut -d ' ' -f 2)
+
+          cat $deploymentConfig | ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no \
+            "${{ secrets.RASPBERRY_PI_USERNAME }}@${{ secrets.RASPBERRY_PI_HOST }}" \
+            'export KUBECONFIG=/home/mark/.kube/config && \
+            helm upgrade --install '"${projectName}"' oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }}/base-chart \
+            --version '"${chartVersion}"' \
+            -f - \
+            -n '"${projectName}"' --create-namespace'

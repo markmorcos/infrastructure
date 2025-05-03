@@ -3,9 +3,10 @@ kind: Ingress
 metadata:
   name: {{ .Values.projectName }}-ingress
   annotations:
+    cert-manager.io/cluster-issuer: "infrastructure-issuer"
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    cert-manager.io/cluster-issuer: "infrastructure-issuer"
+    nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
 spec:
   ingressClassName: nginx
   tls:

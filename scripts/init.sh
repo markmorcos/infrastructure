@@ -39,4 +39,8 @@ kubectl wait --for=condition=available deployment/cert-manager -n cert-manager -
 echo "Applying Kubernetes manifests..."
 kubectl apply -f k8s/ --recursive
 
+jwt_secret=$(openssl rand -base64 64)
+kubectl create secret generic jwt-secret --from-literal="JWT_SECRET=$jwt_secret" -n infrastructure
+echo "Generated JWT secret: $jwt_secret"
+
 echo "Infrastructure initialization complete!"

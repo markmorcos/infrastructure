@@ -16,6 +16,6 @@ helm uninstall ingress-nginx -n ingress-nginx
 
 # Delete namespaces
 echo "Deleting namespaces..."
-kubectl delete namespace cert-manager ingress-nginx
+kubectl delete namespace cert-manager ingress-nginx infrastructure
 
 echo "Infrastructure cleanup complete!"

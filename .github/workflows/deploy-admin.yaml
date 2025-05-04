@@ -1,0 +1,26 @@
+name: infrastructure-admin
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths: ["admin/**"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger infrastructure deployment
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.INFRASTRUCTURE_TOKEN }}
+          repository: markmorcos/infrastructure
+          event-type: deploy-infrastructure-admin
+          client-payload: |-
+            {
+              "project_name": "infrastructure-admin",
+              "deployment_token": "${{ secrets.DEPLOYMENT_TOKEN }}",
+              "deployment_version": "${{ github.sha }}",
+              "repository_name": "markmorcos/infrastructure",
+              "repository_path": "admin"
+            }

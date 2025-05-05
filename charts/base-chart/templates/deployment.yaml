@@ -1,3 +1,4 @@
+{{- if hasKey .Values "deployment" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -18,3 +19,4 @@ spec:
         - name: {{ .Values.projectName }}
           image: "{{ .Values.deployment.image }}:{{ .Values.deployment.tag }}"
           imagePullPolicy: {{ .Values.deployment.pullPolicy | default "Always" }}
+{{- end }}

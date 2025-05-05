@@ -13,6 +13,7 @@ deployment:
   image: ubuntu-latest
   tag: latest
   pullPolicy: Always
+  env: []
 
 service:
   enabled: true

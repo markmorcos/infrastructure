@@ -19,4 +19,6 @@ spec:
         - name: {{ .Values.projectName }}
           image: "{{ .Values.deployment.image }}:{{ .Values.deployment.tag }}"
           imagePullPolicy: {{ .Values.deployment.pullPolicy | default "Always" }}
+          env:
+{{ toYaml .Values.deployment.env | indent 12 }}
 {{- end }}

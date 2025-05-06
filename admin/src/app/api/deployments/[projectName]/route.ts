@@ -4,8 +4,11 @@ import { Pool } from "pg";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-export async function GET(req: NextRequest) {
-  const projectName = req.nextUrl.searchParams.get("projectName");
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ projectName: string }> }
+) {
+  const { projectName } = await params;
   if (!projectName) {
     return NextResponse.json(
       { error: "Deployment not found" },

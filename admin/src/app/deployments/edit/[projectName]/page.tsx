@@ -25,9 +25,7 @@ export default function EditDeploymentPage() {
 
   useEffect(() => {
     if (!projectName) return;
-    fetch(
-      `/infrastructure/admin/api/deployments/${encodeURIComponent(projectName)}`
-    )
+    fetch(`/infrastructure/api/deployments/${encodeURIComponent(projectName)}`)
       .then((res) => res.json())
       .then((data) => {
         if (data && !data.error) setDeployment(data);
@@ -39,7 +37,7 @@ export default function EditDeploymentPage() {
   const handleUpdate = async ({ config }: { config: unknown }) => {
     setError(null);
     setLoading(true);
-    const res = await fetch("/infrastructure/admin/api/deployments", {
+    const res = await fetch("/infrastructure/api/deployments", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectName, config }),

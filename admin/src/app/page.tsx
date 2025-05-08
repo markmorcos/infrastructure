@@ -1,3 +1,5 @@
+"use client";
+
 export default function HomePage() {
   return (
     <main style={{ maxWidth: 600, margin: "4rem auto", textAlign: "center" }}>

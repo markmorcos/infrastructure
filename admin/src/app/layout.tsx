@@ -1,7 +1,9 @@
-import type { Metadata } from "next";
+"use client";
+
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider, useAuth } from "./auth/AuthProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,10 +15,23 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Infrastructure",
-  description: "Infrastructure",
-};
+function NavBar() {
+  const { isAuthenticated, isAdmin, logout } = useAuth();
+
+  return (
+    <nav>
+      <Link href="/">Home</Link>
+      {isAuthenticated && isAdmin && (
+        <Link href="/deployments">Deployments</Link>
+      )}
+      {isAuthenticated && (
+        <button onClick={logout} style={{ marginLeft: 16 }}>
+          Logout
+        </button>
+      )}
+    </nav>
+  );
+}
 
 export default function RootLayout({
   children,
@@ -28,14 +43,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <header>
-          <div className="app-title">Infrastructure</div>
-        </header>
-        <nav>
-          <Link href="/">Home</Link>
-          <Link href="/deployments">Deployments</Link>
-        </nav>
-        {children}
+        <AuthProvider>
+          <header>
+            <div className="app-title">Infrastructure</div>
+          </header>
+          <NavBar />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

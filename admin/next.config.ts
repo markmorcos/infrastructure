@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  basePath: "/infrastructure/admin",
-  assetPrefix: "/infrastructure/admin/",
+  basePath: "/infrastructure",
+  assetPrefix: "/infrastructure/",
 };
 
 export default nextConfig;

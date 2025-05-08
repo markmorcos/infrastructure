@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-// @ts-expect-error: No types for 'pg' in this project
 import { Pool } from "pg";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });

@@ -93,11 +93,19 @@ export default function DeploymentsPage() {
           <tbody>
             {deployments.map((dep) => (
               <tr key={dep.projectName}>
-                <td className="project-name">{dep.projectName}</td>
-                <td className="repository-name">{dep.repositoryName}</td>
-                <td>{new Date(dep.createdAt).toLocaleString()}</td>
-                <td>{new Date(dep.updatedAt).toLocaleString()}</td>
-                <td>
+                <td className="project-name" data-label="Project">
+                  {dep.projectName}
+                </td>
+                <td className="repository-name" data-label="Repository">
+                  {dep.repositoryName}
+                </td>
+                <td data-label="Created">
+                  {new Date(dep.createdAt).toLocaleString()}
+                </td>
+                <td data-label="Updated">
+                  {new Date(dep.updatedAt).toLocaleString()}
+                </td>
+                <td data-label="Actions">
                   <Link
                     href={`/deployments/edit/${encodeURIComponent(
                       dep.projectName

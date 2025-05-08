@@ -154,16 +154,18 @@ export default function DeploymentForm({
         <label>
           Config (JSON)
           <br />
-          <CodeMirror
-            value={configValue}
-            height="400px"
-            extensions={[json()]}
-            theme="dark"
-            basicSetup={{ lineNumbers: true }}
-            onChange={(value) =>
-              setValue("config", value, { shouldValidate: true })
-            }
-          />
+          <div className="codemirror-responsive">
+            <CodeMirror
+              value={configValue}
+              height="400px"
+              extensions={[json()]}
+              theme="dark"
+              basicSetup={{ lineNumbers: true }}
+              onChange={(value) =>
+                setValue("config", value, { shouldValidate: true })
+              }
+            />
+          </div>
           {errors.config && (
             <span className="form-error">Config is required</span>
           )}

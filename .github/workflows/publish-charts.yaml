@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "charts/base-chart/Chart.yaml"
+      - "charts/infrastructure/Chart.yaml"
 
 jobs:
   publish:
@@ -18,7 +18,7 @@ jobs:
       - name: Get current chart version
         id: chart_version
         run: |
-          version=$(grep '^version:' charts/base-chart/Chart.yaml | awk '{print $2}')
+          version=$(grep '^version:' charts/infrastructure/Chart.yaml | awk '{print $2}')
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Fetch previous commit
@@ -27,7 +27,7 @@ jobs:
       - name: Check if Chart.yaml version changed
         id: version_changed
         run: |
-          if git diff HEAD^ -- charts/base-chart/Chart.yaml | grep '^+version:'; then
+          if git diff HEAD^ -- charts/infrastructure/Chart.yaml | grep '^+version:'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -40,7 +40,7 @@ jobs:
       - name: Package chart
         if: steps.version_changed.outputs.changed == 'true'
         run: |
-          helm package charts/base-chart
+          helm package charts/infrastructure
 
       - name: Login to Docker Hub
         if: steps.version_changed.outputs.changed == 'true'
@@ -52,5 +52,5 @@ jobs:
       - name: Push chart to Docker Hub
         if: steps.version_changed.outputs.changed == 'true'
         run: |
-          helm push base-chart-${{ steps.chart_version.outputs.version }}.tgz \
+          helm push infrastructure-${{ steps.chart_version.outputs.version }}.tgz \
             oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }}

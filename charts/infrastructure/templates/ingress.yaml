@@ -1,0 +1,42 @@
+{{- if not (empty .Values.ingress) }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.projectName }}-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: "infrastructure-issuer"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: infrastructure-tls
+  rules:
+  {{- range .Values.ingress.rules }}
+    {{- $rule := . }}
+    {{- $service := dict }}
+    {{- range $.Values.services }}
+      {{- if eq .name $rule.serviceName }}
+        {{- $_ := set $service "name" .name }}
+        {{- $_ := set $service "port" .port }}
+      {{- end }}
+    {{- end }}
+    {{- if not $service.name }}
+      {{- fail (printf "Ingress rule for host '%s' refers to unknown service '%s'" $rule.host $rule.serviceName) }}
+    {{- end }}
+    - host: {{ $rule.host }}
+      http:
+        paths:
+          - path: {{ $rule.path }}
+            pathType: {{ $rule.pathType }}
+            backend:
+              service:
+                name: {{ $service.name }}
+                port:
+                  number: {{ $service.port }}
+  {{- end }}
+{{- end }}

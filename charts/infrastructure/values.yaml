@@ -1,0 +1,18 @@
+chartVersion: 0.2.0
+projectName: "portfolio"
+
+ingress:
+  host: mark.onthewifi.com
+  rules:
+    - host: mark.onthewifi.com
+      path: /
+      pathType: Prefix
+      serviceName: portfolio-service
+
+deployments:
+  - name: portfolio
+    image: markmorcos/portfolio
+
+services:
+  - name: portfolio-service
+    port: 80

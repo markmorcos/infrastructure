@@ -1,0 +1,25 @@
+{{- range .Values.deployments }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.projectName }}
+spec:
+  replicas: {{ .replicas | default 1 }}
+  selector:
+    matchLabels:
+      app: {{ $.Values.projectName }}
+  template:
+    metadata:
+      labels:
+        app: {{ $.Values.projectName }}
+        build-timestamp: '{{ now | date "20060102150405" }}'
+    spec:
+      containers:
+        - name: {{ .name }}
+          image: "{{ .image }}:{{ .tag | default "latest" }}"
+          imagePullPolicy: {{ .pullPolicy | default "Always" }}
+          env:
+{{ toYaml .env | indent 12 }}
+{{- end }}

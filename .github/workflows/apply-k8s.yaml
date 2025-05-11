@@ -23,9 +23,6 @@ jobs:
           echo "${{ secrets.RASPBERRY_PI_SSH_KEY }}" > /tmp/id_rsa
           chmod 600 /tmp/id_rsa
 
-          for file in $(ls -1 k8s/*.yaml | sort); do
-            echo "Applying ${file}..."
-            cat "$file" | ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no \
-              "${{ secrets.RASPBERRY_PI_USERNAME }}@${{ secrets.RASPBERRY_PI_HOST }}" \
-              "export KUBECONFIG=/home/mark/.kube/config && kubectl apply -f -"
-          done
+          cat k8s/*.yaml | ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no \
+          "${{ secrets.RASPBERRY_PI_USERNAME }}@${{ secrets.RASPBERRY_PI_HOST }}" \
+          "export KUBECONFIG=/home/mark/.kube/config && kubectl apply -f -"

@@ -6,7 +6,7 @@ A Helm-based infrastructure as a service
 
 - `.github/workflows/`: CI/CD workflows
 - `charts/`: Helm charts
-  - `base-chart/`: Base Helm chart configuration
+  - `infrastructure/`: Helm chart infrastructure configuration
   - `templates/`: Common Kubernetes resource templates
 - `k8s/`: Kubernetes manifests
 - `*.sh`: Shell scripts for setup, running, and cleanup

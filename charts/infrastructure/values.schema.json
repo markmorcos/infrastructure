@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "type": "object",
+  "required": ["chartVersion", "projectName"],
+  "properties": {
+    "projectName": {
+      "type": "string",
+      "description": "Name of the project"
+    },
+    "chartVersion": {
+      "type": "string",
+      "description": "Version of the Helm chart"
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "Hostname for the ingress"
+        },
+        "rules": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": ["host", "path", "pathType", "serviceName"],
+            "properties": {
+              "host": {
+                "type": "string",
+                "description": "Hostname for the rule"
+              },
+              "path": {
+                "type": "string",
+                "description": "Path for the rule"
+              },
+              "pathType": {
+                "type": "string",
+                "enum": ["Exact", "Prefix"],
+                "description": "Type of path matching"
+              },
+              "serviceName": {
+                "type": "string",
+                "description": "Name of the service to route to"
+              }
+            }
+          }
+        }
+      }
+    },
+    "deployments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "image"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the deployment"
+          },
+          "replicas": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "Number of replicas"
+          },
+          "image": {
+            "type": "string",
+            "description": "Container image"
+          },
+          "tag": {
+            "type": "string",
+            "default": "latest",
+            "description": "Container image tag"
+          },
+          "pullPolicy": {
+            "type": "string",
+            "enum": ["Always", "IfNotPresent", "Never"],
+            "default": "Always",
+            "description": "Image pull policy"
+          },
+          "env": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "value"],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Environment variable name"
+                },
+                "value": {
+                  "type": "string",
+                  "description": "Environment variable value"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "port"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the service"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "description": "Port number for the service"
+          }
+        }
+      }
+    }
+  }
+}

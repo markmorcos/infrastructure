@@ -3,21 +3,27 @@
   "type": "object",
   "required": ["chartVersion", "projectName"],
   "properties": {
-    "projectName": {
-      "type": "string",
-      "description": "Name of the project"
-    },
     "chartVersion": {
       "type": "string",
       "description": "Version of the Helm chart"
     },
+    "project": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the project" }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the repository" },
+        "path": { "type": "string", "description": "Path to the repository" }
+      }
+    },
     "ingress": {
       "type": "object",
       "properties": {
-        "host": {
-          "type": "string",
-          "description": "Hostname for the ingress"
-        },
+        "host": { "type": "string", "description": "Hostname for the ingress" },
         "rules": {
           "type": "array",
           "default": [],
@@ -29,10 +35,7 @@
                 "type": "string",
                 "description": "Hostname for the rule"
               },
-              "path": {
-                "type": "string",
-                "description": "Path for the rule"
-              },
+              "path": { "type": "string", "description": "Path for the rule" },
               "pathType": {
                 "type": "string",
                 "enum": ["Exact", "Prefix", "ImplementationSpecific"],
@@ -53,20 +56,14 @@
         "type": "object",
         "required": ["name", "image"],
         "properties": {
-          "name": {
-            "type": "string",
-            "description": "Name of the deployment"
-          },
+          "name": { "type": "string", "description": "Name of the deployment" },
           "replicas": {
             "type": "integer",
             "minimum": 1,
             "default": 1,
             "description": "Number of replicas"
           },
-          "image": {
-            "type": "string",
-            "description": "Container image"
-          },
+          "image": { "type": "string", "description": "Container image" },
           "tag": {
             "type": "string",
             "default": "latest",
@@ -124,10 +121,7 @@
         "type": "object",
         "required": ["name", "port"],
         "properties": {
-          "name": {
-            "type": "string",
-            "description": "Name of the service"
-          },
+          "name": { "type": "string", "description": "Name of the service" },
           "port": {
             "type": "integer",
             "minimum": 1,

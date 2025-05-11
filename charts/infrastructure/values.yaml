@@ -1,5 +1,13 @@
-chartVersion: 0.2.0
+chartVersion: 0.2.3
+
 projectName: "portfolio"
+
+project:
+  name: "portfolio"
+
+repository:
+  name: "markmorcos/portfolio"
+  path: "."
 
 ingress:
   host: mark.onthewifi.com

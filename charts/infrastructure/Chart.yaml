@@ -1,7 +1,7 @@
-apiVersion: v2
-appVersion: 1.0.0
-description: Reusable Helm chart for app services
 name: infrastructure
+description: Reusable Helm chart for app services
 type: application
-version: 0.2.2
+apiVersion: v2
+version: 0.2.3
+appVersion: 1.0.0
 icon: https://avatars.githubusercontent.com/u/7705547?s=48&v=4

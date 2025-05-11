@@ -1,4 +1,4 @@
-name: infrastructure-admin
+name: deploy-infrastructure-admin
 
 on:
   workflow_dispatch: {}

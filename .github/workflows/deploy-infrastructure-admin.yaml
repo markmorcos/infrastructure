@@ -18,6 +18,7 @@ jobs:
           event-type: deploy-infrastructure-admin
           client-payload: |-
             {
+              "repository": "markmorcos/infrastructure",
               "token": "${{ secrets.DEPLOYMENT_TOKEN }}",
               "version": "${{ github.sha }}",
               "config_file": "admin/deployment.yaml"

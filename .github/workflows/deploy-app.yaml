@@ -20,22 +20,29 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push Docker image
+      - name: Prepare build information
+        id: prepare-build-information
         run: |
           configFile="${{ github.event.client_payload.config_file }}"
           projectName=$(yq -r '.project.name' "$configFile")
           deploymentVersion="${{ github.event.client_payload.version }}"
           repositoryPath=$(yq -r '.repository.path' "$configFile")
 
-          PROJECT_NAME=${projectName} \
-          DEPLOYMENT_VERSION=${deploymentVersion} \
-          REPOSITORY_PATH=${repositoryPath} \
-          ./scripts/build.sh
+          echo "PROJECT_NAME=${projectName}" >> $GITHUB_OUTPUT
+          echo "DEPLOYMENT_VERSION=${deploymentVersion}" >> $GITHUB_OUTPUT
+          echo "REPOSITORY_PATH=${repositoryPath}" >> $GITHUB_OUTPUT
 
       - name: Checkout infrastructure
         uses: actions/checkout@v4
         with:
           path: infrastructure
+
+      - name: Build and push Docker image
+        run: |
+          PROJECT_NAME=${{ steps.prepare-build-information.outputs.PROJECT_NAME }} \
+          DEPLOYMENT_VERSION=${{ steps.prepare-build-information.outputs.DEPLOYMENT_VERSION }} \
+          REPOSITORY_PATH=${{ steps.prepare-build-information.outputs.REPOSITORY_PATH }} \
+          ./infrastructure/scripts/build.sh
 
       - name: Create SSH key
         run: |

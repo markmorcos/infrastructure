@@ -1,5 +1,11 @@
-chartVersion: 0.2.2
-projectName: infrastructure-admin
+chartVersion: 0.2.4
+
+project:
+  name: infrastructure-admin
+
+repository:
+  name: markmorcos/infrastructure
+  path: admin
 
 ingress:
   host: mark.onthewifi.com

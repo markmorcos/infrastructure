@@ -82,7 +82,7 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["name", "value"],
+              "required": ["name"],
               "properties": {
                 "name": {
                   "type": "string",
@@ -91,6 +91,26 @@
                 "value": {
                   "type": "string",
                   "description": "Environment variable value"
+                },
+                "valueFrom": {
+                  "type": "object",
+                  "description": "Value from a secret or config map",
+                  "properties": {
+                    "secretKeyRef": {
+                      "type": "object",
+                      "description": "Secret key reference",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "description": "Key in the secret"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Name of the secret"
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }

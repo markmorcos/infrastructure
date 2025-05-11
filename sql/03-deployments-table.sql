@@ -1,7 +1,5 @@
 CREATE TABLE IF NOT EXISTS deployments (
   project_name TEXT PRIMARY KEY,
-  repository_name TEXT NOT NULL,
-  config JSONB NOT NULL,
   token TEXT UNIQUE NOT NULL,
   enabled BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now(),

@@ -366,8 +366,18 @@ a:hover {
   transform: translateY(-1px);
 }
 
+.toggle-enabled {
+  margin-right: 0.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: var(--secondary);
+  cursor: pointer;
+}
+
 .edit-deployment-page {
-  max-width: 700px;
+  min-width: 700px;
   margin: 2rem auto;
   padding: 2rem;
   background: var(--card-bg);
@@ -425,7 +435,7 @@ a:hover {
   background: var(--card-bg);
   border-radius: var(--radius-lg);
   margin: 2rem auto;
-  max-width: 500px;
+  min-width: 500px;
   box-shadow: var(--shadow-md);
   position: relative;
   overflow: hidden;

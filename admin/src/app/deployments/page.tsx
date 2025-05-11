@@ -6,9 +6,8 @@ import DeploymentForm from "./DeploymentForm";
 
 interface Deployment {
   projectName: string;
-  repositoryName: string;
-  config: unknown;
   token: string;
+  enabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -24,19 +23,55 @@ export default function DeploymentsPage() {
     setDeployments(data);
   };
 
+  const toggleEnabled = async (projectName: string) => {
+    const deployment = deployments.find((d) => d.projectName === projectName);
+    if (!deployment) {
+      setError("Deployment not found");
+      return;
+    }
+
+    const res = await fetch("/infrastructure/api/deployments", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectName,
+        token: deployment.token,
+        enabled: !deployment.enabled,
+      }),
+    });
+
+    if (!res.ok) {
+      setError("Failed to update deployment");
+      return;
+    }
+
+    fetchDeployments();
+  };
+
+  const deleteDeployment = async (projectName: string) => {
+    const res = await fetch("/infrastructure/api/deployments", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectName }),
+    });
+
+    if (!res.ok) {
+      setError("Failed to delete deployment");
+      return;
+    }
+
+    fetchDeployments();
+  };
+
   useEffect(() => {
     fetchDeployments();
   }, []);
 
   const handleCreate = async ({
     projectName,
-    repositoryName,
-    config,
     token,
   }: {
     projectName: string;
-    repositoryName: string;
-    config: unknown;
     token: string;
   }) => {
     setError(null);
@@ -44,7 +79,7 @@ export default function DeploymentsPage() {
     const res = await fetch("/infrastructure/api/deployments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectName, repositoryName, config, token }),
+      body: JSON.stringify({ projectName, token }),
     });
     if (!res.ok) {
       setError("Failed to create deployment");
@@ -55,12 +90,16 @@ export default function DeploymentsPage() {
     fetchDeployments();
   };
 
+  if (loading) {
+    return <div className="loading-state">Loading...</div>;
+  }
+
   return (
     <div className="deployments-page">
       <div className="page-header">
-        <h1>Manage Deployments</h1>
+        <h1>Deployments</h1>
         <p className="page-description">
-          Create and manage your infrastructure deployments
+          Manage your deployments and their configurations.
         </p>
       </div>
 
@@ -71,20 +110,17 @@ export default function DeploymentsPage() {
       <DeploymentForm onSubmit={handleCreate} loading={loading} error={error} />
 
       <div className="section-title">
-        <h2>All Deployments</h2>
-        <span className="deployment-count">{deployments.length} Total</span>
+        <h2>Existing Deployments</h2>
+        <span className="deployment-count">{deployments.length}</span>
       </div>
 
       {deployments.length === 0 ? (
-        <div className="empty-state">
-          <p>No deployments found. Create your first deployment above.</p>
-        </div>
+        <div className="empty-state">No deployments found</div>
       ) : (
         <table className="deployments-table">
           <thead>
             <tr>
               <th>Project</th>
-              <th>Repository</th>
               <th>Created</th>
               <th>Updated</th>
               <th>Actions</th>
@@ -96,9 +132,6 @@ export default function DeploymentsPage() {
                 <td className="project-name" data-label="Project">
                   {dep.projectName}
                 </td>
-                <td className="repository-name" data-label="Repository">
-                  {dep.repositoryName}
-                </td>
                 <td data-label="Created">
                   {new Date(dep.createdAt).toLocaleString()}
                 </td>
@@ -106,14 +139,32 @@ export default function DeploymentsPage() {
                   {new Date(dep.updatedAt).toLocaleString()}
                 </td>
                 <td data-label="Actions">
-                  <Link
-                    href={`/deployments/edit/${encodeURIComponent(
-                      dep.projectName
-                    )}`}
-                    className="edit-link"
-                  >
-                    Edit Config
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <input
+                      className="toggle-enabled"
+                      type="checkbox"
+                      checked={dep.enabled}
+                      onChange={() => toggleEnabled(dep.projectName)}
+                    />
+                    <Link
+                      href={`/deployments/edit/${encodeURIComponent(
+                        dep.projectName
+                      )}`}
+                      className="edit-link"
+                    >
+                      Edit
+                    </Link>
+                    <button
+                      onClick={() =>
+                        confirm(
+                          "Are you sure you want to delete this deployment?"
+                        ) && deleteDeployment(dep.projectName)
+                      }
+                      className="edit-link"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

@@ -49,8 +49,6 @@ Ensure your PostgreSQL database has a `deployments` table with the following col
 
 - id (serial primary key)
 - project_name (text)
-- repository_name (text)
-- config (jsonb)
 - token (text)
 - created_at (timestamp with time zone, default now())
 - updated_at (timestamp with time zone, default now())

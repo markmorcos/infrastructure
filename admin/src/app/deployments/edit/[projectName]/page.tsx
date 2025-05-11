@@ -7,8 +7,6 @@ import DeploymentForm from "../../DeploymentForm";
 
 interface Deployment {
   projectName: string;
-  repositoryName: string;
-  config: unknown;
   token: string;
   createdAt: string;
   updatedAt: string;
@@ -17,44 +15,56 @@ interface Deployment {
 export default function EditDeploymentPage() {
   const router = useRouter();
   const params = useParams();
-  const projectName = params?.projectName as string;
+  const projectName = params.projectName as string;
   const [deployment, setDeployment] = useState<Deployment | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (!projectName) return;
-    fetch(`/infrastructure/api/deployments/${encodeURIComponent(projectName)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && !data.error) setDeployment(data);
-        else setError("Deployment not found");
-      })
-      .catch(() => setError("Failed to load deployment"));
+    const fetchDeployment = async () => {
+      try {
+        const res = await fetch(
+          `/infrastructure/api/deployments/${encodeURIComponent(projectName)}`
+        );
+        if (!res.ok) {
+          throw new Error("Failed to fetch deployment");
+        }
+        const data = await res.json();
+        setDeployment(data);
+      } catch {
+        setError("Failed to fetch deployment");
+      }
+    };
+    fetchDeployment();
   }, [projectName]);
 
-  const handleUpdate = async ({ config }: { config: unknown }) => {
+  const handleUpdate = async ({ token }: { token: string }) => {
     setError(null);
     setLoading(true);
-    const res = await fetch("/infrastructure/api/deployments", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ projectName, config }),
-    });
-    if (!res.ok) {
+    try {
+      const res = await fetch("/infrastructure/api/deployments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectName, token }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to update deployment");
+      }
+      setSuccess(true);
+      setTimeout(() => {
+        router.push("/deployments");
+      }, 2000);
+    } catch {
       setError("Failed to update deployment");
+    } finally {
       setLoading(false);
-      return;
     }
-    setLoading(false);
-    setSuccess(true);
-    setTimeout(() => router.push("/deployments"), 1200);
   };
 
-  if (error) return <div className="edit-deployment-error">{error}</div>;
-  if (!deployment)
-    return <div className="loading-state">Loading deployment...</div>;
+  if (!deployment) {
+    return <div className="loading-state">Loading...</div>;
+  }
 
   return (
     <div className="edit-deployment-page">
@@ -70,23 +80,15 @@ export default function EditDeploymentPage() {
 
       <DeploymentForm
         initialProjectName={deployment.projectName}
-        initialRepositoryName={deployment.repositoryName}
-        initialConfig={
-          typeof deployment.config === "object"
-            ? JSON.stringify(deployment.config, null, 2)
-            : String(deployment.config)
-        }
         initialToken={deployment.token}
-        onSubmit={({ config }) => handleUpdate({ config })}
+        onSubmit={({ token }) => handleUpdate({ token })}
         loading={loading}
         error={error}
         isEdit
         disableProjectName
       />
       {success && (
-        <div className="form-success">
-          Deployment configuration updated successfully!
-        </div>
+        <div className="form-success">Deployment updated successfully!</div>
       )}
     </div>
   );

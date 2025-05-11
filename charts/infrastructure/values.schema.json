@@ -35,7 +35,7 @@
               },
               "pathType": {
                 "type": "string",
-                "enum": ["Exact", "Prefix"],
+                "enum": ["Exact", "Prefix", "ImplementationSpecific"],
                 "description": "Type of path matching"
               },
               "serviceName": {

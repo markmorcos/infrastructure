@@ -6,7 +6,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
 
     steps:
       - name: Checkout client
@@ -25,20 +25,8 @@ jobs:
           projectName=${{ github.event.client_payload.project_name }}
           deploymentVersion=${{ github.event.client_payload.deployment_version }}
           repositoryPath="${{ github.event.client_payload.repository_path }}"
-          repositoryPath=${repositoryPath:-"."}
 
-          cd ${repositoryPath}
-
-          docker buildx create --use
-          docker buildx build \
-            --platform linux/arm64,linux/amd64 \
-            -t markmorcos/${projectName}:${deploymentVersion} \
-            -t markmorcos/${projectName}:latest \
-            --cache-from type=registry,ref=markmorcos/${projectName}:cache \
-            --cache-to type=registry,ref=markmorcos/${projectName}:cache,mode=max \
-            --push \
-            -f Dockerfile \
-            .
+          ./scripts/build.sh ${projectName} ${deploymentVersion} ${repositoryPath}
 
       - name: Checkout infrastructure
         uses: actions/checkout@v4
@@ -53,7 +41,8 @@ jobs:
       - name: Run deployment script on Raspberry Pi
         run: |
           deploymentToken=${{ github.event.client_payload.deployment_token }}
+          deploymentConfigFile=${{ github.event.client_payload.deployment_config_file }}
 
-          cat infrastructure/scripts/deploy.sh | ssh -i /tmp/key -o StrictHostKeyChecking=no \
+          cat infrastructure/scripts/deploy.sh ${repositoryPath}/${deploymentConfigFile} | ssh -i /tmp/key -o StrictHostKeyChecking=no \
             "${{ secrets.RASPBERRY_PI_USERNAME }}@${{ secrets.RASPBERRY_PI_HOST }}" \
             "KUBECONFIG=~/.kube/config DEPLOYMENT_TOKEN='${deploymentToken}' bash -s"

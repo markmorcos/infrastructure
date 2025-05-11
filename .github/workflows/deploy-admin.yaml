@@ -21,6 +21,7 @@ jobs:
               "project_name": "infrastructure-admin",
               "deployment_token": "${{ secrets.DEPLOYMENT_TOKEN }}",
               "deployment_version": "${{ github.sha }}",
+              "deployment_config_file": "deployment.yaml",
               "repository_name": "markmorcos/infrastructure",
               "repository_path": "admin"
             }

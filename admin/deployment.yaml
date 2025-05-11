@@ -1,0 +1,18 @@
+chartVersion: 0.2.1
+projectName: infrastructure-admin
+
+ingress:
+  host: mark.onthewifi.com
+  rules:
+    - host: mark.onthewifi.com
+      path: /infrastructure/?(.*)
+      pathType: ImplementationSpecific
+      serviceName: infrastructure-admin-service
+
+deployments:
+  - name: infrastructure-admin-deployment
+    image: markmorcos/infrastructure-admin
+
+services:
+  - name: infrastructure-admin-service
+    port: 80

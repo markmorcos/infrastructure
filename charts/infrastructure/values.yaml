@@ -1,6 +1,4 @@
-chartVersion: 0.2.3
-
-projectName: "portfolio"
+chartVersion: 0.2.4
 
 project:
   name: "portfolio"

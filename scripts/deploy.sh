@@ -78,6 +78,7 @@ verify_jwt() {
   # Decode and return payload
   local payload
   payload=$(base64url_decode "${parts[1]}")
+  echo -n "$payload"
 }
 
 # Retrieve a secret from Kubernetes
@@ -209,7 +210,7 @@ main() {
   config=$(cat)
 
   local name
-  name=$(yq -r .projectName <<< "$config")
+  name=$(yq -r .project.name <<< "$config")
 
   log "🚀 Starting deployment for $name"
   if deploy_with_helm "$name" "$config" "$dry_run"; then

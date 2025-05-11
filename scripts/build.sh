@@ -1,15 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-projectName=$1
-deploymentVersion=$2
-repositoryPath=${3:-.}
+REPOSITORY_PATH=${REPOSITORY_PATH:-.}
 
 docker build \
-  -t markmorcos/${projectName}:${deploymentVersion} \
-  -t markmorcos/${projectName}:latest \
-  -f ${repositoryPath}/Dockerfile \
-  ${repositoryPath}
+  -t markmorcos/${PROJECT_NAME}:${DEPLOYMENT_VERSION} \
+  -t markmorcos/${PROJECT_NAME}:latest \
+  -f ${REPOSITORY_PATH}/Dockerfile \
+  ${REPOSITORY_PATH}
 
-docker push markmorcos/${projectName}:${deploymentVersion}
-docker push markmorcos/${projectName}:latest
+docker push markmorcos/${PROJECT_NAME}:${DEPLOYMENT_VERSION}
+docker push markmorcos/${PROJECT_NAME}:latest

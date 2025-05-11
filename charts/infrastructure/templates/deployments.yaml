@@ -4,16 +4,16 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .name }}
-  namespace: {{ $.Values.projectName }}
+  namespace: {{ $.Values.project.name }}
 spec:
   replicas: {{ .replicas | default 1 }}
   selector:
     matchLabels:
-      app: {{ $.Values.projectName }}
+      app: {{ $.Values.project.name }}
   template:
     metadata:
       labels:
-        app: {{ $.Values.projectName }}
+        app: {{ $.Values.project.name }}
         build-timestamp: '{{ now | date "20060102150405" }}'
     spec:
       containers:

@@ -2,7 +2,7 @@ name: Application Deployment Dispatch
 
 on:
   repository_dispatch:
-    types: [deploy-infrastructure-admin, deploy-portfolio]
+    types: [deploy-infrastructure-admin, deploy-portfolio, deploy-booking]
 
 jobs:
   deploy:

@@ -1,4 +1,4 @@
-name: Apply Kubernetes Manifests
+name: apply-k8s
 
 on:
   workflow_dispatch: {}

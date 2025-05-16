@@ -1,4 +1,4 @@
-name: Publish Helm Charts
+name: publish-charts
 
 on:
   workflow_dispatch: {}

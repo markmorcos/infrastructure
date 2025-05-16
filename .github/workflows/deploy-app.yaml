@@ -1,4 +1,4 @@
-name: Application Deployment Dispatch
+name: deploy-app
 
 on:
   repository_dispatch:

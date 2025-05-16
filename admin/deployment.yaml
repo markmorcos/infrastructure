@@ -8,10 +8,10 @@ repository:
   path: admin
 
 ingress:
-  host: mark.onthewifi.com
+  host: infra.morcos.tech
   rules:
-    - host: mark.onthewifi.com
-      path: /infrastructure/?(.*)
+    - host: infra.morcos.tech
+      path: /?(.*)
       pathType: ImplementationSpecific
       serviceName: infrastructure-admin-service
 

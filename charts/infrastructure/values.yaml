@@ -8,9 +8,9 @@ repository:
   path: "."
 
 ingress:
-  host: mark.onthewifi.com
+  host: morcos.tech
   rules:
-    - host: mark.onthewifi.com
+    - host: morcos.tech
       path: /
       pathType: Prefix
       serviceName: portfolio-service

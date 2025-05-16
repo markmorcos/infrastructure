@@ -2,7 +2,11 @@ name: deploy-app
 
 on:
   repository_dispatch:
-    types: [deploy-infrastructure-admin, deploy-portfolio, deploy-booking]
+    types:
+      - deploy-infrastructure-admin
+      - deploy-portfolio
+      - deploy-booking
+      - deploy-wayrapuka
 
 jobs:
   deploy:

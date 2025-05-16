@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/infrastructure/api/auth/me");
+      const res = await fetch("/api/auth/me");
       if (res.ok) {
         const data = await res.json();
         setUser(data);
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await fetch("/infrastructure/api/auth/logout", { method: "POST" });
+    await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
     router.push("/login");
   }, [router]);

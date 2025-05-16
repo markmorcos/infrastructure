@@ -18,7 +18,7 @@ export default function DeploymentsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchDeployments = async () => {
-    const res = await fetch("/infrastructure/api/deployments");
+    const res = await fetch("/api/deployments");
     const data = await res.json();
     setDeployments(data);
   };
@@ -30,7 +30,7 @@ export default function DeploymentsPage() {
       return;
     }
 
-    const res = await fetch("/infrastructure/api/deployments", {
+    const res = await fetch("/api/deployments", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -49,7 +49,7 @@ export default function DeploymentsPage() {
   };
 
   const deleteDeployment = async (projectName: string) => {
-    const res = await fetch("/infrastructure/api/deployments", {
+    const res = await fetch("/api/deployments", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectName }),
@@ -76,7 +76,7 @@ export default function DeploymentsPage() {
   }) => {
     setError(null);
     setLoading(true);
-    const res = await fetch("/infrastructure/api/deployments", {
+    const res = await fetch("/api/deployments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectName, token }),

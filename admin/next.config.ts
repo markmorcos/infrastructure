@@ -1,8 +1,5 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  basePath: "/infrastructure",
-  assetPrefix: "/infrastructure/",
-};
+const nextConfig: NextConfig = {};
 
 export default nextConfig;

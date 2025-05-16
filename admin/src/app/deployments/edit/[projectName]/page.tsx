@@ -25,7 +25,7 @@ export default function EditDeploymentPage() {
     const fetchDeployment = async () => {
       try {
         const res = await fetch(
-          `/infrastructure/api/deployments/${encodeURIComponent(projectName)}`
+          `/api/deployments/${encodeURIComponent(projectName)}`
         );
         if (!res.ok) {
           throw new Error("Failed to fetch deployment");
@@ -43,7 +43,7 @@ export default function EditDeploymentPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch("/infrastructure/api/deployments", {
+      const res = await fetch("/api/deployments", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectName, token }),

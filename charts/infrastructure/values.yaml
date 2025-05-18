@@ -1,4 +1,4 @@
-chartVersion: 0.2.5
+chartVersion: 0.2.6
 
 project:
   name: "portfolio"
@@ -22,3 +22,5 @@ deployments:
 services:
   - name: portfolio-service
     port: 80
+
+jobs: []

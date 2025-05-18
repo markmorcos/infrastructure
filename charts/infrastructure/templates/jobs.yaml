@@ -17,9 +17,9 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: {{ .name }}
-          image: "{{ .image | default (pluck "image" $.Values.deployments | first) }}:{{ .tag | default "latest" }}"
+          image: "{{ .image | default (first $.Values.deployments).image }}:{{ .tag | default "latest" }}"
           imagePullPolicy: {{ .pullPolicy | default "Always" }}
           command: {{ toJson .command }}
           env:
-{{ toYaml (.env | default (pluck "env" $.Values.deployments | first)) | indent 12 }}
+{{ toYaml (.env | default (first $.Values.deployments).env) | indent 12 }}
 {{- end }}

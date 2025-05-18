@@ -16,9 +16,10 @@ spec:
     spec:
       restartPolicy: "OnFailure"
       containers:
-        - name: {{ .name }}
-          image: "{{ .image }}:{{ .tag | default "latest" }}"
+        - name: {{ .name }}  
+          image: "{{ .image | default (pluck "image" (where $.Values.deployments "name" .deploymentRef | first) | first) }}:{{ .tag | default "latest" }}"
           imagePullPolicy: {{ .pullPolicy | default "Always" }}
+          command: {{ toJson .command }}
           env:
 {{ toYaml .env | indent 12 }}
 {{- end }}

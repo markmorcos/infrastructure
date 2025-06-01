@@ -48,15 +48,17 @@ jobs:
           REPOSITORY_PATH=${{ steps.prepare-build-information.outputs.REPOSITORY_PATH }} \
           ./infrastructure/scripts/build.sh
 
+      - name: Configure VPN
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TAILSCALE_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TAILSCALE_CLIENT_SECRET }}
+          tags: tag:ci
+
       - name: Create SSH key
         run: |
           echo "${{ secrets.RASPBERRY_PI_SSH_KEY }}" > /tmp/key
           chmod 600 /tmp/key
-
-      - name: Tailscale
-        uses: tailscale/github-action@v3
-        with:
-          authkey: ${{ secrets.TAILSCALE_AUTH_KEY }}
 
       - name: Run deployment script on Raspberry Pi
         run: |

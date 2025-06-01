@@ -8,9 +8,9 @@ repository:
   path: admin
 
 ingress:
-  host: infra.morcos.tech
+  host: admin.morcos.tech
   rules:
-    - host: infra.morcos.tech
+    - host: admin.morcos.tech
       path: /?(.*)
       pathType: ImplementationSpecific
       serviceName: infrastructure-admin-service

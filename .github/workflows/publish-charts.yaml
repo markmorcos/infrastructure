@@ -42,15 +42,15 @@ jobs:
         run: |
           helm package charts/infrastructure
 
-      - name: Login to Docker Hub
+      - name: Login to GHCR
         if: steps.version_changed.outputs.changed == 'true'
         run: |
-          echo "${{ secrets.DOCKER_PASSWORD }}" | helm registry login registry-1.docker.io \
-            --username ${{ secrets.DOCKER_USERNAME }} \
+          echo "${{ secrets.INFRASTRUCTURE_PAT }}" | helm registry login ghcr.io \
+            --username ${{ github.actor }} \
             --password-stdin
 
-      - name: Push chart to Docker Hub
+      - name: Push chart to GHCR
         if: steps.version_changed.outputs.changed == 'true'
         run: |
           helm push infrastructure-${{ steps.chart_version.outputs.version }}.tgz \
-            oci://registry-1.docker.io/${{ secrets.DOCKER_USERNAME }}
+            oci://ghcr.io/markmorcos

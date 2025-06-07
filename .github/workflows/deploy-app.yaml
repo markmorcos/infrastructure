@@ -6,7 +6,7 @@ on:
       - deploy-infrastructure-admin
       - deploy-portfolio
       - deploy-booking
-      - deploy-wayrapuka
+      - deploy-url-shortener
 
 jobs:
   deploy:
@@ -64,8 +64,14 @@ jobs:
         run: |
           configFile="${{ github.event.client_payload.config_file }}"
           deploymentToken="${{ github.event.client_payload.token }}"
+          infrastructurePAT="${{ secrets.INFRASTRUCTURE_PAT }}"
+          githubUsername="${{ github.actor }}"
 
           (cat infrastructure/scripts/deploy.sh; echo; cat $configFile) \
             | ssh -i /tmp/key -o StrictHostKeyChecking=no \
             "${{ secrets.RASPBERRY_PI_USERNAME }}@${{ secrets.RASPBERRY_PI_HOST }}" \
-            "KUBECONFIG=~/.kube/config DEPLOYMENT_TOKEN='${deploymentToken}' bash -s"
+            "KUBECONFIG=~/.kube/config \
+            DEPLOYMENT_TOKEN='$deploymentToken' \
+            GITHUB_USERNAME='$githubUsername' \
+            INFRASTRUCTURE_PAT='$infrastructurePAT' \
+            bash -s"

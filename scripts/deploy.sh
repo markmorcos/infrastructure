@@ -151,6 +151,14 @@ run_command() {
   echo "$output"
 }
 
+login_to_ghcr() {
+  log "🔑 Logging into GitHub Container Registry"
+  if ! echo "$INFRASTRUCTURE_PAT" | docker login ghcr.io -u "$GITHUB_USERNAME" --password-stdin; then
+    log "❌ Failed to log in to GitHub Container Registry"
+    exit 1
+  fi
+}
+
 # Deploy using Helm
 # Args:
 #   $1: Release name
@@ -163,7 +171,7 @@ deploy_with_helm() {
 
   local helm_args=(
     "helm" "upgrade" "--install" "$name"
-    "oci://registry-1.docker.io/markmorcos/infrastructure"
+    "oci://ghcr.io/markmorcos/infrastructure"
     "--version" "$(yq -r .chartVersion <<< "$yaml")"
     "-f" "-"
     "-n" "$name"
@@ -213,6 +221,13 @@ main() {
   name=$(yq -r .project.name <<< "$config")
 
   log "🚀 Starting deployment for $name"
+  if login_to_ghcr; then
+    log "🔑 Successfully logged into GitHub Container Registry"
+  else
+    log "❌ Failed to log into GitHub Container Registry"
+    exit 1
+  fi
+
   if deploy_with_helm "$name" "$config" "$dry_run"; then
     log "✅ Deployment of $name completed"
   else

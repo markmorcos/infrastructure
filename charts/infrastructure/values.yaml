@@ -1,26 +1,34 @@
 chartVersion: 0.2.7
 
 project:
-  name: "portfolio"
+  {}
+  # name: "test"
 
 repository:
-  name: "markmorcos/portfolio"
-  path: "."
+  {}
+  # name: "markmorcos/test"
+  # path: "."
 
 ingress:
-  host: morcos.tech
-  rules:
-    - host: morcos.tech
-      path: /
-      pathType: Prefix
-      serviceName: portfolio-service
+  {}
+  # host: morcos.tech
+  # rules:
+  #   - host: morcos.tech
+  #     path: /
+  #     pathType: Prefix
+  #     serviceName: test-service
 
 deployments:
-  - name: portfolio
-    image: markmorcos/portfolio
+  []
+  # - name: test
+  #   image: markmorcos/test
 
 services:
-  - name: portfolio-service
-    port: 80
+  []
+  # - name: test-service
+  #   port: 80
 
-jobs: []
+jobs:
+  []
+  # - name: test-job
+  #   image: markmorcos/test-job

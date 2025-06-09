@@ -26,6 +26,10 @@ spec:
         - name: {{ .name }}
           image: "{{ .image }}:{{ .tag | default "latest" }}"
           imagePullPolicy: {{ .pullPolicy | default "Always" }}
+{{- if .args }}
+          args:
+{{ toYaml .args | indent 12 }}
+{{- end }}
 {{- if .env }}
           env:
 {{ toYaml .env | indent 12 }}

@@ -1,16 +1,83 @@
 {{- range .Values.services }}
+{{- $resourceName := printf "%s-%s" $.Values.project .name }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $resourceName }}-deployment
+  namespace: {{ $.Values.project }}
+spec:
+  replicas: {{ .replicas | default 1 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: {{ $resourceName }}
+  template:
+    metadata:
+      labels:
+        app: {{ $resourceName }}
+        build-timestamp: '{{ now | date "20060102150405" }}'
+    spec:
+      containers:
+        - name: {{ .name }}
+          image: "{{ .image }}:{{ .tag | default "latest" }}"
+          imagePullPolicy: {{ .pullPolicy | default "Always" }}
+{{- if .env }}
+          env:
+{{ toYaml .env | indent 12 }}
+{{- end }}
+
+{{- if .port }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .name }}
-  namespace: {{ $.Values.project.name }}
+  name: {{ $resourceName }}-service
 spec:
   selector:
-    app: {{ $.Values.project.name }}
+    app: {{ $resourceName }}
   ports:
-    - name: {{ .name }}
-      protocol: TCP
+    - name: http
       port: {{ .port }}
       targetPort: {{ .port }}
+{{- end }}
+
+{{- if .ingress }}
+{{- if not .port }}
+  {{- fail (printf "Service '%s' has ingress but no 'port'" .name) }}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $resourceName }}-ingress
+  annotations:
+    cert-manager.io/cluster-issuer: "infrastructure-issuer"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+    nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - {{ .ingress.host }}
+        - www.{{ .ingress.host }}
+      secretName: infrastructure-tls
+  rules:
+    - host: {{ .ingress.host }}
+      http:
+        paths:
+          - path: {{ .ingress.path }}
+            pathType: {{ .ingress.pathType }}
+            backend:
+              service:
+                name: {{ $resourceName }}-service
+                port:
+                  number: {{ .port }}
+{{- end }}
 {{- end }}

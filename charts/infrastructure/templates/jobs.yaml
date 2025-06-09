@@ -4,7 +4,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ .name }}
-  namespace: {{ $.Values.project.name }}
+  namespace: {{ $.Values.project }}
   annotations:
     "helm.sh/hook": "pre-install,pre-upgrade"
     "helm.sh/hook-delete-policy": "hook-succeeded"
@@ -12,14 +12,16 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ $.Values.project.name }}
+        app: {{ $.Values.project }}
     spec:
       restartPolicy: OnFailure
       containers:
         - name: {{ .name }}
-          image: "{{ .image | default (first $.Values.deployments).image }}:{{ .tag | default "latest" }}"
+          image: "{{ .image }}:{{ .tag | default "latest" }}"
           imagePullPolicy: {{ .pullPolicy | default "Always" }}
           command: {{ toJson .command }}
+          {{- if .env }}
           env:
-{{ toYaml (.env | default (first $.Values.deployments).env) | indent 12 }}
+{{ toYaml .env | indent 12 }}
+          {{- end }}
 {{- end }}

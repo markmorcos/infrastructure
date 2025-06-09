@@ -1,34 +1,7 @@
-chartVersion: 0.2.7
+version: 0.4.0
 
-project:
-  {}
-  # name: "test"
+project: "infrastructure"
 
-repository:
-  {}
-  # name: "markmorcos/test"
-  # path: "."
+services: []
 
-ingress:
-  {}
-  # host: morcos.tech
-  # rules:
-  #   - host: morcos.tech
-  #     path: /
-  #     pathType: Prefix
-  #     serviceName: test-service
-
-deployments:
-  []
-  # - name: test
-  #   image: markmorcos/test
-
-services:
-  []
-  # - name: test-service
-  #   port: 80
-
-jobs:
-  []
-  # - name: test-job
-  #   image: markmorcos/test-job
+jobs: []

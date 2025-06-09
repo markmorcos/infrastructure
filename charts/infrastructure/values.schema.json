@@ -1,79 +1,59 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema",
   "type": "object",
-  "required": ["chartVersion", "project", "repository"],
+  "required": ["version", "project", "services"],
   "properties": {
-    "chartVersion": {
+    "version": {
       "type": "string",
       "description": "Version of the Helm chart"
     },
     "project": {
       "type": "object",
+      "required": ["name"],
       "properties": {
         "name": { "type": "string", "description": "Name of the project" }
       }
     },
-    "repository": {
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "description": "Name of the repository" },
-        "path": { "type": "string", "description": "Path to the repository" }
-      }
-    },
-    "ingress": {
-      "type": "object",
-      "properties": {
-        "host": { "type": "string", "description": "Hostname for the ingress" },
-        "rules": {
-          "type": "array",
-          "default": [],
-          "items": {
-            "type": "object",
-            "required": ["host", "path", "pathType", "serviceName"],
-            "properties": {
-              "host": {
-                "type": "string",
-                "description": "Hostname for the rule"
-              },
-              "path": { "type": "string", "description": "Path for the rule" },
-              "pathType": {
-                "type": "string",
-                "enum": ["Exact", "Prefix", "ImplementationSpecific"],
-                "description": "Type of path matching"
-              },
-              "serviceName": {
-                "type": "string",
-                "description": "Name of the service to route to"
-              }
-            }
-          }
-        }
-      }
-    },
-    "deployments": {
+    "services": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["name", "image"],
+        "required": ["name", "image", "port"],
         "properties": {
-          "name": { "type": "string", "description": "Name of the deployment" },
-          "replicas": {
-            "type": "integer",
-            "minimum": 1,
-            "default": 1,
-            "description": "Number of replicas"
+          "name": {
+            "type": "string",
+            "description": "Service and deployment name"
           },
-          "image": { "type": "string", "description": "Container image" },
+          "image": {
+            "type": "string",
+            "description": "Container image to use"
+          },
           "tag": {
             "type": "string",
             "default": "latest",
-            "description": "Container image tag"
+            "description": "Image tag (default 'latest')"
           },
           "pullPolicy": {
             "type": "string",
             "enum": ["Always", "IfNotPresent", "Never"],
             "default": "Always",
             "description": "Image pull policy"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "description": "Port exposed by the service"
+          },
+          "replicas": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 1,
+            "description": "Number of deployment replicas"
+          },
+          "context": {
+            "type": "string",
+            "description": "Optional override for the Docker build context"
           },
           "env": {
             "type": "array",
@@ -87,46 +67,40 @@
                 },
                 "value": {
                   "type": "string",
-                  "description": "Environment variable value"
+                  "description": "Literal environment variable value"
                 },
                 "valueFrom": {
                   "type": "object",
-                  "description": "Value from a secret or config map",
+                  "description": "Value from config/secret",
                   "properties": {
                     "secretKeyRef": {
                       "type": "object",
-                      "description": "Secret key reference",
+                      "required": ["name", "key"],
                       "properties": {
-                        "key": {
-                          "type": "string",
-                          "description": "Key in the secret"
-                        },
-                        "name": {
-                          "type": "string",
-                          "description": "Name of the secret"
-                        }
+                        "name": { "type": "string" },
+                        "key": { "type": "string" }
                       }
                     }
                   }
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "services": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["name", "port"],
-        "properties": {
-          "name": { "type": "string", "description": "Name of the service" },
-          "port": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 65535,
-            "description": "Port number for the service"
+          },
+          "ingress": {
+            "type": "object",
+            "required": ["host", "path", "pathType"],
+            "properties": {
+              "host": { "type": "string", "description": "Ingress hostname" },
+              "path": {
+                "type": "string",
+                "description": "Ingress path for this service"
+              },
+              "pathType": {
+                "type": "string",
+                "enum": ["Exact", "Prefix", "ImplementationSpecific"],
+                "description": "Type of ingress path match"
+              }
+            }
           }
         }
       }

@@ -7,6 +7,11 @@ DEPLOYMENT_VERSION=${DEPLOYMENT_VERSION:-latest}
 SERVICE_COUNT=$(yq '.services | length' "$CONFIG_FILE")
 
 for i in $(seq 0 $((SERVICE_COUNT - 1))); do
+  if [[ $(yq -r ".services[$i].image" "$CONFIG_FILE") != ghcr.io/* ]]; then
+    continue
+  fi
+
+
   IMAGE_NAME=$(yq -r ".services[$i].image" "$CONFIG_FILE")
   SERVICE_CONTEXT=$(yq -r ".services[$i].context // \".\"" "$CONFIG_FILE")
 

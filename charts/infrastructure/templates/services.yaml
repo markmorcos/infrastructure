@@ -1,5 +1,9 @@
 {{- range .Values.services }}
 {{- $resourceName := printf "%s-%s" $.Values.project .name }}
+{{- $ports := .ports }}
+{{- if and (not .ports) .port }}
+{{- $ports = list (dict "port" .port) }}
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -35,7 +39,7 @@ spec:
 {{ toYaml .env | indent 12 }}
 {{- end }}
 
-{{- if .port }}
+{{- if $ports }}
 ---
 apiVersion: v1
 kind: Service
@@ -45,15 +49,14 @@ spec:
   selector:
     app: {{ $resourceName }}
   ports:
-    - name: http
+{{- range $ports }}
+    - name: {{ .name | default "http" }}
+      protocol: {{ .protocol | default "TCP" }}
       port: {{ .port }}
-      targetPort: {{ .port }}
+      targetPort: {{ .targetPort | default .port }}
 {{- end }}
-
+{{- end }}
 {{- if .ingress }}
-{{- if not .port }}
-  {{- fail (printf "Service '%s' has ingress but no 'port'" .name) }}
-{{- end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -82,6 +85,6 @@ spec:
               service:
                 name: {{ $resourceName }}-service
                 port:
-                  number: {{ .port }}
+                  number: {{ (index $ports 0).port }}
 {{- end }}
 {{- end }}

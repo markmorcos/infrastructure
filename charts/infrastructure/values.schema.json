@@ -36,6 +36,40 @@
             "default": "Always",
             "description": "Image pull policy"
           },
+          "ports": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["port"],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Name of the port",
+                  "default": "http"
+                },
+                "protocol": {
+                  "type": "string",
+                  "enum": ["TCP", "UDP"],
+                  "default": "TCP",
+                  "description": "Protocol for the port"
+                },
+                "port": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535,
+                  "description": "Container port to expose"
+                },
+                "targetPort": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535,
+                  "description": "Target port on the container",
+                  "default": "<port>"
+                }
+              }
+            },
+            "description": "List of ports to expose"
+          },
           "port": {
             "type": "integer",
             "minimum": 1,

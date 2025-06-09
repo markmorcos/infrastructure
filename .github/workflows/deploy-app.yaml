@@ -20,23 +20,12 @@ jobs:
         with:
           repository: ${{ github.event.client_payload.repository }}
 
-      - name: Login to Docker Hub
+      - name: Login to GHCR
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Prepare build information
-        id: prepare-build-information
-        run: |
-          configFile="${{ github.event.client_payload.config_file }}"
-          projectName=$(yq -r '.project.name' "$configFile")
-          deploymentVersion="${{ github.event.client_payload.version }}"
-          repositoryPath=$(yq -r '.repository.path' "$configFile")
-
-          echo "PROJECT_NAME=${projectName}" >> $GITHUB_OUTPUT
-          echo "DEPLOYMENT_VERSION=${deploymentVersion}" >> $GITHUB_OUTPUT
-          echo "REPOSITORY_PATH=${repositoryPath}" >> $GITHUB_OUTPUT
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.INFRASTRUCTURE_PAT }}
 
       - name: Checkout infrastructure
         uses: actions/checkout@v4
@@ -45,9 +34,8 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          PROJECT_NAME=${{ steps.prepare-build-information.outputs.PROJECT_NAME }} \
-          DEPLOYMENT_VERSION=${{ steps.prepare-build-information.outputs.DEPLOYMENT_VERSION }} \
-          REPOSITORY_PATH=${{ steps.prepare-build-information.outputs.REPOSITORY_PATH }} \
+          DEPLOYMENT_VERSION=${{ github.event.client_payload.version }} \
+          CONFIG_FILE="${{ github.event.client_payload.config_file }}" \
           ./infrastructure/scripts/build.sh
 
       - name: Configure VPN
@@ -57,23 +45,16 @@ jobs:
           oauth-secret: ${{ secrets.TAILSCALE_CLIENT_SECRET }}
           tags: tag:ci
 
-      - name: Create SSH key
+      - name: Configure Kubernetes
         run: |
-          echo "${{ secrets.RASPBERRY_PI_SSH_KEY }}" > /tmp/key
-          chmod 600 /tmp/key
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
 
-      - name: Run deployment script on Raspberry Pi
+      - name: Deploy services using Helm
         run: |
-          configFile="${{ github.event.client_payload.config_file }}"
-          deploymentToken="${{ github.event.client_payload.token }}"
-          infrastructurePAT="${{ secrets.INFRASTRUCTURE_PAT }}"
-          githubUsername="${{ github.actor }}"
-
-          (cat infrastructure/scripts/deploy.sh; echo; cat $configFile) \
-            | ssh -i /tmp/key -o StrictHostKeyChecking=no \
-            "${{ secrets.RASPBERRY_PI_USERNAME }}@${{ secrets.RASPBERRY_PI_HOST }}" \
-            "KUBECONFIG=~/.kube/config \
-            DEPLOYMENT_TOKEN='$deploymentToken' \
-            GITHUB_USERNAME='$githubUsername' \
-            INFRASTRUCTURE_PAT='$infrastructurePAT' \
-            bash -s"
+          KUBECONFIG=~/.kube/config \
+          DEPLOYMENT_TOKEN=${{ github.event.client_payload.token }} \
+          DEPLOYMENT_VERSION=${{ github.event.client_payload.version }} \
+          CONFIG_FILE="${{ github.event.client_payload.config_file }}" \
+          ./infrastructure/scripts/deploy.sh

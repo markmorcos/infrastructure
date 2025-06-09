@@ -8,11 +8,8 @@
       "description": "Version of the Helm chart"
     },
     "project": {
-      "type": "object",
-      "required": ["name"],
-      "properties": {
-        "name": { "type": "string", "description": "Name of the project" }
-      }
+      "type": "string",
+      "description": "Name of the project"
     },
     "services": {
       "type": "array",

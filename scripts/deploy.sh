@@ -93,15 +93,6 @@ get_secret() {
     base64 --decode
 }
 
-# Retrieve database credentials from Kubernetes secrets
-get_database_credentials() {
-  readonly db_name=$(get_secret "database-secrets" "DATABASE")
-  readonly db_user=$(get_secret "database-secrets" "USER")
-  readonly db_pass=$(get_secret "database-secrets" "PASSWORD")
-  readonly db_host=$(get_secret "database-secrets" "HOST")
-  readonly db_port=$(get_secret "database-secrets" "PORT")
-}
-
 # Check if deployment token is set
 require_deployment_token() {
   [[ -n "${DEPLOYMENT_TOKEN:-}" ]] || {
@@ -113,7 +104,6 @@ require_deployment_token() {
 # Verify deployment token against database and JWT
 verify_deployment_token() {
   require_deployment_token
-  get_database_credentials
 
   command -v openssl >/dev/null || {
     log "❌ openssl is not installed or not in PATH"
@@ -122,17 +112,6 @@ verify_deployment_token() {
 
   command -v jq >/dev/null || {
     log "❌ jq is not installed or not in PATH"
-    exit 1
-  }
-
-  local query
-  query="SELECT EXISTS(SELECT 1 FROM deployments WHERE token = '$DEPLOYMENT_TOKEN' AND enabled = true)"
-
-  local result
-  result=$(PGPASSWORD="$db_pass" psql -U "$db_user" -d "$db_name" -h "$db_host" -p "$db_port" -t -c "$query" | tr -d '[:space:]')
-
-  [[ "$result" == "t" ]] || {
-    log "❌ Invalid or disabled deployment token"
     exit 1
   }
 
@@ -151,44 +130,9 @@ run_command() {
   echo "$output"
 }
 
-login_to_ghcr() {
-  log "🔑 Logging into GitHub Container Registry"
-  if ! echo "$INFRASTRUCTURE_PAT" | docker login ghcr.io -u "$GITHUB_USERNAME" --password-stdin; then
-    log "❌ Failed to log in to GitHub Container Registry"
-    exit 1
-  fi
-}
-
-# Deploy using Helm
-# Args:
-#   $1: Release name
-#   $2: YAML configuration
-#   $3: Optional dry-run flag
-deploy_with_helm() {
-  local name=$1
-  local yaml=$2
-  local dry_run=${3:-false}
-
-  local helm_args=(
-    "helm" "upgrade" "--install" "$name"
-    "oci://ghcr.io/markmorcos/infrastructure"
-    "--version" "$(yq -r .chartVersion <<< "$yaml")"
-    "-f" "-"
-    "-n" "$name"
-    "--create-namespace"
-  )
-
-  if [[ "$dry_run" == "true" ]]; then
-    helm_args+=("--dry-run")
-  fi
-
-  run_command "${helm_args[@]}" <<< "$yaml"
-}
-
 # Main deployment function
 main() {
   local dry_run=false
-  local config_file="deployment.yaml"
 
   # Parse command line arguments
   while [[ $# -gt 0 ]]; do
@@ -196,10 +140,6 @@ main() {
       --dry-run)
         dry_run=true
         shift
-        ;;
-      --config)
-        config_file="$2"
-        shift 2
         ;;
       *)
         log "❌ Unknown option: $1"
@@ -214,24 +154,28 @@ main() {
   log "🔍 Verifying deployment token"
   verify_deployment_token
 
-  local config
-  config=$(cat)
+  project=$(yq -r .project "$CONFIG_FILE")
+  version=$(yq -r .version "$CONFIG_FILE")
 
-  local name
-  name=$(yq -r .project.name <<< "$config")
+  log "🚀 Starting deployment for $project"
+  
+  local helm_args=(
+    helm upgrade --install "$project"
+    oci://ghcr.io/markmorcos/infrastructure
+    --version "$version"
+    -f "$CONFIG_FILE"
+    -n "$project"
+    --create-namespace
+  )
 
-  log "🚀 Starting deployment for $name"
-  if login_to_ghcr; then
-    log "🔑 Successfully logged into GitHub Container Registry"
-  else
-    log "❌ Failed to log into GitHub Container Registry"
-    exit 1
+  if [[ "$dry_run" == "true" ]]; then
+    helm_args+=("--dry-run")
   fi
 
-  if deploy_with_helm "$name" "$config" "$dry_run"; then
-    log "✅ Deployment of $name completed"
+  if run_command "${helm_args[@]}"; then
+    log "✅ Deployment of $project completed"
   else
-    log "❌ Deployment of $name failed"
+    log "❌ Deployment of $project failed"
     exit 1
   fi
 }

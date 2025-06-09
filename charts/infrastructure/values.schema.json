@@ -15,7 +15,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["name", "image", "port"],
+        "required": ["name", "image"],
         "properties": {
           "name": {
             "type": "string",

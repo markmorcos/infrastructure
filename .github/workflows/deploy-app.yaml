@@ -8,6 +8,7 @@ on:
       - deploy-booking
       - deploy-url-shortener
       - deploy-urbansportsclub
+      - deploy-tazaker
 
 jobs:
   deploy:

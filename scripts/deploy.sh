@@ -152,8 +152,9 @@ main() {
   require_deployment_token
 
   log "🔍 Verifying deployment token"
-  namespace=$(verify_deployment_token | jq -r .sub)
+  verify_deployment_token
 
+  namespace=$(yq -r .namespace "$CONFIG_FILE")
   project=$(yq -r .project "$CONFIG_FILE")
   version=$(yq -r .version "$CONFIG_FILE")
 

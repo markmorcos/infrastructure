@@ -152,7 +152,7 @@ main() {
   require_deployment_token
 
   log "🔍 Verifying deployment token"
-  verify_deployment_token
+  namespace=$(verify_deployment_token | jq -r .sub)
 
   project=$(yq -r .project "$CONFIG_FILE")
   version=$(yq -r .version "$CONFIG_FILE")
@@ -164,7 +164,7 @@ main() {
     oci://ghcr.io/markmorcos/infrastructure
     --version "$version"
     -f "$CONFIG_FILE"
-    -n "$project"
+    -n "$namespace"
     --create-namespace
   )
 

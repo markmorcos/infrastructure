@@ -1,5 +1,5 @@
 {{- range .Values.services }}
-{{- $resourceName := printf "%s-%s" $.Values.project .name }}
+{{- $resourceName := printf "%s-%s" $.Values.namespace .name }}
 {{- $ports := .ports }}
 {{- if and (not .ports) .port }}
 {{- $ports = list (dict "port" .port) }}

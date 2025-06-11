@@ -30,10 +30,19 @@ if ! helm list -n cert-manager | grep -q cert-manager; then
     helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --set crds.enabled=true
 fi
 
+# Install kubernetes-dashboard if not already installed
+if ! helm list -n kubernetes-dashboard | grep -q kubernetes-dashboard; then
+    echo "Installing Kubernetes Dashboard..."
+    helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+    helm repo update
+    helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --namespace kubernetes-dashboard --create-namespace
+fi
+
 # Wait for ingress-nginx and cert-manager to be ready
 echo "Waiting for ingress-nginx and cert-manager to be ready..."
 kubectl wait --for=condition=available deployment/ingress-nginx-controller -n ingress-nginx --timeout=300s
 kubectl wait --for=condition=available deployment/cert-manager -n cert-manager --timeout=300s
+kubectl wait --for=condition=available deployment/kubernetes-dashboard -n kubernetes-dashboard --timeout=300s
 
 # Apply Kubernetes manifests
 echo "Applying Kubernetes manifests..."

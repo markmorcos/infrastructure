@@ -19,10 +19,12 @@ for i in $(seq 0 $((SERVICE_COUNT - 1))); do
 
   docker build \
     -t ${IMAGE_NAME}:${DEPLOYMENT_VERSION} \
+    -t ${IMAGE_NAME}:latest \
     -f ${SERVICE_CONTEXT}/Dockerfile \
     ${SERVICE_CONTEXT}
 
   docker push ${IMAGE_NAME}:${DEPLOYMENT_VERSION}
+  docker push ${IMAGE_NAME}:latest
   
   echo "✅ Done building and pushing $IMAGE_NAME"
 done

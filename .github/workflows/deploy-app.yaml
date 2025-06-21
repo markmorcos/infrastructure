@@ -9,6 +9,7 @@ on:
       - deploy-url-shortener
       - deploy-urbansportsclub
       - deploy-tazaker
+      - deploy-essenteil
 
 jobs:
   deploy:

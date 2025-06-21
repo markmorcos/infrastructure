@@ -13,7 +13,7 @@ for i in $(seq 0 $((SERVICE_COUNT - 1))); do
 
 
   IMAGE_NAME=$(yq -r ".services[$i].image" "$CONFIG_FILE")
-  SERVICE_CONTEXT=$(yq -r ".services[$i].context // \".\"" "$CONFIG_FILE")
+  SERVICE_CONTEXT="client/$(yq -r ".services[$i].context // \".\"" "$CONFIG_FILE")"
 
   echo "🔨 Building $IMAGE_NAME:$DEPLOYMENT_VERSION"
 

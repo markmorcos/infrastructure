@@ -58,5 +58,5 @@ jobs:
           KUBECONFIG=~/.kube/config \
           DEPLOYMENT_TOKEN=${{ github.event.client_payload.token }} \
           DEPLOYMENT_VERSION=${{ github.event.client_payload.version }} \
-          CONFIG_FILE="${{ github.event.client_payload.config_file }}" \
+          CONFIG_FILE="client/${{ github.event.client_payload.config_file }}" \
           ./infrastructure/scripts/deploy.sh

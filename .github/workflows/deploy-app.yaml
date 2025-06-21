@@ -16,6 +16,9 @@ jobs:
     runs-on: ubuntu-24.04-arm
 
     steps:
+      - name: Checkout infrastructure
+        uses: actions/checkout@v4
+
       - name: Checkout client
         uses: actions/checkout@v4
         with:
@@ -29,16 +32,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.INFRASTRUCTURE_PAT }}
 
-      - name: Checkout infrastructure
-        uses: actions/checkout@v4
-        with:
-          path: infrastructure
-
       - name: Build and push Docker image
         run: |
           DEPLOYMENT_VERSION=${{ github.event.client_payload.version }} \
           CONFIG_FILE="client/${{ github.event.client_payload.config_file }}" \
-          ./infrastructure/scripts/build.sh
+          ./scripts/build.sh
 
       - name: Configure VPN
         uses: tailscale/github-action@v3
@@ -59,4 +57,4 @@ jobs:
           DEPLOYMENT_TOKEN=${{ github.event.client_payload.token }} \
           DEPLOYMENT_VERSION=${{ github.event.client_payload.version }} \
           CONFIG_FILE="client/${{ github.event.client_payload.config_file }}" \
-          ./infrastructure/scripts/deploy.sh
+          ./scripts/deploy.sh

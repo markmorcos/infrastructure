@@ -52,4 +52,13 @@ jwt_secret=$(openssl rand -base64 64)
 kubectl create secret generic jwt-secret --from-literal="JWT_SECRET=$jwt_secret" -n infrastructure
 echo "Generated JWT secret: $jwt_secret"
 
+# Create staging environment
+echo "Creating staging environment..."
+helm upgrade --install staging vcluster \
+  --repo https://charts.loft.sh \
+  --namespace staging \
+  --create-namespace \
+  --repository-config=''
+echo "Staging environment created!"
+
 echo "Infrastructure initialization complete!"

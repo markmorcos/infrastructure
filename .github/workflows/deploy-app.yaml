@@ -10,6 +10,7 @@ on:
       - deploy-urbansportsclub
       - deploy-tazaker
       - deploy-essenteil
+      - deploy-whiteboard
 
 jobs:
   deploy:

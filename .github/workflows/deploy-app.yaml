@@ -3,13 +3,14 @@ name: deploy-app
 on:
   repository_dispatch:
     types:
+      - deploy-booking
+      - deploy-essenteil
       - deploy-infrastructure-admin
       - deploy-portfolio
-      - deploy-booking
-      - deploy-url-shortener
-      - deploy-urbansportsclub
+      - deploy-stream
       - deploy-tazaker
-      - deploy-essenteil
+      - deploy-urbansportsclub
+      - deploy-url-shortener
       - deploy-whiteboard
 
 jobs:

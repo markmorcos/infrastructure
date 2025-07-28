@@ -12,6 +12,7 @@ on:
       - deploy-tazaker
       - deploy-urbansportsclub
       - deploy-url-shortener
+      - deploy-watch
       - deploy-whiteboard
 
 jobs:

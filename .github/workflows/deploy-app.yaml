@@ -8,6 +8,7 @@ on:
       - deploy-games
       - deploy-infrastructure-admin
       - deploy-portfolio
+      - deploy-scrum-poker
       - deploy-stream
       - deploy-tazaker
       - deploy-urbansportsclub

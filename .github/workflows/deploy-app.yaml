@@ -5,6 +5,7 @@ on:
     types:
       - deploy-booking
       - deploy-essenteil
+      - deploy-eventlane
       - deploy-games
       - deploy-infrastructure-admin
       - deploy-portfolio

@@ -38,6 +38,7 @@
           },
           "ports": {
             "type": "array",
+            "description": "List of ports to expose",
             "items": {
               "type": "object",
               "required": ["port"],
@@ -67,8 +68,7 @@
                   "default": "<port>"
                 }
               }
-            },
-            "description": "List of ports to expose"
+            }
           },
           "port": {
             "type": "integer",
@@ -88,6 +88,7 @@
           },
           "env": {
             "type": "array",
+            "description": "Environment variables",
             "items": {
               "type": "object",
               "required": ["name"],
@@ -128,8 +129,73 @@
               },
               "pathType": {
                 "type": "string",
-                "enum": ["Exact", "Prefix", "ImplementationSpecific"],
-                "description": "Type of ingress path match"
+                "description": "Ingress path type",
+                "enum": ["Exact", "Prefix", "ImplementationSpecific"]
+              }
+            }
+          },
+          "volumes": {
+            "type": "array",
+            "description": "Volume definitions used for mounting into the container",
+            "items": {
+              "type": "object",
+              "required": ["name", "mountPath"],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Name of the volume"
+                },
+                "mountPath": {
+                  "type": "string",
+                  "description": "Path where the volume is mounted inside the container"
+                },
+                "readOnly": {
+                  "type": "boolean",
+                  "description": "Whether the mount is read-only"
+                },
+                "secret": {
+                  "type": "object",
+                  "description": "Secret volume definition",
+                  "properties": {
+                    "secretName": { "type": "string" },
+                    "optional": { "type": "boolean" },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["key", "path"],
+                        "properties": {
+                          "key": { "type": "string" },
+                          "path": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                },
+                "configMap": {
+                  "type": "object",
+                  "description": "ConfigMap volume definition",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "optional": { "type": "boolean" }
+                  }
+                },
+                "emptyDir": {
+                  "type": "object",
+                  "description": "Tmpfs or emptyDir storage",
+                  "properties": {
+                    "medium": { "type": "string" },
+                    "sizeLimit": { "type": "string" }
+                  }
+                },
+                "hostPath": {
+                  "type": "object",
+                  "description": "HostPath volume definition",
+                  "properties": {
+                    "path": { "type": "string" },
+                    "type": { "type": "string" }
+                  }
+                }
               }
             }
           }

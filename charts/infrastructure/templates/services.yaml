@@ -26,6 +26,25 @@ spec:
         app: {{ $resourceName }}
         build-timestamp: '{{ now | date "20060102150405" }}'
     spec:
+{{- if .volumes }}
+      volumes:
+{{- range .volumes }}
+        - name: {{ .name }}
+{{- if hasKey . "secret" }}
+          secret:
+{{ toYaml .secret | indent 12 }}
+{{- else if hasKey . "configMap" }}
+          configMap:
+{{ toYaml .configMap | indent 12 }}
+{{- else if hasKey . "emptyDir" }}
+          emptyDir:
+{{ toYaml .emptyDir | indent 12 }}
+{{- else if hasKey . "hostPath" }}
+          hostPath:
+{{ toYaml .hostPath | indent 12 }}
+{{- end }}
+{{- end }}
+{{- end }}
       containers:
         - name: {{ .name }}
           image: "{{ .image }}:{{ .tag | default "latest" }}"
@@ -37,6 +56,16 @@ spec:
 {{- if .env }}
           env:
 {{ toYaml .env | indent 12 }}
+{{- end }}
+{{- if .volumes }}
+          volumeMounts:
+{{- range .volumes }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+{{- if hasKey . "readOnly" }}
+              readOnly: {{ .readOnly }}
+{{- end }}
+{{- end }}
 {{- end }}
 
 {{- if $ports }}
@@ -56,6 +85,7 @@ spec:
       targetPort: {{ .targetPort | default .port }}
 {{- end }}
 {{- end }}
+
 {{- if .ingress }}
 ---
 apiVersion: networking.k8s.io/v1

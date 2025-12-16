@@ -14,13 +14,15 @@ for i in $(seq 0 $((SERVICE_COUNT - 1))); do
 
   IMAGE_NAME=$(yq -r ".services[$i].image" "$CONFIG_FILE")
   SERVICE_CONTEXT="client/$(yq -r ".services[$i].context // \".\"" "$CONFIG_FILE")"
+  DOCKERFILE_PATH="${SERVICE_CONTEXT}/$(yq -r ".services[$i].dockerfile // \"Dockerfile\"" "$CONFIG_FILE")"
+
 
   echo "🔨 Building $IMAGE_NAME:$DEPLOYMENT_VERSION"
 
   docker build \
     -t ${IMAGE_NAME}:${DEPLOYMENT_VERSION} \
     -t ${IMAGE_NAME}:latest \
-    -f ${SERVICE_CONTEXT}/Dockerfile \
+    -f ${DOCKERFILE_PATH} \
     ${SERVICE_CONTEXT}
 
   docker push ${IMAGE_NAME}:${DEPLOYMENT_VERSION}

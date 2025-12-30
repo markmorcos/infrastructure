@@ -9,6 +9,7 @@ on:
       - deploy-games
       - deploy-infrastructure-admin
       - deploy-portfolio
+      - deploy-pile
       - deploy-scrum-poker
       - deploy-stream
       - deploy-tazaker

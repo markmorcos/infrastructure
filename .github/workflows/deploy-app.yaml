@@ -11,6 +11,7 @@ on:
       - deploy-portfolio
       - deploy-pile
       - deploy-scrum-poker
+      - deploy-secrets
       - deploy-stream
       - deploy-tazaker
       - deploy-urbansportsclub

@@ -1,35 +1,24 @@
-chartVersion: 0.2.9
+version: 0.4.7
 
-project:
-  name: infrastructure-admin
+namespace: infrastructure-admin
+project: infrastructure-admin
 
-repository:
-  name: markmorcos/infrastructure
-  path: admin
-
-ingress:
-  host: admin.morcos.tech
-  rules:
-    - host: admin.morcos.tech
-      path: /?(.*)
-      pathType: ImplementationSpecific
-      serviceName: infrastructure-admin-service
-
-deployments:
-  - name: infrastructure-admin-deployment
+services:
+  - name: infrastructure-admin
     image: markmorcos/infrastructure-admin
+    port: 3000
     env:
       - name: DATABASE_URL
         valueFrom:
           secretKeyRef:
-            key: DATABASE_URL
             name: database-secrets
+            key: DATABASE_URL
       - name: JWT_SECRET
         valueFrom:
           secretKeyRef:
-            key: JWT_SECRET
             name: jwt-secret
-
-services:
-  - name: infrastructure-admin-service
-    port: 3000
+            key: JWT_SECRET
+    ingress:
+      host: admin.morcos.tech
+      path: /
+      pathType: Prefix

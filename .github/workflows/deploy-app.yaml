@@ -12,6 +12,7 @@ on:
       - deploy-pile
       - deploy-scrum-poker
       - deploy-secrets
+      - deploy-stminaconnect
       - deploy-stream
       - deploy-tazaker
       - deploy-urbansportsclub

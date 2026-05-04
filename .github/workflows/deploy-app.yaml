@@ -8,6 +8,7 @@ on:
       - deploy-eventlane
       - deploy-games
       - deploy-infrastructure-admin
+      - deploy-ma3ady
       - deploy-portfolio
       - deploy-pile
       - deploy-scrum-poker

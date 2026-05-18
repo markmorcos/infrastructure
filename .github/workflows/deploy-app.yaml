@@ -42,12 +42,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.INFRASTRUCTURE_PAT }}
 
-      - name: Build and push Docker image
-        run: |
-          DEPLOYMENT_VERSION=${{ github.event.client_payload.version }} \
-          CONFIG_FILE="client/${{ github.event.client_payload.config_file }}" \
-          ./scripts/build.sh
-
       - name: Configure VPN
         uses: tailscale/github-action@v3
         with:
@@ -60,6 +54,12 @@ jobs:
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
+
+      - name: Build and push Docker image
+        run: |
+          DEPLOYMENT_VERSION=${{ github.event.client_payload.version }} \
+          CONFIG_FILE="client/${{ github.event.client_payload.config_file }}" \
+          ./scripts/build.sh
 
       - name: Deploy services using Helm
         run: |

@@ -56,17 +56,17 @@ for i in $(seq 0 $((SERVICE_COUNT - 1))); do
   fi
 
 
-  echo "🔨 Building $IMAGE_NAME:$DEPLOYMENT_VERSION"
+  echo "🔨 Building $IMAGE_NAME:${NAMESPACE}-${DEPLOYMENT_VERSION}"
 
   docker build \
-    -t ${IMAGE_NAME}:${DEPLOYMENT_VERSION} \
-    -t ${IMAGE_NAME}:latest \
+    -t ${IMAGE_NAME}:${NAMESPACE}-${DEPLOYMENT_VERSION} \
+    -t ${IMAGE_NAME}:${NAMESPACE}-latest \
     -f ${DOCKERFILE_PATH} \
     "${build_arg_flags[@]}" \
     ${SERVICE_CONTEXT}
 
-  docker push ${IMAGE_NAME}:${DEPLOYMENT_VERSION}
-  docker push ${IMAGE_NAME}:latest
+  docker push ${IMAGE_NAME}:${NAMESPACE}-${DEPLOYMENT_VERSION}
+  docker push ${IMAGE_NAME}:${NAMESPACE}-latest
 
   echo "✅ Done building and pushing $IMAGE_NAME"
 done

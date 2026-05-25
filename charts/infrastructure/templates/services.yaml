@@ -47,7 +47,7 @@ spec:
 {{- end }}
       containers:
         - name: {{ .name }}
-          image: "{{ .image }}:{{ .tag | default "latest" }}"
+          image: "{{ .image }}:{{ .tag | default (printf "%s-latest" $.Values.namespace) }}"
           imagePullPolicy: {{ .pullPolicy | default "Always" }}
 {{- if .args }}
           args:

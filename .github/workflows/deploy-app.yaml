@@ -59,7 +59,7 @@ jobs:
         run: |
           DEPLOYMENT_VERSION=${{ github.event.client_payload.version }} \
           CONFIG_FILE="client/${{ github.event.client_payload.config_file }}" \
-          ./scripts/build.sh
+          bash scripts/build.sh
 
       - name: Deploy services using Helm
         run: |
@@ -67,4 +67,4 @@ jobs:
           DEPLOYMENT_TOKEN=${{ github.event.client_payload.token }} \
           DEPLOYMENT_VERSION=${{ github.event.client_payload.version }} \
           CONFIG_FILE="client/${{ github.event.client_payload.config_file }}" \
-          ./scripts/deploy.sh
+          bash scripts/deploy.sh

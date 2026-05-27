@@ -167,6 +167,7 @@ main() {
     -f "$CONFIG_FILE"
     -n "$namespace"
     --create-namespace
+    --history-max=3
   )
 
   if [[ "$dry_run" == "true" ]]; then

@@ -1,0 +1,121 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: minio
+  labels:
+    name: minio
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-console-ingress
+  namespace: minio
+  annotations:
+    cert-manager.io/cluster-issuer: "infrastructure-issuer"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+    nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, HEAD, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,x-amz-*"
+    nginx.ingress.kubernetes.io/cors-expose-headers: "Content-Length,Content-Range,Accept-Ranges,ETag,x-amz-*"
+    nginx.ingress.kubernetes.io/proxy-body-size: "1024m"
+    nginx.ingress.kubernetes.io/client-max-body-size: "1024m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/upstream-vhost: "minio.morcos.tech"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$request_uri"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/enable-websocket: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - minio.morcos.tech
+        - www.minio.morcos.tech
+      secretName: infrastructure-tls
+  rules:
+    - host: minio.morcos.tech
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: minio-web-service
+                port:
+                  number: 9001
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-api-ingress
+  namespace: minio
+  annotations:
+    cert-manager.io/cluster-issuer: "infrastructure-issuer"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+    nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, HEAD, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,x-amz-*"
+    nginx.ingress.kubernetes.io/cors-expose-headers: "Content-Length,Content-Range,Accept-Ranges,ETag,x-amz-*"
+    nginx.ingress.kubernetes.io/proxy-body-size: "1024m"
+    nginx.ingress.kubernetes.io/client-max-body-size: "1024m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/upstream-vhost: "cdn.morcos.tech"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$request_uri"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/enable-websocket: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - cdn.morcos.tech
+        - www.cdn.morcos.tech
+      secretName: infrastructure-tls
+  rules:
+    - host: cdn.morcos.tech
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: minio-cdn-service
+                port:
+                  number: 9000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-web-service
+  namespace: minio
+spec:
+  type: ExternalName
+  externalName: pi
+  ports:
+    - port: 9001
+      targetPort: 9001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-cdn-service
+  namespace: minio
+spec:
+  type: ExternalName
+  externalName: pi
+  ports:
+    - port: 9000
+      targetPort: 9000

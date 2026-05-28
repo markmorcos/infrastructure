@@ -1,0 +1,107 @@
+# infrastructure / bootstrap
+
+Idempotent one-shot bootstrap for my Raspberry Pi 5 and Lenovo M720q nodes.
+
+Sets up: IP forwarding sysctls, Tailscale, k3s (server or agent), multi-zone Cloudflare DDNS, k3s cleanup timer, and optionally MinIO.
+
+## Quick start
+
+```bash
+# 1. Pull secrets into place (host-local, never committed)
+sudo install -d -m 0755 /etc/infrastructure
+sudo nano /etc/infrastructure/bootstrap/.env       # paste & edit from .env.example
+sudo chmod 0600 /etc/infrastructure/bootstrap/.env
+
+# 2. Run bootstrap
+curl -fsSL https://raw.githubusercontent.com/markmorcos/infrastructure/main/bootstrap/run.sh | sudo bash
+```
+
+Re-run any time — every step is idempotent.
+
+## Setting up the Pi (server)
+
+```ini
+# /etc/infrastructure/bootstrap/.env (Pi)
+INSTALL_MINIO=1
+
+TAILSCALE_AUTHKEY=tskey-auth-...
+K3S_ROLE=server
+CF_API_TOKEN=...
+
+MINIO_ROOT_USER=minio-user
+MINIO_ROOT_PASSWORD=...
+MINIO_BROWSER_REDIRECT_URL=https://minio.morcos.tech
+MINIO_SERVER_URL=https://cdn.morcos.tech
+```
+
+After Pi bootstrap, grab the token to use on the agent:
+
+```bash
+sudo cat /var/lib/rancher/k3s/server/node-token
+```
+
+## Setting up the M720q (agent)
+
+```ini
+# /etc/infrastructure/bootstrap/.env (M720q)
+INSTALL_MINIO=0
+
+TAILSCALE_AUTHKEY=tskey-auth-...
+K3S_ROLE=agent
+K3S_URL=https://100.69.211.117:6443       # Pi's Tailscale IP (matches tls-san)
+K3S_TOKEN=K10b...                          # from Pi
+CF_API_TOKEN=...                           # same token; both nodes update DNS for redundancy
+```
+
+## What gets installed
+
+| Component | Path | Trigger |
+| --- | --- | --- |
+| sysctl IP forwarding | `/etc/sysctl.d/99-tailscale.conf` | `INSTALL_SYSCTL_FORWARD=1` |
+| Tailscale | apt repo, then `tailscale up` | `INSTALL_TAILSCALE=1` |
+| k3s | `/usr/local/bin/k3s` + systemd | `INSTALL_K3S=1` |
+| DDNS script | `/usr/local/lib/infrastructure/cloudflare-ddns.sh` | `INSTALL_CF_DDNS=1` |
+| DDNS service + timer | `/etc/systemd/system/cloudflare-ddns.{service,timer}` | `INSTALL_CF_DDNS=1` |
+| k3s cleanup | `/usr/local/lib/infrastructure/k3s-cleanup.sh` + timer | `INSTALL_K3S_CLEANUP=1` |
+| MinIO | `/usr/local/bin/minio` + unit + `/etc/default/minio` | `INSTALL_MINIO=1` |
+
+## Adding / removing domains
+
+Edit [`domains.conf`](./domains.conf), commit, push. Next DDNS run (≤ `CF_DDNS_INTERVAL`, default 5 min) on each node picks it up. No bootstrap re-run needed.
+
+Format:
+
+```
+zone.tld = record1 record2 *
+```
+
+Use `*` for wildcards, the zone name itself for the apex.
+
+## DDNS behavior
+
+- Runs on every `network-online.target` (boot + reconnect)
+- Plus periodic timer every `CF_DDNS_INTERVAL` (default 5 min)
+- Both nodes run it — idempotent, second one to update sees "unchanged"
+
+Worst-case staleness: `CF_DDNS_INTERVAL`. To eliminate it entirely, configure DDNS at your router (e.g. Fritzbox → Internet → Permit Access → Dynamic DNS) — that fires on actual WAN IP change events. Combine with a CNAME-anchor pattern (one A record updated by router; everything else as CNAMEs) to keep this script trivial.
+
+## Caveats
+
+**Pi 5 with 16K-page kernel** breaks Tailscale's Go binary (and other Go programs). Check:
+
+```bash
+getconf PAGESIZE
+```
+
+If it returns `16384`, add `kernel=kernel8.img` to `/boot/firmware/config.txt` and reboot. Fully reversible — just remove the line and reboot again.
+
+**MinIO storage is your problem.** The unit refuses to start if `/mnt/data` isn't mounted. The bootstrap won't manage your storage layer — that belongs in `/etc/fstab` or a one-off setup script.
+
+**k3s version skew.** Server and agent should be on the same minor (1.32.x). Update `K3S_VERSION` on both nodes when you bump.
+
+## Files in this repo
+
+- `run.sh` — the one and only script; idempotent, safe to re-run
+- `.env.example` — copy + edit to `/etc/infrastructure/bootstrap/.env` on each host
+- `domains.conf` — list of CF zones and records to keep pointed at home IP
+- `README.md` — this file

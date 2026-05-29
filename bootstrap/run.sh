@@ -109,6 +109,15 @@ REDIS_REPO_DIST="${REDIS_REPO_DIST:-}"              # override apt codename (def
 DNSMASQ_DOMAIN="${DNSMASQ_DOMAIN:-morcos.lan}"
 
 # === Phase 0: base packages ===================================================
+# Drop the third-party repo files we own *before* the first apt-get update. A
+# stale codename written by an earlier run (e.g. a release MongoDB doesn't
+# publish for) would otherwise make every apt operation — including this one —
+# fail hard. The relevant phase below re-adds the correct file; if a toggle is
+# now off, the repo simply stays gone (self-cleaning).
+rm -f /etc/apt/sources.list.d/mongodb-org-*.list \
+      /etc/apt/sources.list.d/pgdg.list \
+      /etc/apt/sources.list.d/redis.list
+
 log "Installing base packages..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq

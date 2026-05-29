@@ -5,7 +5,8 @@ project: infrastructure-admin
 
 services:
   - name: infrastructure-admin
-    image: markmorcos/infrastructure-admin
+    image: ghcr.io/markmorcos/infrastructure-admin
+    context: admin
     port: 3000
     env:
       - name: DATABASE_URL

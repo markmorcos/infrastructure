@@ -26,17 +26,20 @@ log()  { printf '\033[1;34m[bootstrap]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[bootstrap]\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31m[bootstrap]\033[0m %s\n' "$*" >&2; exit 1; }
 
-# MongoDB 8.x crashes on Linux kernel >=6.19 (vendored TCMalloc violates the
-# rseq ABI — MongoDB SERVER-121912) and now hard-refuses to start. Detect that
-# up front so we skip the phase cleanly instead of failing mid-install.
+# MongoDB 8.x's vendored TCMalloc violates the rseq ABI on Linux kernel >=6.19
+# (SERVER-121912) and hard-refuses to start. MongoDB 7.x uses an older TCMalloc
+# that is unaffected, so only guard the 8.x+ series — on a new kernel, pin
+# MONGO_VERSION=7.0. Detect this up front and skip cleanly rather than fail mid-run.
 mongo_kernel_supported() {
-  local kver kmaj kmin
+  local kver kmaj kmin mongomaj
+  mongomaj=${MONGO_VERSION%%.*}
+  (( 10#${mongomaj:-0} >= 8 )) || return 0   # 7.x and older are unaffected
   kver=$(uname -r); kmaj=${kver%%.*}; kmin=${kver#*.}; kmin=${kmin%%.*}
   [[ "$kmin" =~ ^[0-9]+$ ]] || kmin=0
   if (( 10#$kmaj > 6 || (10#$kmaj == 6 && 10#$kmin >= 19) )); then
-    warn "Skipping MongoDB: kernel $kver is >=6.19, which MongoDB 8.x refuses to"
-    warn "  run on (TCMalloc/rseq incompatibility, SERVER-121912). Boot a <6.19"
-    warn "  kernel or use an LTS distro and re-run; or set INSTALL_MONGO=0."
+    warn "Skipping MongoDB ${MONGO_VERSION}: kernel $kver is >=6.19, which MongoDB 8.x"
+    warn "  refuses to run on (TCMalloc/rseq, SERVER-121912). Set MONGO_VERSION=7.0"
+    warn "  (unaffected), boot a <6.19 kernel, or set INSTALL_MONGO=0."
     return 1
   fi
   return 0

@@ -405,6 +405,7 @@ if [[ "$INSTALL_MINIO" == "1" ]]; then
   # data volume — mirrors the per-service /mnt/data/<service> layout of the DBs.
   if [[ "$MINIO_VOLUMES" == /* && "$MINIO_VOLUMES" != *" "* ]]; then
     install -d -o minio-user -g minio-user -m 0750 "$MINIO_VOLUMES"
+    [[ -d "$(dirname "$MINIO_VOLUMES")" ]] && chmod a+x "$(dirname "$MINIO_VOLUMES")"
   fi
 
   if [[ ! -x /usr/local/bin/minio ]]; then
@@ -493,6 +494,11 @@ if [[ "$INSTALL_POSTGRES" == "1" ]]; then
   PG_CONF_DIR="/etc/postgresql/${POSTGRES_VERSION}/main"
   PG_BIN="/usr/lib/postgresql/${POSTGRES_VERSION}/bin"
   PG_SERVICE="postgresql@${POSTGRES_VERSION}-main"
+
+  # The data-volume root must be traversable so the postgres user can reach its
+  # own 0700 dir even when the mountpoint is owned by another service (e.g.
+  # minio-user). a+x grants search only — not listing — so siblings stay private.
+  [[ -d "$(dirname "$POSTGRES_DATA")" ]] && chmod a+x "$(dirname "$POSTGRES_DATA")"
 
   # Relocate the cluster onto the data volume — first run only, never clobber.
   if [[ ! -s "${POSTGRES_DATA}/PG_VERSION" ]]; then
@@ -583,6 +589,7 @@ if [[ "$INSTALL_MONGO" == "1" ]]; then
   apt-get install -y -qq mongodb-org >/dev/null
 
   install -d -o mongodb -g mongodb -m 0750 "$MONGO_DATA"
+  [[ -d "$(dirname "$MONGO_DATA")" ]] && chmod a+x "$(dirname "$MONGO_DATA")"
 
   cat > /etc/mongod.conf <<EOF
 storage:
@@ -640,6 +647,7 @@ if [[ "$INSTALL_REDIS" == "1" ]]; then
   apt-get install -y -qq redis >/dev/null
 
   install -d -o redis -g redis -m 0750 "$REDIS_DATA"
+  [[ -d "$(dirname "$REDIS_DATA")" ]] && chmod a+x "$(dirname "$REDIS_DATA")"
 
   # Our overrides in a separate file, pulled in via `include` at the end of the
   # main conf so they win over the packaged defaults (and survive upgrades).

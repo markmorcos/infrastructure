@@ -26,28 +26,6 @@ log()  { printf '\033[1;34m[bootstrap]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[bootstrap]\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31m[bootstrap]\033[0m %s\n' "$*" >&2; exit 1; }
 
-# MongoDB 8.x's vendored TCMalloc violates the rseq ABI on Linux kernel >=6.19
-# (SERVER-121912) and hard-refuses to start. MongoDB 7.x uses an older TCMalloc
-# that is unaffected, so only guard the 8.x+ series — on a new kernel, pin
-# MONGO_VERSION=7.0. Detect this up front and skip cleanly rather than fail mid-run.
-mongo_kernel_supported() {
-  local kver kmaj kmin mongomaj
-  # An explicit exact-version pin (e.g. 8.0.4) is a deliberate choice of a
-  # pre-regression build — trust the operator and skip the guard.
-  [[ "$MONGO_VERSION" == *.*.* ]] && return 0
-  mongomaj=${MONGO_VERSION%%.*}
-  (( 10#${mongomaj:-0} >= 8 )) || return 0   # 7.x and older are unaffected
-  kver=$(uname -r); kmaj=${kver%%.*}; kmin=${kver#*.}; kmin=${kmin%%.*}
-  [[ "$kmin" =~ ^[0-9]+$ ]] || kmin=0
-  if (( 10#$kmaj > 6 || (10#$kmaj == 6 && 10#$kmin >= 19) )); then
-    warn "Skipping MongoDB ${MONGO_VERSION}: kernel $kver is >=6.19, which MongoDB 8.x"
-    warn "  refuses to run on (TCMalloc/rseq, SERVER-121912). Set MONGO_VERSION=7.0"
-    warn "  (unaffected), boot a <6.19 kernel, or set INSTALL_MONGO=0."
-    return 1
-  fi
-  return 0
-}
-
 [[ $EUID -eq 0 ]] || die "Run as root (sudo)."
 command -v apt-get >/dev/null 2>&1 || die "This script targets Debian/Ubuntu."
 
@@ -576,59 +554,27 @@ fi
 # From the official mongodb-org repo (Mongo isn't in the distro repos). Data on
 # the data volume; auth enabled; binds like MinIO. amd64/arm64 only — keep this
 # on the M720q (the Pi agent should leave INSTALL_MONGO=0).
-if [[ "$INSTALL_MONGO" == "1" ]] && mongo_kernel_supported; then
+if [[ "$INSTALL_MONGO" == "1" ]]; then
   log "Setting up MongoDB $MONGO_VERSION..."
   [[ -n "$MONGO_ROOT_USER"     ]] || die "MONGO_ROOT_USER required when INSTALL_MONGO=1"
   [[ -n "$MONGO_ROOT_PASSWORD" ]] || die "MONGO_ROOT_PASSWORD required when INSTALL_MONGO=1"
 
-  # MONGO_VERSION may be a series (e.g. 8.0) or an exact patch pin (e.g. 8.0.4).
-  # Repos and signing keys are organized by series; an exact pin additionally
-  # nails every mongodb-org-* package and holds it against upgrades — handy for
-  # staying on a pre-rseq-regression build like 8.0.4 on a >=6.19 kernel.
-  if [[ "$MONGO_VERSION" == *.*.* ]]; then
-    MONGO_SERIES="${MONGO_VERSION%.*}"; MONGO_PIN="$MONGO_VERSION"
-  else
-    MONGO_SERIES="$MONGO_VERSION"; MONGO_PIN=""
-  fi
-
   install -d -m 0755 /etc/apt/keyrings
-  [[ -f "/etc/apt/keyrings/mongodb-${MONGO_SERIES}.gpg" ]] || \
-    curl -fsSL "https://www.mongodb.org/static/pgp/server-${MONGO_SERIES}.asc" \
-      | gpg --dearmor -o "/etc/apt/keyrings/mongodb-${MONGO_SERIES}.gpg"
-  # MongoDB only publishes repos for specific LTS/stable releases. On a newer
-  # or interim release (e.g. Ubuntu "resolute") there's no Release file, so map
-  # to the nearest supported codename — override with MONGO_REPO_DIST.
+  [[ -f "/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg" ]] || \
+    curl -fsSL "https://www.mongodb.org/static/pgp/server-${MONGO_VERSION}.asc" \
+      | gpg --dearmor -o "/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg"
   # shellcheck disable=SC1091
   . /etc/os-release
+  CODENAME="${MONGO_REPO_DIST:-$VERSION_CODENAME}"
   if [[ "${ID:-}" == "ubuntu" || "${ID_LIKE:-}" == *ubuntu* ]]; then
-    MONGO_OS=ubuntu; MONGO_COMP=multiverse
-    case "${MONGO_REPO_DIST:-$VERSION_CODENAME}" in
-      focal|jammy|noble) MONGO_DIST="${MONGO_REPO_DIST:-$VERSION_CODENAME}" ;;
-      *) MONGO_DIST=noble
-         warn "No MongoDB repo for Ubuntu '${VERSION_CODENAME}' — using 'noble' (set MONGO_REPO_DIST to override)" ;;
-    esac
+    MONGO_REPO="https://repo.mongodb.org/apt/ubuntu ${CODENAME}/mongodb-org/${MONGO_VERSION} multiverse"
   else
-    MONGO_OS=debian; MONGO_COMP=main
-    case "${MONGO_REPO_DIST:-$VERSION_CODENAME}" in
-      bullseye|bookworm) MONGO_DIST="${MONGO_REPO_DIST:-$VERSION_CODENAME}" ;;
-      *) MONGO_DIST=bookworm
-         warn "No MongoDB repo for Debian '${VERSION_CODENAME}' — using 'bookworm' (set MONGO_REPO_DIST to override)" ;;
-    esac
+    MONGO_REPO="https://repo.mongodb.org/apt/debian ${CODENAME}/mongodb-org/${MONGO_VERSION} main"
   fi
-  echo "deb [ signed-by=/etc/apt/keyrings/mongodb-${MONGO_SERIES}.gpg ] https://repo.mongodb.org/apt/${MONGO_OS} ${MONGO_DIST}/mongodb-org/${MONGO_SERIES} ${MONGO_COMP}" \
-    > "/etc/apt/sources.list.d/mongodb-org-${MONGO_SERIES}.list"
+  echo "deb [ signed-by=/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg ] ${MONGO_REPO}" \
+    > "/etc/apt/sources.list.d/mongodb-org-${MONGO_VERSION}.list"
   apt-get update -qq
-
-  MONGO_PKGS=(mongodb-org mongodb-org-database mongodb-org-server mongodb-org-mongos mongodb-org-tools)
-  if [[ -n "$MONGO_PIN" ]]; then
-    log "Pinning MongoDB to exact version $MONGO_PIN"
-    apt-mark unhold "${MONGO_PKGS[@]}" >/dev/null 2>&1 || true
-    apt-get install -y -qq "${MONGO_PKGS[@]/%/=$MONGO_PIN}" >/dev/null
-    apt-mark hold "${MONGO_PKGS[@]}" >/dev/null   # don't let apt upgrade off the pin
-  else
-    apt-mark unhold "${MONGO_PKGS[@]}" >/dev/null 2>&1 || true
-    apt-get install -y -qq mongodb-org >/dev/null
-  fi
+  apt-get install -y -qq mongodb-org >/dev/null
 
   install -d -o mongodb -g mongodb -m 0750 "$MONGO_DATA"
   [[ -d "$(dirname "$MONGO_DATA")" ]] && chmod a+x "$(dirname "$MONGO_DATA")"
@@ -653,20 +599,10 @@ EOF
   systemctl restart mongod
 
   # Wait for mongod to accept connections (ping needs no auth)
-  MONGO_UP=0
   for _ in $(seq 1 30); do
-    if mongosh --quiet --port "$MONGO_PORT" --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; then
-      MONGO_UP=1; break
-    fi
+    mongosh --quiet --port "$MONGO_PORT" --eval 'db.runCommand({ping:1})' >/dev/null 2>&1 && break
     sleep 1
   done
-  if [[ "$MONGO_UP" != "1" ]]; then
-    warn "mongod is not accepting connections on 127.0.0.1:${MONGO_PORT}. Recent logs:"
-    systemctl --no-pager --full status mongod 2>&1 | tail -n 15 >&2 || true
-    journalctl -u mongod --no-pager -n 30 2>/dev/null >&2 || true
-    tail -n 30 /var/log/mongodb/mongod.log 2>/dev/null >&2 || true
-    die "MongoDB failed to start — see logs above (common causes: dbPath perms on $MONGO_DATA, or a CPU without AVX support, which MongoDB 5.0+ requires)."
-  fi
 
   # Create the root user once, via the localhost exception (auth on, no users yet)
   if mongosh --quiet --port "$MONGO_PORT" -u "$MONGO_ROOT_USER" -p "$MONGO_ROOT_PASSWORD" \
@@ -675,8 +611,7 @@ EOF
   else
     log "Creating MongoDB root user $MONGO_ROOT_USER"
     mongosh --quiet --port "$MONGO_PORT" admin --eval \
-      "db.createUser({user:'${MONGO_ROOT_USER}',pwd:'${MONGO_ROOT_PASSWORD}',roles:[{role:'root',db:'admin'}]})" \
-      >/dev/null || die "Could not create MongoDB root user — may already exist with a different password"
+      "db.createUser({user:'${MONGO_ROOT_USER}',pwd:'${MONGO_ROOT_PASSWORD}',roles:[{role:'root',db:'admin'}]})"
   fi
   log "MongoDB ready on ${MONGO_BIND_IP}:${MONGO_PORT} (data: $MONGO_DATA)"
 fi

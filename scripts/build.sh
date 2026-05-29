@@ -3,9 +3,18 @@ set -euo pipefail
 
 CONFIG_FILE=${CONFIG_FILE:-"client/deployment.yaml"}
 DEPLOYMENT_VERSION=${DEPLOYMENT_VERSION:-latest}
+# Build for both node architectures (amd64 = M720q, arm64 = Pi agent) so pods
+# schedule anywhere. Override with PLATFORMS=linux/amd64 once the Pi is gone.
+PLATFORMS=${PLATFORMS:-linux/amd64,linux/arm64}
 
 NAMESPACE=$(yq -r .namespace "$CONFIG_FILE")
 SERVICE_COUNT=$(yq '.services | length' "$CONFIG_FILE")
+
+# A multi-arch build needs the docker-container driver (the default "docker"
+# driver can't do multi-platform). Create it once; reuse thereafter.
+docker buildx inspect multiarch >/dev/null 2>&1 \
+  || docker buildx create --name multiarch --driver docker-container --use >/dev/null
+docker buildx use multiarch
 
 resolve_build_arg() {
   local svc_idx=$1
@@ -56,17 +65,18 @@ for i in $(seq 0 $((SERVICE_COUNT - 1))); do
   fi
 
 
-  echo "🔨 Building $IMAGE_NAME:${NAMESPACE}-${DEPLOYMENT_VERSION}"
+  echo "🔨 Building $IMAGE_NAME:${NAMESPACE}-${DEPLOYMENT_VERSION} for ${PLATFORMS}"
 
-  docker build \
+  # buildx builds + pushes the multi-arch manifest in one step (a multi-platform
+  # image can't live in the local docker store, so --push replaces docker push).
+  docker buildx build \
+    --platform "${PLATFORMS}" \
     -t ${IMAGE_NAME}:${NAMESPACE}-${DEPLOYMENT_VERSION} \
     -t ${IMAGE_NAME}:${NAMESPACE}-latest \
     -f ${DOCKERFILE_PATH} \
     "${build_arg_flags[@]}" \
+    --push \
     ${SERVICE_CONTEXT}
-
-  docker push ${IMAGE_NAME}:${NAMESPACE}-${DEPLOYMENT_VERSION}
-  docker push ${IMAGE_NAME}:${NAMESPACE}-latest
 
   echo "✅ Done building and pushing $IMAGE_NAME"
 done

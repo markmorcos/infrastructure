@@ -87,6 +87,7 @@ POSTGRES_DB="${POSTGRES_DB:-}"                      # optional db owned by POSTG
 POSTGRES_DATA="${POSTGRES_DATA:-/mnt/data/postgres}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 POSTGRES_LISTEN="${POSTGRES_LISTEN:-*}"             # listen_addresses (bind like MinIO)
+POSTGRES_REPO_DIST="${POSTGRES_REPO_DIST:-}"        # override apt codename (default: this release)
 
 # MongoDB (native, on the data host — pinned via mongodb-org apt repo)
 MONGO_VERSION="${MONGO_VERSION:-8.0}"               # release series
@@ -95,12 +96,14 @@ MONGO_ROOT_PASSWORD="${MONGO_ROOT_PASSWORD:-}"
 MONGO_DATA="${MONGO_DATA:-/mnt/data/mongo}"
 MONGO_PORT="${MONGO_PORT:-27017}"
 MONGO_BIND_IP="${MONGO_BIND_IP:-0.0.0.0}"           # bind like MinIO
+MONGO_REPO_DIST="${MONGO_REPO_DIST:-}"              # override apt codename (default: nearest supported)
 
 # Redis (native, on the data host — pinned via packages.redis.io apt repo)
 REDIS_PASSWORD="${REDIS_PASSWORD:-}"
 REDIS_DATA="${REDIS_DATA:-/mnt/data/redis}"
 REDIS_PORT="${REDIS_PORT:-6379}"
 REDIS_BIND="${REDIS_BIND:-0.0.0.0}"                 # bind like MinIO
+REDIS_REPO_DIST="${REDIS_REPO_DIST:-}"              # override apt codename (default: this release)
 
 # dnsmasq (internal service-catalog DNS — runs on the data host)
 DNSMASQ_DOMAIN="${DNSMASQ_DOMAIN:-morcos.lan}"
@@ -173,7 +176,10 @@ if [[ "$INSTALL_K3S" == "1" ]]; then
   # Key off the role-specific unit so a server↔agent role switch is detected
   # (a leftover unit from the other role must not mask a missing install).
   K3S_UNIT=$([[ "$K3S_ROLE" == "agent" ]] && echo k3s-agent || echo k3s)
-  if systemctl list-unit-files 2>/dev/null | grep -qE "^${K3S_UNIT}\.service"; then
+  # Pipe-free check: `... | grep -q` would exit early and, under `set -o
+  # pipefail`, surface systemctl's SIGPIPE (141) as a failure — making this
+  # reinstall on every run. The installer writes its unit here.
+  if [[ -f "/etc/systemd/system/${K3S_UNIT}.service" ]]; then
     log "k3s already installed: $(k3s --version 2>/dev/null | head -n1 || echo unknown)"
     # Installed != running — start it if a previous run left it stopped/failed.
     systemctl is-active --quiet "$K3S_UNIT" || {
@@ -469,7 +475,7 @@ if [[ "$INSTALL_POSTGRES" == "1" ]]; then
   [[ -f /etc/apt/keyrings/pgdg.asc ]] || \
     curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /etc/apt/keyrings/pgdg.asc
   # shellcheck disable=SC1091
-  CODENAME=$(. /etc/os-release; echo "${VERSION_CODENAME:-}")
+  CODENAME="${POSTGRES_REPO_DIST:-$(. /etc/os-release; echo "${VERSION_CODENAME:-}")}"
   echo "deb [signed-by=/etc/apt/keyrings/pgdg.asc] https://apt.postgresql.org/pub/repos/apt ${CODENAME}-pgdg main" \
     > /etc/apt/sources.list.d/pgdg.list
   apt-get update -qq
@@ -542,14 +548,27 @@ if [[ "$INSTALL_MONGO" == "1" ]]; then
   [[ -f "/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg" ]] || \
     curl -fsSL "https://www.mongodb.org/static/pgp/server-${MONGO_VERSION}.asc" \
       | gpg --dearmor -o "/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg"
+  # MongoDB only publishes repos for specific LTS/stable releases. On a newer
+  # or interim release (e.g. Ubuntu "resolute") there's no Release file, so map
+  # to the nearest supported codename — override with MONGO_REPO_DIST.
   # shellcheck disable=SC1091
   . /etc/os-release
   if [[ "${ID:-}" == "ubuntu" || "${ID_LIKE:-}" == *ubuntu* ]]; then
-    MONGO_REPO="https://repo.mongodb.org/apt/ubuntu ${VERSION_CODENAME}/mongodb-org/${MONGO_VERSION} multiverse"
+    MONGO_OS=ubuntu; MONGO_COMP=multiverse
+    case "${MONGO_REPO_DIST:-$VERSION_CODENAME}" in
+      focal|jammy|noble) MONGO_DIST="${MONGO_REPO_DIST:-$VERSION_CODENAME}" ;;
+      *) MONGO_DIST=noble
+         warn "No MongoDB repo for Ubuntu '${VERSION_CODENAME}' — using 'noble' (set MONGO_REPO_DIST to override)" ;;
+    esac
   else
-    MONGO_REPO="https://repo.mongodb.org/apt/debian ${VERSION_CODENAME}/mongodb-org/${MONGO_VERSION} main"
+    MONGO_OS=debian; MONGO_COMP=main
+    case "${MONGO_REPO_DIST:-$VERSION_CODENAME}" in
+      bullseye|bookworm) MONGO_DIST="${MONGO_REPO_DIST:-$VERSION_CODENAME}" ;;
+      *) MONGO_DIST=bookworm
+         warn "No MongoDB repo for Debian '${VERSION_CODENAME}' — using 'bookworm' (set MONGO_REPO_DIST to override)" ;;
+    esac
   fi
-  echo "deb [ signed-by=/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg ] ${MONGO_REPO}" \
+  echo "deb [ signed-by=/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg ] https://repo.mongodb.org/apt/${MONGO_OS} ${MONGO_DIST}/mongodb-org/${MONGO_VERSION} ${MONGO_COMP}" \
     > "/etc/apt/sources.list.d/mongodb-org-${MONGO_VERSION}.list"
   apt-get update -qq
   apt-get install -y -qq mongodb-org >/dev/null
@@ -605,7 +624,7 @@ if [[ "$INSTALL_REDIS" == "1" ]]; then
   [[ -f /etc/apt/keyrings/redis.gpg ]] || \
     curl -fsSL https://packages.redis.io/gpg | gpg --dearmor -o /etc/apt/keyrings/redis.gpg
   # shellcheck disable=SC1091
-  CODENAME=$(. /etc/os-release; echo "${VERSION_CODENAME:-}")
+  CODENAME="${REDIS_REPO_DIST:-$(. /etc/os-release; echo "${VERSION_CODENAME:-}")}"
   echo "deb [signed-by=/etc/apt/keyrings/redis.gpg] https://packages.redis.io/deb ${CODENAME} main" \
     > /etc/apt/sources.list.d/redis.list
   apt-get update -qq

@@ -132,9 +132,12 @@ if [[ "$INSTALL_TAILSCALE" == "1" ]]; then
     if [[ -n "$TAILSCALE_AUTHKEY" ]]; then
       log "Bringing tailscale up with authkey..."
       tailscale up --authkey="$TAILSCALE_AUTHKEY" "${TS_FLAGS[@]}"
+      # --auto-update is a `set` flag only, apply after up succeeds
+      tailscale set --auto-update="$TS_AUTOUP"
     else
       warn "TAILSCALE_AUTHKEY not set. Authenticate manually:"
       warn "  sudo tailscale up ${TS_FLAGS[*]}"
+      warn "Then: sudo tailscale set --auto-update=$TS_AUTOUP"
     fi
   fi
 fi
@@ -153,10 +156,13 @@ if [[ "$INSTALL_K3S" == "1" ]]; then
         K3S_URL="$K3S_URL" K3S_TOKEN="$K3S_TOKEN" \
         sh -
     else
-      # Server: write config.yaml with tls-san for hostname + Tailscale IP
+      # Server: write config.yaml with tls-san for hostname + Tailscale IP,
+      # plus a world-readable kubeconfig (homelab convenience; Tailscale SSH
+      # gates shell access anyway, so the file perms aren't the real boundary)
       install -d -m 0755 /etc/rancher/k3s
       TS_IP=$(tailscale ip -4 2>/dev/null | head -n1 || true)
       {
+        echo "write-kubeconfig-mode: \"0644\""
         echo "tls-san:"
         echo "  - $(hostname)"
         [[ -n "$TS_IP" ]] && echo "  - $TS_IP"
@@ -177,10 +183,10 @@ fi
 # auto-follow via CNAME.
 if [[ "$INSTALL_CF_DDNS" == "1" ]]; then
   log "Setting up Cloudflare DDNS (anchor: ${CF_ANCHOR_RECORD:-<unset>})..."
-  install -d -m 0755 /etc/infrastructure
+  install -d -m 0755 /etc/infrastructure/bootstrap
   install -d -m 0755 /usr/local/lib/infrastructure
 
-  ENV_FILE=/etc/infrastructure/cloudflare-ddns.env
+  ENV_FILE=/etc/infrastructure/bootstrap/cloudflare-ddns.env
   if [[ -n "$CF_API_TOKEN" && -n "$CF_ANCHOR_RECORD" ]]; then
     umask 077
     cat > "$ENV_FILE" <<EOF
@@ -200,7 +206,7 @@ EOF
 set -euo pipefail
 
 # shellcheck disable=SC1091
-source /etc/infrastructure/cloudflare-ddns.env
+source /etc/infrastructure/bootstrap/cloudflare-ddns.env
 
 API="https://api.cloudflare.com/client/v4"
 
@@ -416,17 +422,31 @@ if [[ "$INSTALL_DNSMASQ" == "1" ]]; then
   log "Installing and configuring dnsmasq for *.${DNSMASQ_DOMAIN}..."
   apt-get install -y -qq dnsmasq >/dev/null
 
+  # Skip resolvconf integration — we don't want dnsmasq registering itself as
+  # the system resolver; Tailscale's split-DNS handles the routing for us.
+  # Also silences the "Unit dbus-org.freedesktop.network1.service not found"
+  # error on Ubuntu Desktop (which runs NetworkManager, not systemd-networkd).
+  if ! grep -q '^RESOLVCONF=no' /etc/default/dnsmasq 2>/dev/null; then
+    echo 'RESOLVCONF=no' >> /etc/default/dnsmasq
+  fi
+
   # systemd-resolved often holds port 53 — free it before dnsmasq tries to bind
   if systemctl is-active --quiet systemd-resolved 2>/dev/null; then
     if ! grep -q '^DNSStubListener=no' /etc/systemd/resolved.conf 2>/dev/null; then
       log "Disabling systemd-resolved's port-53 stub listener..."
-      sed -i 's/^#\?DNSStubListener=.*/DNSStubListener=no/' /etc/systemd/resolved.conf
+      if grep -qE '^\s*#?\s*DNSStubListener' /etc/systemd/resolved.conf 2>/dev/null; then
+        sed -i 's/^\s*#\?\s*DNSStubListener=.*/DNSStubListener=no/' /etc/systemd/resolved.conf
+      else
+        echo 'DNSStubListener=no' >> /etc/systemd/resolved.conf
+      fi
       systemctl restart systemd-resolved
+      sleep 1   # give it a beat to fully release the port
     fi
   fi
 
   CONF_FILE="/etc/dnsmasq.d/${DNSMASQ_DOMAIN}.conf"
-  HOSTS_FILE="/etc/dnsmasq.d/${DNSMASQ_DOMAIN}.hosts"
+  HOSTS_FILE="/etc/infrastructure/dnsmasq/${DNSMASQ_DOMAIN}.hosts"
+  install -d -m 0755 /etc/infrastructure/dnsmasq
 
   cat > "$CONF_FILE" <<EOF
 # Authoritative split-DNS for the *.${DNSMASQ_DOMAIN} zone.

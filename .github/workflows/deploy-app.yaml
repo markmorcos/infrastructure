@@ -116,6 +116,13 @@ jobs:
           repository: ${{ github.event.client_payload.repository }}
           path: client
 
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.INFRASTRUCTURE_PAT }}
+
       - name: Configure VPN
         uses: tailscale/github-action@v3
         with:

@@ -43,6 +43,9 @@ INSTALL_K3S="${INSTALL_K3S:-1}"
 INSTALL_CF_DDNS="${INSTALL_CF_DDNS:-1}"
 INSTALL_K3S_CLEANUP="${INSTALL_K3S_CLEANUP:-1}"
 INSTALL_MINIO="${INSTALL_MINIO:-0}"
+INSTALL_POSTGRES="${INSTALL_POSTGRES:-0}"
+INSTALL_MONGO="${INSTALL_MONGO:-0}"
+INSTALL_REDIS="${INSTALL_REDIS:-0}"
 INSTALL_DNSMASQ="${INSTALL_DNSMASQ:-0}"
 
 # Tailscale
@@ -75,6 +78,29 @@ MINIO_OPTS="${MINIO_OPTS:---address 0.0.0.0:9000 --console-address 0.0.0.0:9001}
 MINIO_BROWSER_REDIRECT_URL="${MINIO_BROWSER_REDIRECT_URL:-}"
 MINIO_SERVER_URL="${MINIO_SERVER_URL:-}"
 MINIO_VERSION="${MINIO_VERSION:-}"
+
+# PostgreSQL (native, on the data host — pinned via PGDG apt repo)
+POSTGRES_VERSION="${POSTGRES_VERSION:-16}"          # major version
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"          # superuser (postgres) password
+POSTGRES_USER="${POSTGRES_USER:-postgres}"          # optional extra login role
+POSTGRES_DB="${POSTGRES_DB:-}"                      # optional db owned by POSTGRES_USER
+POSTGRES_DATA="${POSTGRES_DATA:-/mnt/data/postgres}"
+POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+POSTGRES_LISTEN="${POSTGRES_LISTEN:-*}"             # listen_addresses (bind like MinIO)
+
+# MongoDB (native, on the data host — pinned via mongodb-org apt repo)
+MONGO_VERSION="${MONGO_VERSION:-8.0}"               # release series
+MONGO_ROOT_USER="${MONGO_ROOT_USER:-}"
+MONGO_ROOT_PASSWORD="${MONGO_ROOT_PASSWORD:-}"
+MONGO_DATA="${MONGO_DATA:-/mnt/data/mongo}"
+MONGO_PORT="${MONGO_PORT:-27017}"
+MONGO_BIND_IP="${MONGO_BIND_IP:-0.0.0.0}"           # bind like MinIO
+
+# Redis (native, on the data host — pinned via packages.redis.io apt repo)
+REDIS_PASSWORD="${REDIS_PASSWORD:-}"
+REDIS_DATA="${REDIS_DATA:-/mnt/data/redis}"
+REDIS_PORT="${REDIS_PORT:-6379}"
+REDIS_BIND="${REDIS_BIND:-0.0.0.0}"                 # bind like MinIO
 
 # dnsmasq (internal service-catalog DNS — runs on the data host)
 DNSMASQ_DOMAIN="${DNSMASQ_DOMAIN:-morcos.lan}"
@@ -425,7 +451,185 @@ EOF
   systemctl enable --now minio
 fi
 
-# === Phase 7: dnsmasq (split-DNS authority for internal service catalog) ======
+# === Phase 7: PostgreSQL (native, on the data host — like MinIO) ===============
+# Installed from the PGDG apt repo so the major version is pinned and
+# independent of the distro. Data lives on the data volume; binds like MinIO.
+if [[ "$INSTALL_POSTGRES" == "1" ]]; then
+  log "Setting up PostgreSQL $POSTGRES_VERSION..."
+  [[ -n "$POSTGRES_PASSWORD" ]] || die "POSTGRES_PASSWORD required when INSTALL_POSTGRES=1"
+
+  # PGDG apt repo (idempotent)
+  install -d -m 0755 /etc/apt/keyrings
+  [[ -f /etc/apt/keyrings/pgdg.asc ]] || \
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /etc/apt/keyrings/pgdg.asc
+  # shellcheck disable=SC1091
+  CODENAME=$(. /etc/os-release; echo "${VERSION_CODENAME:-}")
+  echo "deb [signed-by=/etc/apt/keyrings/pgdg.asc] https://apt.postgresql.org/pub/repos/apt ${CODENAME}-pgdg main" \
+    > /etc/apt/sources.list.d/pgdg.list
+  apt-get update -qq
+  apt-get install -y -qq "postgresql-${POSTGRES_VERSION}" >/dev/null
+
+  PG_CONF_DIR="/etc/postgresql/${POSTGRES_VERSION}/main"
+  PG_BIN="/usr/lib/postgresql/${POSTGRES_VERSION}/bin"
+  PG_SERVICE="postgresql@${POSTGRES_VERSION}-main"
+
+  # Relocate the cluster onto the data volume — first run only, never clobber.
+  if [[ ! -s "${POSTGRES_DATA}/PG_VERSION" ]]; then
+    log "Initializing PostgreSQL data dir at $POSTGRES_DATA"
+    systemctl stop "$PG_SERVICE" 2>/dev/null || true
+    install -d -o postgres -g postgres -m 0700 "$POSTGRES_DATA"
+    DEFAULT_DATA="/var/lib/postgresql/${POSTGRES_VERSION}/main"
+    if [[ -s "${DEFAULT_DATA}/PG_VERSION" ]]; then
+      cp -a "${DEFAULT_DATA}/." "${POSTGRES_DATA}/"
+    else
+      runuser -u postgres -- "${PG_BIN}/initdb" -D "$POSTGRES_DATA" >/dev/null
+    fi
+    sed -i "s|^[#]*data_directory.*|data_directory = '${POSTGRES_DATA}'|" "${PG_CONF_DIR}/postgresql.conf"
+  fi
+
+  # Listen on the network (bind like MinIO) + port
+  sed -i "s|^[#]*listen_addresses.*|listen_addresses = '${POSTGRES_LISTEN}'|" "${PG_CONF_DIR}/postgresql.conf"
+  sed -i "s|^[#]*port .*|port = ${POSTGRES_PORT}|"                            "${PG_CONF_DIR}/postgresql.conf"
+
+  # Allow password auth from any host (homelab; gated by tailscale/firewall)
+  HBA="${PG_CONF_DIR}/pg_hba.conf"
+  if ! grep -qE '^host .* 0\.0\.0\.0/0 scram-sha-256' "$HBA" 2>/dev/null; then
+    {
+      echo "host all all 0.0.0.0/0 scram-sha-256"
+      echo "host all all ::/0      scram-sha-256"
+    } >> "$HBA"
+  fi
+
+  systemctl enable "$PG_SERVICE" >/dev/null 2>&1 || true
+  systemctl restart "$PG_SERVICE"
+
+  # Wait for the server to accept connections
+  for _ in $(seq 1 30); do
+    runuser -u postgres -- psql -tAc 'SELECT 1' >/dev/null 2>&1 && break
+    sleep 1
+  done
+
+  # Superuser password + optional app role/db (idempotent)
+  runuser -u postgres -- psql -v ON_ERROR_STOP=1 \
+    -c "ALTER USER postgres WITH PASSWORD '${POSTGRES_PASSWORD}';" >/dev/null
+  if [[ -n "$POSTGRES_USER" && "$POSTGRES_USER" != "postgres" ]]; then
+    runuser -u postgres -- psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${POSTGRES_USER}'" | grep -q 1 || \
+      runuser -u postgres -- psql -c "CREATE ROLE \"${POSTGRES_USER}\" LOGIN PASSWORD '${POSTGRES_PASSWORD}';" >/dev/null
+  fi
+  if [[ -n "$POSTGRES_DB" ]]; then
+    runuser -u postgres -- psql -tAc "SELECT 1 FROM pg_database WHERE datname='${POSTGRES_DB}'" | grep -q 1 || \
+      runuser -u postgres -- createdb -O "${POSTGRES_USER:-postgres}" "${POSTGRES_DB}"
+  fi
+  log "PostgreSQL ready on ${POSTGRES_LISTEN}:${POSTGRES_PORT} (data: $POSTGRES_DATA)"
+fi
+
+# === Phase 8: MongoDB (native, on the data host — like MinIO) ==================
+# From the official mongodb-org repo (Mongo isn't in the distro repos). Data on
+# the data volume; auth enabled; binds like MinIO. amd64/arm64 only — keep this
+# on the M720q (the Pi agent should leave INSTALL_MONGO=0).
+if [[ "$INSTALL_MONGO" == "1" ]]; then
+  log "Setting up MongoDB $MONGO_VERSION..."
+  [[ -n "$MONGO_ROOT_USER"     ]] || die "MONGO_ROOT_USER required when INSTALL_MONGO=1"
+  [[ -n "$MONGO_ROOT_PASSWORD" ]] || die "MONGO_ROOT_PASSWORD required when INSTALL_MONGO=1"
+
+  install -d -m 0755 /etc/apt/keyrings
+  [[ -f "/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg" ]] || \
+    curl -fsSL "https://www.mongodb.org/static/pgp/server-${MONGO_VERSION}.asc" \
+      | gpg --dearmor -o "/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg"
+  # shellcheck disable=SC1091
+  . /etc/os-release
+  if [[ "${ID:-}" == "ubuntu" || "${ID_LIKE:-}" == *ubuntu* ]]; then
+    MONGO_REPO="https://repo.mongodb.org/apt/ubuntu ${VERSION_CODENAME}/mongodb-org/${MONGO_VERSION} multiverse"
+  else
+    MONGO_REPO="https://repo.mongodb.org/apt/debian ${VERSION_CODENAME}/mongodb-org/${MONGO_VERSION} main"
+  fi
+  echo "deb [ signed-by=/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg ] ${MONGO_REPO}" \
+    > "/etc/apt/sources.list.d/mongodb-org-${MONGO_VERSION}.list"
+  apt-get update -qq
+  apt-get install -y -qq mongodb-org >/dev/null
+
+  install -d -o mongodb -g mongodb -m 0750 "$MONGO_DATA"
+
+  cat > /etc/mongod.conf <<EOF
+storage:
+  dbPath: ${MONGO_DATA}
+systemLog:
+  destination: file
+  logAppend: true
+  path: /var/log/mongodb/mongod.log
+net:
+  port: ${MONGO_PORT}
+  bindIp: ${MONGO_BIND_IP}
+processManagement:
+  timeZoneInfo: /usr/share/zoneinfo
+security:
+  authorization: enabled
+EOF
+
+  systemctl enable mongod >/dev/null 2>&1 || true
+  systemctl restart mongod
+
+  # Wait for mongod to accept connections (ping needs no auth)
+  for _ in $(seq 1 30); do
+    mongosh --quiet --port "$MONGO_PORT" --eval 'db.runCommand({ping:1})' >/dev/null 2>&1 && break
+    sleep 1
+  done
+
+  # Create the root user once, via the localhost exception (auth on, no users yet)
+  if mongosh --quiet --port "$MONGO_PORT" -u "$MONGO_ROOT_USER" -p "$MONGO_ROOT_PASSWORD" \
+       --authenticationDatabase admin --eval 'db.runCommand({ping:1})' admin >/dev/null 2>&1; then
+    log "MongoDB root user already present"
+  else
+    log "Creating MongoDB root user $MONGO_ROOT_USER"
+    mongosh --quiet --port "$MONGO_PORT" admin --eval \
+      "db.createUser({user:'${MONGO_ROOT_USER}',pwd:'${MONGO_ROOT_PASSWORD}',roles:[{role:'root',db:'admin'}]})" \
+      >/dev/null || die "Could not create MongoDB root user — may already exist with a different password"
+  fi
+  log "MongoDB ready on ${MONGO_BIND_IP}:${MONGO_PORT} (data: $MONGO_DATA)"
+fi
+
+# === Phase 9: Redis (native, on the data host — like MinIO) ====================
+# From the official packages.redis.io repo. Overrides live in an included file
+# so package upgrades never clobber them. Data on the data volume; binds like MinIO.
+if [[ "$INSTALL_REDIS" == "1" ]]; then
+  log "Setting up Redis..."
+  [[ -n "$REDIS_PASSWORD" ]] || die "REDIS_PASSWORD required when INSTALL_REDIS=1"
+
+  install -d -m 0755 /etc/apt/keyrings
+  [[ -f /etc/apt/keyrings/redis.gpg ]] || \
+    curl -fsSL https://packages.redis.io/gpg | gpg --dearmor -o /etc/apt/keyrings/redis.gpg
+  # shellcheck disable=SC1091
+  CODENAME=$(. /etc/os-release; echo "${VERSION_CODENAME:-}")
+  echo "deb [signed-by=/etc/apt/keyrings/redis.gpg] https://packages.redis.io/deb ${CODENAME} main" \
+    > /etc/apt/sources.list.d/redis.list
+  apt-get update -qq
+  apt-get install -y -qq redis >/dev/null
+
+  install -d -o redis -g redis -m 0750 "$REDIS_DATA"
+
+  # Our overrides in a separate file, pulled in via `include` at the end of the
+  # main conf so they win over the packaged defaults (and survive upgrades).
+  OVERRIDE=/etc/redis/infrastructure.conf
+  umask 077
+  cat > "$OVERRIDE" <<EOF
+bind ${REDIS_BIND}
+protected-mode no
+port ${REDIS_PORT}
+requirepass ${REDIS_PASSWORD}
+dir ${REDIS_DATA}
+appendonly yes
+EOF
+  umask 022
+  chown root:redis "$OVERRIDE"
+  chmod 0640 "$OVERRIDE"
+  grep -qxF "include ${OVERRIDE}" /etc/redis/redis.conf || echo "include ${OVERRIDE}" >> /etc/redis/redis.conf
+
+  systemctl enable redis-server >/dev/null 2>&1 || true
+  systemctl restart redis-server
+  log "Redis ready on ${REDIS_BIND}:${REDIS_PORT} (data: $REDIS_DATA)"
+fi
+
+# === Phase 10: dnsmasq (split-DNS authority for internal service catalog) ======
 if [[ "$INSTALL_DNSMASQ" == "1" ]]; then
   log "Installing and configuring dnsmasq for *.${DNSMASQ_DOMAIN}..."
   apt-get install -y -qq dnsmasq >/dev/null

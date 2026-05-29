@@ -2,7 +2,7 @@
 
 Idempotent one-shot bootstrap for my Raspberry Pi 5 and Lenovo M720q nodes.
 
-Sets up: IP forwarding sysctls, Tailscale, k3s (server or agent), multi-zone Cloudflare DDNS, k3s cleanup timer, and optionally MinIO.
+Sets up: IP forwarding sysctls, Tailscale, k3s (server or agent), multi-zone Cloudflare DDNS, k3s cleanup timer, and optionally the data-host services (MinIO, PostgreSQL, MongoDB, Redis) plus split-DNS via dnsmasq.
 
 ## Quick start
 
@@ -64,6 +64,10 @@ CF_API_TOKEN=...                           # same token; both nodes update DNS f
 | DDNS service + timer | `/etc/systemd/system/cloudflare-ddns.{service,timer}` | `INSTALL_CF_DDNS=1` |
 | k3s cleanup | `/usr/local/lib/infrastructure/k3s-cleanup.sh` + timer | `INSTALL_K3S_CLEANUP=1` |
 | MinIO | `/usr/local/bin/minio` + unit + `/etc/default/minio` | `INSTALL_MINIO=1` |
+| PostgreSQL | PGDG apt repo, cluster on `POSTGRES_DATA` (`/mnt/data/postgres`) | `INSTALL_POSTGRES=1` |
+| MongoDB | mongodb-org apt repo, `/etc/mongod.conf`, data on `MONGO_DATA` | `INSTALL_MONGO=1` |
+| Redis | packages.redis.io apt repo, `/etc/redis/infrastructure.conf`, data on `REDIS_DATA` | `INSTALL_REDIS=1` |
+| dnsmasq | `/etc/dnsmasq.d/<domain>.conf` + `/etc/infrastructure/dnsmasq/<domain>.hosts` | `INSTALL_DNSMASQ=1` |
 
 ## Adding / removing domains
 
@@ -95,7 +99,9 @@ getconf PAGESIZE
 
 If it returns `16384`, add `kernel=kernel8.img` to `/boot/firmware/config.txt` and reboot. Fully reversible — just remove the line and reboot again.
 
-**MinIO storage is your problem.** The unit refuses to start if `/mnt/data` isn't mounted. The bootstrap won't manage your storage layer — that belongs in `/etc/fstab` or a one-off setup script.
+**Storage is your problem.** MinIO refuses to start if `/mnt/data` isn't mounted, and PostgreSQL/MongoDB/Redis all put their data under `/mnt/data` too. The bootstrap won't manage your storage layer — mount the data volume (via `/etc/fstab` or a one-off setup script) *before* enabling these toggles.
+
+**Data services bind on all interfaces.** PostgreSQL, MongoDB, Redis and MinIO all listen on `0.0.0.0` and rely on Tailscale ACLs / a host firewall for protection — there is no LAN-only binding by default. Each requires a password in `.env`; rotating a password means editing `.env` and re-running the bootstrap.
 
 **k3s version skew.** Server and agent should be on the same minor (1.32.x). Update `K3S_VERSION` on both nodes when you bump.
 

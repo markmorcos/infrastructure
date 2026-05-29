@@ -21,7 +21,7 @@ set -euo pipefail
 
 SRC_CTX="${SRC_CTX:-pi}"
 DST_CTX="${DST_CTX:-m720q}"
-EXCLUDE_NS="${EXCLUDE_NS:-cert-manager ingress-nginx kube-system kube-public kube-node-lease default}"
+EXCLUDE_NS="${EXCLUDE_NS:-cert-manager ingress-nginx minio kube-system kube-public kube-node-lease default}"
 APPLY_ARGS=(); [[ -n "${DRY_RUN:-}" ]] && APPLY_ARGS=(--dry-run=server)
 
 log() { printf '\033[1;34m[migrate-k8s]\033[0m %s\n' "$*"; }

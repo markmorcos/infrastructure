@@ -603,6 +603,17 @@ security:
   authorization: enabled
 EOF
 
+  # MongoDB 8.x's vendored TCMalloc trips an rseq incompatibility on Linux
+  # kernel >=6.19 and refuses to start (SERVER-121912). Letting glibc own rseq
+  # (which disables TCMalloc's rseq fast-path) clears the check; negligible perf
+  # cost. Drop-in so package upgrades don't clobber it.
+  install -d -m 0755 /etc/systemd/system/mongod.service.d
+  cat > /etc/systemd/system/mongod.service.d/rseq.conf <<'EOF'
+[Service]
+Environment=GLIBC_TUNABLES=glibc.pthread.rseq=1
+EOF
+
+  systemctl daemon-reload
   systemctl enable mongod >/dev/null 2>&1 || true
   systemctl restart mongod
 

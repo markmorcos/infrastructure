@@ -672,6 +672,16 @@ EOF
   chmod 0640 "$OVERRIDE"
   grep -qxF "include ${OVERRIDE}" /etc/redis/redis.conf || echo "include ${OVERRIDE}" >> /etc/redis/redis.conf
 
+  # The packaged redis-server unit sandboxes the filesystem read-only except a
+  # few dirs (/var/lib/redis etc.). Our data dir is on the data volume, so grant
+  # the service write access to it. Drop-in survives package upgrades.
+  install -d -m 0755 /etc/systemd/system/redis-server.service.d
+  cat > /etc/systemd/system/redis-server.service.d/datadir.conf <<EOF
+[Service]
+ReadWritePaths=-${REDIS_DATA}
+EOF
+  systemctl daemon-reload
+
   systemctl enable redis-server >/dev/null 2>&1 || true
   systemctl restart redis-server
   log "Redis ready on ${REDIS_BIND}:${REDIS_PORT} (data: $REDIS_DATA)"

@@ -26,6 +26,22 @@ log()  { printf '\033[1;34m[bootstrap]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[bootstrap]\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31m[bootstrap]\033[0m %s\n' "$*" >&2; exit 1; }
 
+# MongoDB 8.x crashes on Linux kernel >=6.19 (vendored TCMalloc violates the
+# rseq ABI — MongoDB SERVER-121912) and now hard-refuses to start. Detect that
+# up front so we skip the phase cleanly instead of failing mid-install.
+mongo_kernel_supported() {
+  local kver kmaj kmin
+  kver=$(uname -r); kmaj=${kver%%.*}; kmin=${kver#*.}; kmin=${kmin%%.*}
+  [[ "$kmin" =~ ^[0-9]+$ ]] || kmin=0
+  if (( 10#$kmaj > 6 || (10#$kmaj == 6 && 10#$kmin >= 19) )); then
+    warn "Skipping MongoDB: kernel $kver is >=6.19, which MongoDB 8.x refuses to"
+    warn "  run on (TCMalloc/rseq incompatibility, SERVER-121912). Boot a <6.19"
+    warn "  kernel or use an LTS distro and re-run; or set INSTALL_MONGO=0."
+    return 1
+  fi
+  return 0
+}
+
 [[ $EUID -eq 0 ]] || die "Run as root (sudo)."
 command -v apt-get >/dev/null 2>&1 || die "This script targets Debian/Ubuntu."
 
@@ -554,7 +570,7 @@ fi
 # From the official mongodb-org repo (Mongo isn't in the distro repos). Data on
 # the data volume; auth enabled; binds like MinIO. amd64/arm64 only — keep this
 # on the M720q (the Pi agent should leave INSTALL_MONGO=0).
-if [[ "$INSTALL_MONGO" == "1" ]]; then
+if [[ "$INSTALL_MONGO" == "1" ]] && mongo_kernel_supported; then
   log "Setting up MongoDB $MONGO_VERSION..."
   [[ -n "$MONGO_ROOT_USER"     ]] || die "MONGO_ROOT_USER required when INSTALL_MONGO=1"
   [[ -n "$MONGO_ROOT_PASSWORD" ]] || die "MONGO_ROOT_PASSWORD required when INSTALL_MONGO=1"

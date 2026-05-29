@@ -32,6 +32,9 @@ die()  { printf '\033[1;31m[bootstrap]\033[0m %s\n' "$*" >&2; exit 1; }
 # MONGO_VERSION=7.0. Detect this up front and skip cleanly rather than fail mid-run.
 mongo_kernel_supported() {
   local kver kmaj kmin mongomaj
+  # An explicit exact-version pin (e.g. 8.0.4) is a deliberate choice of a
+  # pre-regression build — trust the operator and skip the guard.
+  [[ "$MONGO_VERSION" == *.*.* ]] && return 0
   mongomaj=${MONGO_VERSION%%.*}
   (( 10#${mongomaj:-0} >= 8 )) || return 0   # 7.x and older are unaffected
   kver=$(uname -r); kmaj=${kver%%.*}; kmin=${kver#*.}; kmin=${kmin%%.*}
@@ -578,10 +581,20 @@ if [[ "$INSTALL_MONGO" == "1" ]] && mongo_kernel_supported; then
   [[ -n "$MONGO_ROOT_USER"     ]] || die "MONGO_ROOT_USER required when INSTALL_MONGO=1"
   [[ -n "$MONGO_ROOT_PASSWORD" ]] || die "MONGO_ROOT_PASSWORD required when INSTALL_MONGO=1"
 
+  # MONGO_VERSION may be a series (e.g. 8.0) or an exact patch pin (e.g. 8.0.4).
+  # Repos and signing keys are organized by series; an exact pin additionally
+  # nails every mongodb-org-* package and holds it against upgrades — handy for
+  # staying on a pre-rseq-regression build like 8.0.4 on a >=6.19 kernel.
+  if [[ "$MONGO_VERSION" == *.*.* ]]; then
+    MONGO_SERIES="${MONGO_VERSION%.*}"; MONGO_PIN="$MONGO_VERSION"
+  else
+    MONGO_SERIES="$MONGO_VERSION"; MONGO_PIN=""
+  fi
+
   install -d -m 0755 /etc/apt/keyrings
-  [[ -f "/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg" ]] || \
-    curl -fsSL "https://www.mongodb.org/static/pgp/server-${MONGO_VERSION}.asc" \
-      | gpg --dearmor -o "/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg"
+  [[ -f "/etc/apt/keyrings/mongodb-${MONGO_SERIES}.gpg" ]] || \
+    curl -fsSL "https://www.mongodb.org/static/pgp/server-${MONGO_SERIES}.asc" \
+      | gpg --dearmor -o "/etc/apt/keyrings/mongodb-${MONGO_SERIES}.gpg"
   # MongoDB only publishes repos for specific LTS/stable releases. On a newer
   # or interim release (e.g. Ubuntu "resolute") there's no Release file, so map
   # to the nearest supported codename — override with MONGO_REPO_DIST.
@@ -602,10 +615,20 @@ if [[ "$INSTALL_MONGO" == "1" ]] && mongo_kernel_supported; then
          warn "No MongoDB repo for Debian '${VERSION_CODENAME}' — using 'bookworm' (set MONGO_REPO_DIST to override)" ;;
     esac
   fi
-  echo "deb [ signed-by=/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg ] https://repo.mongodb.org/apt/${MONGO_OS} ${MONGO_DIST}/mongodb-org/${MONGO_VERSION} ${MONGO_COMP}" \
-    > "/etc/apt/sources.list.d/mongodb-org-${MONGO_VERSION}.list"
+  echo "deb [ signed-by=/etc/apt/keyrings/mongodb-${MONGO_SERIES}.gpg ] https://repo.mongodb.org/apt/${MONGO_OS} ${MONGO_DIST}/mongodb-org/${MONGO_SERIES} ${MONGO_COMP}" \
+    > "/etc/apt/sources.list.d/mongodb-org-${MONGO_SERIES}.list"
   apt-get update -qq
-  apt-get install -y -qq mongodb-org >/dev/null
+
+  MONGO_PKGS=(mongodb-org mongodb-org-database mongodb-org-server mongodb-org-mongos mongodb-org-tools)
+  if [[ -n "$MONGO_PIN" ]]; then
+    log "Pinning MongoDB to exact version $MONGO_PIN"
+    apt-mark unhold "${MONGO_PKGS[@]}" >/dev/null 2>&1 || true
+    apt-get install -y -qq "${MONGO_PKGS[@]/%/=$MONGO_PIN}" >/dev/null
+    apt-mark hold "${MONGO_PKGS[@]}" >/dev/null   # don't let apt upgrade off the pin
+  else
+    apt-mark unhold "${MONGO_PKGS[@]}" >/dev/null 2>&1 || true
+    apt-get install -y -qq mongodb-org >/dev/null
+  fi
 
   install -d -o mongodb -g mongodb -m 0750 "$MONGO_DATA"
   [[ -d "$(dirname "$MONGO_DATA")" ]] && chmod a+x "$(dirname "$MONGO_DATA")"

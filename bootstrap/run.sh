@@ -582,7 +582,7 @@ if [[ "$INSTALL_MONGO" == "1" ]]; then
   echo "deb [ signed-by=/etc/apt/keyrings/mongodb-${MONGO_SERIES}.gpg ] ${MONGO_REPO}" \
     > "/etc/apt/sources.list.d/mongodb-org-${MONGO_SERIES}.list"
   apt-get update -qq
-  apt-get install -y -qq $MONGO_PKG >/dev/null
+  apt-get install -y -qq --allow-downgrades $MONGO_PKG >/dev/null
 
   install -d -o mongodb -g mongodb -m 0750 "$MONGO_DATA"
   [[ -d "$(dirname "$MONGO_DATA")" ]] && chmod a+x "$(dirname "$MONGO_DATA")"

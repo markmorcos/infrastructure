@@ -559,22 +559,30 @@ if [[ "$INSTALL_MONGO" == "1" ]]; then
   [[ -n "$MONGO_ROOT_USER"     ]] || die "MONGO_ROOT_USER required when INSTALL_MONGO=1"
   [[ -n "$MONGO_ROOT_PASSWORD" ]] || die "MONGO_ROOT_PASSWORD required when INSTALL_MONGO=1"
 
+  # MONGO_VERSION is a series (e.g. 8.0) or an exact patch (e.g. 8.0.4). Repos
+  # and keys are keyed by series; an exact value additionally pins the install
+  # (the mongodb-org metapackage pins its sub-packages to the same version).
+  MONGO_SERIES="$MONGO_VERSION"; MONGO_PKG="mongodb-org"
+  if [[ "$MONGO_VERSION" == *.*.* ]]; then
+    MONGO_SERIES="${MONGO_VERSION%.*}"; MONGO_PKG="mongodb-org=$MONGO_VERSION"
+  fi
+
   install -d -m 0755 /etc/apt/keyrings
-  [[ -f "/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg" ]] || \
-    curl -fsSL "https://www.mongodb.org/static/pgp/server-${MONGO_VERSION}.asc" \
-      | gpg --dearmor -o "/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg"
+  [[ -f "/etc/apt/keyrings/mongodb-${MONGO_SERIES}.gpg" ]] || \
+    curl -fsSL "https://www.mongodb.org/static/pgp/server-${MONGO_SERIES}.asc" \
+      | gpg --dearmor -o "/etc/apt/keyrings/mongodb-${MONGO_SERIES}.gpg"
   # shellcheck disable=SC1091
   . /etc/os-release
   CODENAME="${MONGO_REPO_DIST:-$VERSION_CODENAME}"
   if [[ "${ID:-}" == "ubuntu" || "${ID_LIKE:-}" == *ubuntu* ]]; then
-    MONGO_REPO="https://repo.mongodb.org/apt/ubuntu ${CODENAME}/mongodb-org/${MONGO_VERSION} multiverse"
+    MONGO_REPO="https://repo.mongodb.org/apt/ubuntu ${CODENAME}/mongodb-org/${MONGO_SERIES} multiverse"
   else
-    MONGO_REPO="https://repo.mongodb.org/apt/debian ${CODENAME}/mongodb-org/${MONGO_VERSION} main"
+    MONGO_REPO="https://repo.mongodb.org/apt/debian ${CODENAME}/mongodb-org/${MONGO_SERIES} main"
   fi
-  echo "deb [ signed-by=/etc/apt/keyrings/mongodb-${MONGO_VERSION}.gpg ] ${MONGO_REPO}" \
-    > "/etc/apt/sources.list.d/mongodb-org-${MONGO_VERSION}.list"
+  echo "deb [ signed-by=/etc/apt/keyrings/mongodb-${MONGO_SERIES}.gpg ] ${MONGO_REPO}" \
+    > "/etc/apt/sources.list.d/mongodb-org-${MONGO_SERIES}.list"
   apt-get update -qq
-  apt-get install -y -qq mongodb-org >/dev/null
+  apt-get install -y -qq $MONGO_PKG >/dev/null
 
   install -d -o mongodb -g mongodb -m 0750 "$MONGO_DATA"
   [[ -d "$(dirname "$MONGO_DATA")" ]] && chmod a+x "$(dirname "$MONGO_DATA")"

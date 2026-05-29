@@ -1,43 +1,42 @@
 #!/usr/bin/env bash
 #
-# One-shot migration of namespaced k3s resources from the Pi cluster to this
-# (M720q) cluster. Run ON the M720q. Requires Tailscale SSH to the Pi and jq.
+# One-shot migration of namespaced k8s resources between two kube contexts.
+# Run from anywhere with kubectl access to both (e.g. your laptop).
 #
-# It copies user namespaces and their deployments/statefulsets/services/
-# ingress/configmaps/secrets/etc., stripping cluster-specific fields so they
-# apply cleanly to a fresh cluster. It does NOT touch kube-system, PVCs, pods,
-# replicasets or jobs (transient/regenerated).
+#   ./migrate-k8s.sh                 # apply for real
+#   DRY_RUN=1 ./migrate-k8s.sh       # preview (server-side dry run)
 #
-#   ./migrate-k8s.sh            # apply for real
-#   DRY_RUN=1 ./migrate-k8s.sh  # preview (server-side dry run, changes nothing)
+# Config (env overrides):
+#   SRC_CTX     source context   (default: pi)
+#   DST_CTX     target context   (default: m720q)
+#   EXCLUDE_NS  namespaces to skip — system + operator-managed namespaces whose
+#               CRDs/cluster-scoped objects this script does NOT copy
+#               (default below). Reinstall those (e.g. cert-manager) fresh.
 #
-# Override the Pi's hostname if it isn't "pi":  PI_HOST=raspberrypi ./migrate-k8s.sh
+# Copies namespaced objects only (configmaps, secrets, deployments, services,
+# ingress, etc.). It does NOT copy CRDs, cluster-scoped objects, pods,
+# replicasets, jobs or PVCs. Source cluster is read-only; nothing is deleted.
 
 set -euo pipefail
 
-PI_HOST="${PI_HOST:-pi}"
-SRC="/tmp/pi-kubeconfig.yaml"
+SRC_CTX="${SRC_CTX:-pi}"
+DST_CTX="${DST_CTX:-m720q}"
+EXCLUDE_NS="${EXCLUDE_NS:-cert-manager kube-system kube-public kube-node-lease default}"
 APPLY_ARGS=(); [[ -n "${DRY_RUN:-}" ]] && APPLY_ARGS=(--dry-run=server)
 
 log() { printf '\033[1;34m[migrate-k8s]\033[0m %s\n' "$*"; }
+command -v kubectl >/dev/null || { echo "kubectl required"; exit 1; }
+command -v jq      >/dev/null || { echo "jq required (brew install jq)"; exit 1; }
 
-command -v jq >/dev/null || { echo "jq required"; exit 1; }
+src() { kubectl --context "$SRC_CTX" "$@"; }
+dst() { kubectl --context "$DST_CTX" "$@"; }
 
-# --- Pull the Pi's kubeconfig and point it at the Pi over Tailscale ----------
-log "Fetching Pi kubeconfig from ${PI_HOST}..."
-if ! scp "${PI_HOST}:/etc/rancher/k3s/k3s.yaml" "$SRC" 2>/dev/null; then
-  # kubeconfig not world-readable on the Pi — fall back to sudo over ssh
-  ssh "${PI_HOST}" sudo cat /etc/rancher/k3s/k3s.yaml > "$SRC"
-fi
-sed -i "s#https://127.0.0.1:6443#https://${PI_HOST}:6443#" "$SRC"
+src get ns -o name >/dev/null 2>&1 || { echo "can't reach source context '$SRC_CTX' (kubectl config get-contexts)"; exit 1; }
+dst get ns -o name >/dev/null 2>&1 || { echo "can't reach target context '$DST_CTX'"; exit 1; }
 
-src() { KUBECONFIG="$SRC" kubectl "$@"; }   # Pi cluster
-dst() { k3s kubectl "$@"; }                 # this (M720q) cluster
-
-# --- Kinds to migrate (namespaced; no pods/rs/jobs/pvc) ----------------------
 KINDS="configmap,secret,serviceaccount,role,rolebinding,networkpolicy,deployment,statefulset,daemonset,service,ingress,cronjob,horizontalpodautoscaler"
 
-# --- jq cleanup: drop instance/cluster-specific + auto-created objects --------
+# Strip instance/cluster-specific fields + drop auto-created objects.
 CLEAN='
   .items |= map(
     del(.metadata.uid, .metadata.resourceVersion, .metadata.generation,
@@ -52,16 +51,20 @@ CLEAN='
   | .items |= map(select((.kind=="ConfigMap"      and .metadata.name=="kube-root-ca.crt")           | not))
 '
 
-# --- Migrate, namespace by namespace -----------------------------------------
-NSS=$(src get ns -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' \
-        | grep -vE '^(kube-system|kube-public|kube-node-lease|default)$' || true)
+excl=$(echo "$EXCLUDE_NS" | tr ' ' '|')
+NSS=$(src get ns -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | grep -vE "^(${excl})$" || true)
+[[ -n "$NSS" ]] || { log "No namespaces to migrate after exclusions."; exit 0; }
 
-[[ -n "$NSS" ]] || { log "No user namespaces found on ${PI_HOST}."; exit 0; }
+log "src=$SRC_CTX  dst=$DST_CTX  ${DRY_RUN:+(DRY RUN) }"
+log "migrating: $(echo $NSS | tr '\n' ' ')"
+log "excluding: $EXCLUDE_NS"
 
 for ns in $NSS; do
   log "namespace: $ns"
-  dst create namespace "$ns" --dry-run=client -o yaml | dst apply "${APPLY_ARGS[@]}" -f -
+  # Create the namespace for real even in dry-run, otherwise the resource
+  # dry-run fails with "namespace not found". Empty namespaces are harmless.
+  dst create namespace "$ns" --dry-run=client -o yaml | dst apply -f -
   src get $KINDS -n "$ns" -o json | jq "$CLEAN" | dst apply "${APPLY_ARGS[@]}" -n "$ns" -f -
 done
 
-log "Done. Review with:  k3s kubectl get deploy,svc,ingress -A"
+log "Done. Review:  kubectl --context $DST_CTX get deploy,svc,ingress -A"

@@ -73,7 +73,7 @@ CF_DDNS_INTERVAL="${CF_DDNS_INTERVAL:-5min}"
 # MinIO (single-node, on whichever host owns the data volume)
 MINIO_ROOT_USER="${MINIO_ROOT_USER:-}"
 MINIO_ROOT_PASSWORD="${MINIO_ROOT_PASSWORD:-}"
-MINIO_VOLUMES="${MINIO_VOLUMES:-/mnt/data}"
+MINIO_VOLUMES="${MINIO_VOLUMES:-/mnt/data/minio}"
 MINIO_OPTS="${MINIO_OPTS:---address 0.0.0.0:9000 --console-address 0.0.0.0:9001}"
 MINIO_BROWSER_REDIRECT_URL="${MINIO_BROWSER_REDIRECT_URL:-}"
 MINIO_SERVER_URL="${MINIO_SERVER_URL:-}"
@@ -385,6 +385,12 @@ if [[ "$INSTALL_MINIO" == "1" ]]; then
 
   getent group  minio-user >/dev/null || groupadd -r minio-user
   getent passwd minio-user >/dev/null || useradd -r -g minio-user -s /sbin/nologin -d /var/lib/minio minio-user
+
+  # Create the data dir (single-path case) so minio-user owns its subdir on the
+  # data volume — mirrors the per-service /mnt/data/<service> layout of the DBs.
+  if [[ "$MINIO_VOLUMES" == /* && "$MINIO_VOLUMES" != *" "* ]]; then
+    install -d -o minio-user -g minio-user -m 0750 "$MINIO_VOLUMES"
+  fi
 
   if [[ ! -x /usr/local/bin/minio ]]; then
     ARCH=$(dpkg --print-architecture)   # amd64 | arm64

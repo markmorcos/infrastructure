@@ -144,8 +144,16 @@ fi
 
 # === Phase 3: k3s =============================================================
 if [[ "$INSTALL_K3S" == "1" ]]; then
-  if systemctl list-unit-files 2>/dev/null | grep -qE '^k3s(-agent)?\.service'; then
+  # Key off the role-specific unit so a server↔agent role switch is detected
+  # (a leftover unit from the other role must not mask a missing install).
+  K3S_UNIT=$([[ "$K3S_ROLE" == "agent" ]] && echo k3s-agent || echo k3s)
+  if systemctl list-unit-files 2>/dev/null | grep -qE "^${K3S_UNIT}\.service"; then
     log "k3s already installed: $(k3s --version 2>/dev/null | head -n1 || echo unknown)"
+    # Installed != running — start it if a previous run left it stopped/failed.
+    systemctl is-active --quiet "$K3S_UNIT" || {
+      log "k3s installed but not running — starting $K3S_UNIT..."
+      systemctl enable --now "$K3S_UNIT"
+    }
   else
     log "Installing k3s $K3S_VERSION ($K3S_ROLE)..."
     if [[ "$K3S_ROLE" == "agent" ]]; then

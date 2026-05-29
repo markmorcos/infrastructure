@@ -42,6 +42,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.INFRASTRUCTURE_PAT }}
 
+      # Install a current QEMU so buildkit doesn't fall back to an old bundled
+      # emulator that crashes esbuild's Go binary when building the non-native arch.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Configure VPN
         uses: tailscale/github-action@v3
         with:
@@ -57,7 +62,7 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          PLATFORMS=linux/amd64 \
+          PLATFORMS=linux/amd64,linux/arm64 \
           DEPLOYMENT_VERSION=${{ github.event.client_payload.version }} \
           CONFIG_FILE="client/${{ github.event.client_payload.config_file }}" \
           bash scripts/build.sh

@@ -3,18 +3,24 @@ set -euo pipefail
 
 CONFIG_FILE=${CONFIG_FILE:-"client/deployment.yaml"}
 DEPLOYMENT_VERSION=${DEPLOYMENT_VERSION:-latest}
-# Build for both node architectures (amd64 = M720q, arm64 = Pi agent) so pods
-# schedule anywhere. Override with PLATFORMS=linux/amd64 once the Pi is gone.
+# Native per-arch builds avoid QEMU (esbuild, the Astro compiler & other Go/native
+# build tools crash under emulation). CI builds each arch on its own runner with
+# TAG_SUFFIX, then STAGE=merge stitches them into one manifest. Locally, leave the
+# defaults for a single host-native build.
 PLATFORMS=${PLATFORMS:-linux/amd64,linux/arm64}
+TAG_SUFFIX=${TAG_SUFFIX:-}        # per-arch tag suffix, e.g. -amd64 / -arm64
+STAGE=${STAGE:-build}             # build | merge
 
 NAMESPACE=$(yq -r .namespace "$CONFIG_FILE")
 SERVICE_COUNT=$(yq '.services | length' "$CONFIG_FILE")
 
-# A multi-arch build needs the docker-container driver (the default "docker"
-# driver can't do multi-platform). Create it once; reuse thereafter.
-docker buildx inspect multiarch >/dev/null 2>&1 \
-  || docker buildx create --name multiarch --driver docker-container --use >/dev/null
-docker buildx use multiarch
+if [ "$STAGE" = "build" ]; then
+  # buildx --push needs the docker-container driver (the default "docker" driver
+  # can't push a build result). Create it once; reuse thereafter.
+  docker buildx inspect multiarch >/dev/null 2>&1 \
+    || docker buildx create --name multiarch --driver docker-container --use >/dev/null
+  docker buildx use multiarch
+fi
 
 resolve_build_arg() {
   local svc_idx=$1
@@ -50,8 +56,20 @@ for i in $(seq 0 $((SERVICE_COUNT - 1))); do
     continue
   fi
 
-
   IMAGE_NAME=$(yq -r ".services[$i].image" "$CONFIG_FILE")
+  TAG_VER="${IMAGE_NAME}:${NAMESPACE}-${DEPLOYMENT_VERSION}"
+  TAG_LATEST="${IMAGE_NAME}:${NAMESPACE}-latest"
+
+  # STAGE=merge: combine the per-arch tags pushed by the build matrix into one
+  # multi-arch manifest (registry-only op, no build, no emulation).
+  if [ "$STAGE" = "merge" ]; then
+    echo "🔗 Merging multi-arch manifest for $IMAGE_NAME"
+    docker buildx imagetools create -t "$TAG_VER"    "${TAG_VER}-amd64"    "${TAG_VER}-arm64"
+    docker buildx imagetools create -t "$TAG_LATEST" "${TAG_LATEST}-amd64" "${TAG_LATEST}-arm64"
+    echo "✅ Merged $IMAGE_NAME"
+    continue
+  fi
+
   SERVICE_CONTEXT="client/$(yq -r ".services[$i].context // \".\"" "$CONFIG_FILE")"
   DOCKERFILE_PATH="${SERVICE_CONTEXT}/$(yq -r ".services[$i].dockerfile // \"Dockerfile\"" "$CONFIG_FILE")"
 
@@ -64,19 +82,16 @@ for i in $(seq 0 $((SERVICE_COUNT - 1))); do
     done
   fi
 
+  echo "🔨 Building ${TAG_VER}${TAG_SUFFIX} for ${PLATFORMS}"
 
-  echo "🔨 Building $IMAGE_NAME:${NAMESPACE}-${DEPLOYMENT_VERSION} for ${PLATFORMS}"
-
-  # buildx builds + pushes the multi-arch manifest in one step (a multi-platform
-  # image can't live in the local docker store, so --push replaces docker push).
   docker buildx build \
     --platform "${PLATFORMS}" \
-    -t ${IMAGE_NAME}:${NAMESPACE}-${DEPLOYMENT_VERSION} \
-    -t ${IMAGE_NAME}:${NAMESPACE}-latest \
+    -t "${TAG_VER}${TAG_SUFFIX}" \
+    -t "${TAG_LATEST}${TAG_SUFFIX}" \
     -f ${DOCKERFILE_PATH} \
     "${build_arg_flags[@]}" \
     --push \
     ${SERVICE_CONTEXT}
 
-  echo "✅ Done building and pushing $IMAGE_NAME"
+  echo "✅ Done building and pushing $IMAGE_NAME (${TAG_SUFFIX:-multi-arch})"
 done

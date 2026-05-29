@@ -11,18 +11,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Write SSH key to file
+      - name: Configure VPN
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TAILSCALE_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TAILSCALE_CLIENT_SECRET }}
+          tags: tag:ci
+
+      - name: Configure Kubernetes
         run: |
-          echo "${{ secrets.RASPBERRY_PI_KEY }}" > /tmp/id_rsa
-          chmod 600 /tmp/id_rsa
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
 
-      - name: Loop and apply YAMLs over SSH stdin
-        run: |
-          echo "${{ secrets.RASPBERRY_PI_SSH_KEY }}" > /tmp/id_rsa
-          chmod 600 /tmp/id_rsa
-
-          cat k8s/*.yaml | ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no \
-          "${{ secrets.RASPBERRY_PI_USERNAME }}@${{ secrets.RASPBERRY_PI_HOST }}" \
-          "export KUBECONFIG=/home/mark/.kube/config && kubectl apply -f -"
+      - name: Apply k8s manifests
+        run: KUBECONFIG=~/.kube/config kubectl apply -f k8s/

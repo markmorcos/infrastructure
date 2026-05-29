@@ -611,10 +611,20 @@ EOF
   systemctl restart mongod
 
   # Wait for mongod to accept connections (ping needs no auth)
+  MONGO_UP=0
   for _ in $(seq 1 30); do
-    mongosh --quiet --port "$MONGO_PORT" --eval 'db.runCommand({ping:1})' >/dev/null 2>&1 && break
+    if mongosh --quiet --port "$MONGO_PORT" --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; then
+      MONGO_UP=1; break
+    fi
     sleep 1
   done
+  if [[ "$MONGO_UP" != "1" ]]; then
+    warn "mongod is not accepting connections on 127.0.0.1:${MONGO_PORT}. Recent logs:"
+    systemctl --no-pager --full status mongod 2>&1 | tail -n 15 >&2 || true
+    journalctl -u mongod --no-pager -n 30 2>/dev/null >&2 || true
+    tail -n 30 /var/log/mongodb/mongod.log 2>/dev/null >&2 || true
+    die "MongoDB failed to start — see logs above (common causes: dbPath perms on $MONGO_DATA, or a CPU without AVX support, which MongoDB 5.0+ requires)."
+  fi
 
   # Create the root user once, via the localhost exception (auth on, no users yet)
   if mongosh --quiet --port "$MONGO_PORT" -u "$MONGO_ROOT_USER" -p "$MONGO_ROOT_PASSWORD" \

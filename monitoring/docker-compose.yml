@@ -1,0 +1,44 @@
+# Standalone monitoring host — runs on the Raspberry Pi, OUTSIDE the k3s cluster.
+# Deliberately independent of the M720q cluster so it can report the cluster down.
+# See README.md for the why and the DNS-independence design.
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    volumes:
+      - kuma-data:/app/data
+    networks:
+      - monitoring
+    # No published ports: Caddy fronts it. Reach the UI at https://status.morcos.tech
+
+  caddy:
+    build:
+      context: .
+      dockerfile: caddy.Dockerfile
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"          # ACME http redirect
+      - "443:443"        # https
+      - "443:443/udp"    # http/3
+    environment:
+      # Cloudflare token for the DNS-01 ACME challenge (Zone:DNS:Edit on morcos.tech).
+      - CF_API_TOKEN=${CF_API_TOKEN:?set CF_API_TOKEN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - monitoring
+    depends_on:
+      - uptime-kuma
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  kuma-data:
+  caddy-data:
+  caddy-config:

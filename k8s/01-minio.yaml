@@ -103,7 +103,7 @@ metadata:
   namespace: minio
 spec:
   type: ExternalName
-  externalName: pi
+  externalName: m720q
   ports:
     - port: 9001
       targetPort: 9001
@@ -115,7 +115,7 @@ metadata:
   namespace: minio
 spec:
   type: ExternalName
-  externalName: pi
+  externalName: m720q
   ports:
     - port: 9000
       targetPort: 9000

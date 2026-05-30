@@ -18,6 +18,31 @@ curl -fsSL https://raw.githubusercontent.com/markmorcos/infrastructure/main/boot
 
 Re-run any time — every step is idempotent.
 
+## Teardown
+
+`down.sh` reverses `run.sh`. It reads the same `.env` and the same `INSTALL_*`
+toggles, then undoes each enabled phase in reverse order (services disabled,
+unit files / scripts / apt repos / keyrings removed). Idempotent and safe to
+re-run.
+
+```bash
+sudo FORCE=1 ./down.sh                       # tear down, KEEP all data
+sudo FORCE=1 PURGE_DATA=1 ./down.sh          # also delete DB / MinIO data dirs
+sudo FORCE=1 REMOVE_TAILSCALE=1 ./down.sh    # also leave the tailnet
+```
+
+Safety defaults:
+
+- **Data is kept** unless `PURGE_DATA=1` (then `POSTGRES_DATA` / `MONGO_DATA` /
+  `REDIS_DATA` / `MINIO_VOLUMES` are deleted).
+- **Tailscale is left in place** unless `REMOVE_TAILSCALE=1` — removing it would
+  drop a Tailscale-SSH session, so do that from a local console.
+- **k3s** is removed via its official uninstall script, which also clears
+  `/var/lib/rancher` (inherent to uninstalling, independent of `PURGE_DATA`).
+- Base packages (curl, jq, gnupg, …) are intentionally left installed.
+- Without `FORCE=1` the script prompts interactively, and refuses to run at all
+  when piped (no TTY).
+
 ## Setting up the Pi (server)
 
 ```ini
@@ -107,7 +132,8 @@ If it returns `16384`, add `kernel=kernel8.img` to `/boot/firmware/config.txt` a
 
 ## Files in this repo
 
-- `run.sh` — the one and only script; idempotent, safe to re-run
+- `run.sh` — the bootstrap; idempotent, safe to re-run
+- `down.sh` — reverses `run.sh`; idempotent. Keeps data unless `PURGE_DATA=1`
 - `.env.example` — copy + edit to `/etc/infrastructure/bootstrap/.env` on each host
 - `domains.conf` — list of CF zones and records to keep pointed at home IP
 - `README.md` — this file

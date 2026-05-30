@@ -1,0 +1,9 @@
+# Uptime Kuma dashboard, reachable only over the tailnet.
+# Real Let's Encrypt cert via DNS-01 (no public reachability required) — the
+# status.morcos.tech A record points at the Pi's Tailscale IP.
+status.morcos.tech {
+	reverse_proxy uptime-kuma:3001
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+}

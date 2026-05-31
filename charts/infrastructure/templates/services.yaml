@@ -26,6 +26,9 @@ spec:
         app: {{ $resourceName }}
         build-timestamp: '{{ now | date "20060102150405" }}'
     spec:
+{{- if .terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .terminationGracePeriodSeconds }}
+{{- end }}
 {{- if .volumes }}
       volumes:
 {{- range .volumes }}
@@ -66,6 +69,22 @@ spec:
               readOnly: {{ .readOnly }}
 {{- end }}
 {{- end }}
+{{- end }}
+{{- if .resources }}
+          resources:
+{{ toYaml .resources | indent 12 }}
+{{- end }}
+{{- if .startupProbe }}
+          startupProbe:
+{{ toYaml .startupProbe | indent 12 }}
+{{- end }}
+{{- if .livenessProbe }}
+          livenessProbe:
+{{ toYaml .livenessProbe | indent 12 }}
+{{- end }}
+{{- if .readinessProbe }}
+          readinessProbe:
+{{ toYaml .readinessProbe | indent 12 }}
 {{- end }}
 
 {{- if $ports }}

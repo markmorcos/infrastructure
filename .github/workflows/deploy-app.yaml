@@ -9,6 +9,7 @@ on:
       - deploy-games
       - deploy-infrastructure-admin
       - deploy-ma3ady
+      - deploy-naharda-analytics
       - deploy-naharda-api
       - deploy-naharda-web
       - deploy-portfolio

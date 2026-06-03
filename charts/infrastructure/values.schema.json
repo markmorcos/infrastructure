@@ -205,6 +205,11 @@
             "required": ["host", "path", "pathType"],
             "properties": {
               "host": { "type": "string", "description": "Ingress hostname" },
+              "www": {
+                "type": "boolean",
+                "default": false,
+                "description": "Add a www.<host> TLS SAN and enable the from-to-www redirect. Only enable when a www DNS record exists for the host, otherwise the HTTP-01 challenge for www.<host> will fail."
+              },
               "path": {
                 "type": "string",
                 "description": "Ingress path for this service"

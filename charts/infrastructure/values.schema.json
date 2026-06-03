@@ -210,6 +210,10 @@
                 "default": false,
                 "description": "Add a www.<host> TLS SAN and enable the from-to-www redirect. Only enable when a www DNS record exists for the host, otherwise the HTTP-01 challenge for www.<host> will fail."
               },
+              "tlsSecret": {
+                "type": "string",
+                "description": "Override the TLS secret name. Defaults to <namespace>-<service>-tls so each ingress gets its own certificate. Set this to a shared value only when several services intentionally serve the same host/cert."
+              },
               "path": {
                 "type": "string",
                 "description": "Ingress path for this service"

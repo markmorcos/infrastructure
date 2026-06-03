@@ -127,7 +127,7 @@ spec:
 {{- if .ingress.www }}
         - www.{{ .ingress.host }}
 {{- end }}
-      secretName: infrastructure-tls
+      secretName: {{ .ingress.tlsSecret | default (printf "%s-tls" $resourceName) }}
   rules:
     - host: {{ .ingress.host }}
       http:

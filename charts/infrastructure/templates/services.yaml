@@ -115,14 +115,18 @@ metadata:
     cert-manager.io/cluster-issuer: "infrastructure-issuer"
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+{{- if .ingress.www }}
     nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+{{- end }}
     nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
 spec:
   ingressClassName: nginx
   tls:
     - hosts:
         - {{ .ingress.host }}
+{{- if .ingress.www }}
         - www.{{ .ingress.host }}
+{{- end }}
       secretName: infrastructure-tls
   rules:
     - host: {{ .ingress.host }}

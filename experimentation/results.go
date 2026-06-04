@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+// VariantStat holds distinct-device counts for one variant.
+type VariantStat struct {
+	Variant     string
+	Exposures   int
+	Conversions int
+}
+
 // VariantResult is the computed outcome for one variant.
 type VariantResult struct {
 	Variant         string  `json:"variant"`
@@ -12,7 +19,7 @@ type VariantResult struct {
 	Conversions     int     `json:"conversions"`
 	Rate            float64 `json:"rate"`
 	IsControl       bool    `json:"isControl"`
-	UpliftVsControl float64 `json:"upliftVsControl"` // relative change vs control rate
+	UpliftVsControl float64 `json:"upliftVsControl"`
 	Z               float64 `json:"z"`
 	PValue          float64 `json:"pValue"`
 	Significant     bool    `json:"significant"`
@@ -37,7 +44,7 @@ func conversionRate(conv, exposed int) float64 {
 }
 
 // twoProportionZ runs a pooled two-proportion z-test of variant A against
-// control B, returning the z statistic and the two-sided p-value.
+// control B, returning the z statistic and two-sided p-value.
 func twoProportionZ(convA, expA, convB, expB int) (float64, float64) {
 	if expA == 0 || expB == 0 {
 		return 0, 1
@@ -50,13 +57,12 @@ func twoProportionZ(convA, expA, convB, expB int) (float64, float64) {
 		return 0, 1
 	}
 	z := (pA - pB) / se
-	// Two-sided p-value for a standard normal: erfc(|z|/sqrt(2)).
 	p := math.Erfc(math.Abs(z) / math.Sqrt2)
 	return z, p
 }
 
-// buildResults turns raw per-variant counts into rates + significance vs the
-// control, preserving the experiment's declared variant order.
+// buildResults turns raw per-variant counts into rates + significance, testing
+// every non-control variant against the control (so it works for n-way tests).
 func buildResults(exp Experiment, metric string, stats map[string]VariantStat) Results {
 	ctrl := stats[exp.Control]
 	ctrlRate := conversionRate(ctrl.Conversions, ctrl.Exposures)
@@ -82,9 +88,7 @@ func buildResults(exp Experiment, metric string, stats map[string]VariantStat) R
 				vr.UpliftVsControl = (vr.Rate - ctrlRate) / ctrlRate
 			}
 			z, p := twoProportionZ(st.Conversions, st.Exposures, ctrl.Conversions, ctrl.Exposures)
-			vr.Z = z
-			vr.PValue = p
-			vr.Significant = p < significanceThreshold
+			vr.Z, vr.PValue, vr.Significant = z, p, p < significanceThreshold
 		}
 		res.Variants = append(res.Variants, vr)
 	}

@@ -16,6 +16,12 @@ services:
           secretKeyRef:
             name: database-secrets
             key: DATABASE_URL
+      # Shared admin token gating the management UI + /api/admin (out-of-band).
+      - name: ADMIN_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: experimentation-secrets
+            key: ADMIN_TOKEN
     readinessProbe:
       httpGet:
         path: /healthz

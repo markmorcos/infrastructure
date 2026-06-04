@@ -1,107 +1,101 @@
 # experimentation
 
-A tiny, from-scratch A/B/C experimentation service — the lightweight stand-in for
-GrowthBook for the **Datebloom** ([datewithmark.com](https://datewithmark.com))
-Sunset / Midnight / Linen experiment.
+A small, self-hosted **feature-flag + experimentation platform** — multi-project,
+multi-environment, typed flags with percentage rollout, and n-way (A/B, A/B/C, …)
+experiments with frequentist results. One Go binary over Postgres, with a
+server-rendered admin UI and an SDK API for clients.
 
-It does three things: **assign** a variant deterministically, **track** events, and
-report **results** with frequentist significance — over a single Postgres table,
-behind a single host. One Go binary, deployed via `charts/infrastructure` like the
-other apps.
+The Datebloom ([datewithmark.com](https://datewithmark.com)) Sunset/Midnight/Linen
+test is just a **seeded example project** here — nothing is hard-coded to it.
 
 | | |
 | --- | --- |
 | Host | `https://experimentation.morcos.tech` |
 | Namespace | `experimentation` |
-| Datastore | native Postgres (existing `database-secrets` → `DATABASE_URL`) |
+| Datastore | native Postgres (`database-secrets` → `DATABASE_URL`) |
+| Admin auth | shared `ADMIN_TOKEN` (gates UI + `/api/admin`) |
 | Image | `ghcr.io/markmorcos/infrastructure-experimentation` (distroless static) |
 
-## Why not GrowthBook
+## Concepts
 
-GrowthBook needed external Mongo, an S3/MinIO upload hack, six secrets, and a chart
-with two hosts + a PVC. This service needs **one Postgres table and one host** — and
-it gives the one thing that actually mattered (significance) directly.
+- **Project** — tenant boundary.
+- **Environment** — per project (a `production` env + client SDK key are created
+  automatically). Flag values and SDK keys are per-environment.
+- **SDK key** — per project+environment client credential; how a client connects.
+- **Feature** — typed flag (`boolean`/`string`/`number`/`json`), per-environment
+  value with on/off and a **% rollout** (deterministic per device). Default value
+  is returned when off or outside the rollout. *(Attribute targeting is a planned
+  later phase; `/api/v1/config` already accepts `attrs`.)*
+- **Experiment** — N weighted variants, a conversion metric, a control, and a
+  status (`draft`/`running`/`stopped`). Assignment is a deterministic FNV-1a hash
+  of `device:experiment` — no per-user state stored.
 
-## API
+## SDK API (public, CORS-open)
 
-CORS is open (`*`) so the browser app can call it cross-origin.
+Clients authenticate with an **SDK key**, not the admin token.
 
-### `GET /api/assign?experiment=date_flow_variant&device=<id>`
-Deterministic, weighted variant for a device. Pure read — no event is written.
+### `GET /api/v1/config?key=<sdkKey>&device=<id>`
+One payload: every evaluated flag + a variant assignment per running experiment.
 ```json
-{ "experiment": "date_flow_variant", "variant": "midnight" }
+{
+  "project": "datebloom",
+  "environment": "production",
+  "features": { "new_booking_flow": true, "cta_label": "Ask out" },
+  "experiments": { "date_flow_variant": { "variant": "midnight" } }
+}
 ```
-Same `device` always maps to the same variant (32-bit FNV-1a hash of
-`device:experiment`, bucketed by weight), so no assignment state is stored.
 
-### `POST /api/track`
-Record one exposure or conversion.
+### `POST /api/v1/track`
 ```json
-{ "experiment": "date_flow_variant", "variant": "midnight", "device": "<id>", "event": "exposure" }
+{ "key": "<sdkKey>", "device": "<id>", "experiment": "date_flow_variant", "variant": "midnight", "event": "exposure" }
 ```
-`event` is `"exposure"` (the denominator) or the conversion metric (`"date_confirmed"`).
-Returns `204`.
+`event` is `"exposure"` (denominator) or the conversion metric (e.g. `date_confirmed`). Returns `204`.
 
-### `GET /api/results?experiment=date_flow_variant`
-Per-variant distinct-device counts, conversion rate, uplift vs control, and a pooled
-**two-proportion z-test** (two-sided p, significant at p < 0.05) against the control
-(`sunset`).
-
-### `GET /`
-Embedded single-page dashboard that polls `/api/results` every 10s.
-
-## Experiment config
-
-Hard-coded in [`experiment.go`](./experiment.go) for now (`date_flow_variant`:
-`sunset`/`midnight`/`linen` at 33/33/34, metric `date_confirmed`, control `sunset`).
-Changing variants/weights is a one-map edit; the API stays the same.
-
-## Client integration (datewithmark.com)
-
-Replace the hard-coded variant flag with two calls:
-
+### Client integration (e.g. datewithmark.com)
 ```js
 const API = "https://experimentation.morcos.tech";
-const EXPERIMENT = "date_flow_variant";
-const device = getStableDeviceId(); // persisted UUID per device
+const device = getStableDeviceId();
+const cfg = await fetch(`${API}/api/v1/config?key=${SDK_KEY}&device=${device}`).then(r => r.json());
 
-// 1. assign + fire exposure once on load
-const { variant } = await fetch(
-  `${API}/api/assign?experiment=${EXPERIMENT}&device=${device}`
-).then((r) => r.json());
-
-fetch(`${API}/api/track`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ experiment: EXPERIMENT, variant, device, event: "exposure" }),
+const variant = cfg.experiments.date_flow_variant.variant;   // render Sunset/Midnight/Linen
+const post = (event) => fetch(`${API}/api/v1/track`, {
+  method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ key: SDK_KEY, device, experiment: "date_flow_variant", variant, event }),
 });
-
-// render Sunset / Midnight / Linen off `variant`
-
-// 2. on the confirm / add-to-calendar tap
-fetch(`${API}/api/track`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ experiment: EXPERIMENT, variant, device, event: "date_confirmed" }),
-});
+post("exposure");                 // on load
+// post("date_confirmed");        // on the confirm / add-to-calendar tap
 ```
+
+## Management
+
+- **Web UI** (`/`, admin token): create projects, environments, typed flags +
+  per-env values/rollout, and experiments; view per-experiment results.
+- **JSON API** (`/api/admin/...`, `Authorization: Bearer <ADMIN_TOKEN>`): same
+  operations — projects, environments, features + values, experiments, results.
+
+Results use a pooled **two-proportion z-test** of each non-control variant vs the
+control (significant at p < 0.05), over distinct devices.
 
 ## Deploy
 
-In-repo app, same flow as `admin/`: push to `main` under `experimentation/**` (or run
-the `deploy-experimentation` workflow) → builds the multi-arch image → `scripts/deploy.sh`
-helm-installs the `charts/infrastructure` chart from [`deployment.yaml`](./deployment.yaml).
+In-repo app, same flow as `admin/`: push to `main` under `experimentation/**` (or
+run the `deploy-experimentation` workflow) → multi-arch image build → `scripts/deploy.sh`
+helm-installs `charts/infrastructure` from [`deployment.yaml`](./deployment.yaml).
 
-**Prereqs (out-of-band, like the other apps):**
-- A `database-secrets` secret with key `DATABASE_URL` in the **`experimentation`** namespace,
-  pointing at the native Postgres (e.g. `postgres://<user>:<pw>@m720q:5432/<db>?sslmode=disable`).
-  The service auto-creates the `experiment_events` table on boot.
+**Prereqs (out-of-band, in the `experimentation` namespace):**
+- `database-secrets` with key `DATABASE_URL` → native Postgres
+  (e.g. `postgres://<user>:<pw>@m720q:5432/<db>?sslmode=disable`). The schema is
+  auto-created on boot.
+- `experimentation-secrets` with key `ADMIN_TOKEN` (e.g. `openssl rand -hex 32`).
 - Cloudflare CNAME `experimentation` → the DDNS anchor.
+
+On first boot the `datebloom` project + `date_flow_variant` experiment are seeded
+and the production SDK key is logged.
 
 ## Develop / test
 
 ```bash
 cd experimentation
-go test ./...                 # assignment distribution, z-test, handlers
-DATABASE_URL=postgres://localhost/exp?sslmode=disable PORT=8090 go run .
+go test ./...          # assignment, rollout, flag eval, z-test, form parsing, auth
+DATABASE_URL=postgres://localhost/exp?sslmode=disable ADMIN_TOKEN=dev PORT=8090 go run .
 ```

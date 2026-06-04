@@ -15,7 +15,7 @@ provides out of the box. We supply only [`values.yaml`](./values.yaml).
 | Frontend | `https://growthbook.morcos.tech` (→ service `growthbook-frontend:3000`) |
 | API | `https://growthbook-api.morcos.tech` (→ service `growthbook-backend:3100`) |
 | Datastore | **external** native MongoDB on the host — bundled subchart disabled |
-| Uploads | `local-path` PVC `growthbook-backend-data` (5Gi) |
+| Uploads | MinIO bucket `growthbook` (S3-compatible) — no PVC |
 
 ## Prerequisites (do these before `helm upgrade`)
 
@@ -49,11 +49,41 @@ mongodb://growthbook:<password>@mongo.morcos.lan:27017/growthbook?authSource=adm
 >   host at it, **or**
 > - use the node IP / `m720q` directly in the URI.
 
-### 2. `growthbook` secret (out-of-band — never committed)
+### 2. MinIO bucket for uploads (no PVC)
+
+GrowthBook stores uploaded screenshots/images in object storage. We use the existing
+native MinIO instead of a PVC. GrowthBook's own S3 client is AWS-only (issue
+[#2655](https://github.com/growthbook/growthbook/issues/2655)), but its bundled AWS SDK
+v3 honours `AWS_ENDPOINT_URL_S3`, which retargets the S3 client at MinIO with no code
+change. Uploads are server-side (backend → MinIO); the browser loads images from
+`S3_DOMAIN`.
+
+Set up MinIO (via `mc`):
+
+```bash
+mc mb local/growthbook                 # create the bucket
+mc anonymous set download local/growthbook   # public-read so the browser can load images
+# create a least-privilege key/secret with write access to the growthbook bucket
+```
+
+Two MinIO gotchas, both already accounted for in the env/secret:
+
+- **Path-style addressing.** The AWS SDK defaults to virtual-host style
+  (`growthbook.<endpoint>`), which MinIO can't serve without `MINIO_DOMAIN` + wildcard
+  DNS. Point `s3-endpoint` at MinIO **by IP** (`http://<node-ip>:9000`) — the SDK then
+  auto-switches to path-style, which MinIO serves out of the box.
+- **Public-read.** `S3_DOMAIN` (`https://cdn.morcos.tech/growthbook/`) is fetched
+  directly by the browser, so the bucket must allow anonymous `GET`.
+
+> If MinIO ever proves too fiddly, uploads are non-critical (experiment data lives in
+> Mongo). Fall back by setting `backend.env` `UPLOAD_METHOD: local` with
+> `backend.volumeClaim.enabled: true` (PVC) or an `emptyDir` (ephemeral).
+
+### 3. `growthbook` secret (out-of-band — never committed)
 
 Matches the repo convention (`database-secrets`, `jwt-secret` are created out-of-band).
 `encryption-key` is **immutable after first boot — generate once and never rotate**, or
-existing encrypted values become unreadable.
+existing encrypted values become unreadable. `s3-endpoint` must be an **IP** (see above).
 
 ```bash
 kubectl create namespace growthbook --dry-run=client -o yaml | kubectl apply -f -
@@ -61,14 +91,17 @@ kubectl create namespace growthbook --dry-run=client -o yaml | kubectl apply -f 
 kubectl -n growthbook create secret generic growthbook \
   --from-literal=jwt-secret="$(openssl rand -hex 32)" \
   --from-literal=encryption-key="$(openssl rand -hex 32)" \
-  --from-literal=mongodb-uri="mongodb://growthbook:<password>@mongo.morcos.lan:27017/growthbook?authSource=admin"
+  --from-literal=mongodb-uri="mongodb://growthbook:<password>@mongo.morcos.lan:27017/growthbook?authSource=admin" \
+  --from-literal=s3-endpoint="http://<minio-node-ip>:9000" \
+  --from-literal=s3-access-key-id="<minio-access-key>" \
+  --from-literal=s3-secret-access-key="<minio-secret-key>"
 ```
 
 > If a secret-sealing tool (sealed-secrets / SOPS) is later adopted in this repo, seal
 > this secret and commit the sealed form instead of applying it by hand. There is no
 > sealing tool wired up today, so it is created out-of-band like the others.
 
-### 3. DNS
+### 4. DNS
 
 Add two Cloudflare CNAMEs pointing at the DDNS anchor record (same pattern as every
 other `*.morcos.tech` host):

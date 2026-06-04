@@ -38,18 +38,9 @@ backend:
   # We provide MONGODB_URI ourselves from the `growthbook` secret (see below).
   mongodbEnabled: false
   mongodbUri: ""
-  # Persist local uploads (e.g. presentation images) on the default local-path SC.
+  # No PVC — uploads go to MinIO (S3-compatible). See the `env` block + README.
   volumeClaim:
-    enabled: true
-    name: data
-    mountPath: /usr/local/src/app/packages/back-end/uploads
-    spec:
-      accessModes:
-        - ReadWriteOnce
-      storageClassName: local-path
-      resources:
-        requests:
-          storage: 5Gi
+    enabled: false
   resources:
     requests:
       cpu: 250m
@@ -72,8 +63,38 @@ backend:
         secretKeyRef:
           name: growthbook
           key: encryption-key
+    # ----- Uploads: MinIO (S3-compatible) -----
+    # GrowthBook's own S3 client is AWS-only (no endpoint option; issue #2655),
+    # but its AWS SDK v3 honours AWS_ENDPOINT_URL_S3, which retargets *only* the
+    # S3 client at MinIO without patching GrowthBook. Uploads are server-side
+    # (backend -> MinIO); the browser reads images from S3_DOMAIN.
     - name: UPLOAD_METHOD
-      value: local
+      value: s3
+    - name: S3_BUCKET
+      value: growthbook
+    - name: S3_REGION
+      value: us-east-1
+    # Public path-style URL the browser uses to load uploaded images.
+    # cdn.morcos.tech is the MinIO API ingress; the `growthbook` bucket must be public-read.
+    - name: S3_DOMAIN
+      value: https://cdn.morcos.tech/growthbook/
+    # Point at MinIO BY IP (http://<node-ip>:9000) so the SDK uses path-style
+    # addressing. Lives in the secret because the value is environment-specific.
+    - name: AWS_ENDPOINT_URL_S3
+      valueFrom:
+        secretKeyRef:
+          name: growthbook
+          key: s3-endpoint
+    - name: AWS_ACCESS_KEY_ID
+      valueFrom:
+        secretKeyRef:
+          name: growthbook
+          key: s3-access-key-id
+    - name: AWS_SECRET_ACCESS_KEY
+      valueFrom:
+        secretKeyRef:
+          name: growthbook
+          key: s3-secret-access-key
     - name: EMAIL_ENABLED
       value: "false"
 

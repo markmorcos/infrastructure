@@ -13,7 +13,7 @@ provides out of the box. We supply only [`values.yaml`](./values.yaml).
 | Chart | `oci://ghcr.io/growthbook/charts/growthbook` (pinned **4.4.0**, image `growthbook/growthbook:4.4.0`) |
 | Namespace | `growthbook` |
 | Frontend | `https://growthbook.morcos.tech` (→ service `growthbook-frontend:3000`) |
-| API | `https://growthbook-api.morcos.tech` (→ service `growthbook-backend:3100`) |
+| API | `https://api.growthbook.morcos.tech` (→ service `growthbook-backend:3100`) |
 | Datastore | **external** native MongoDB on the host — bundled subchart disabled |
 | Uploads | MinIO bucket `growthbook` (S3-compatible) — no PVC |
 
@@ -108,7 +108,7 @@ other `*.morcos.tech` host):
 
 ```
 growthbook      CNAME  <anchor>
-growthbook-api  CNAME  <anchor>
+api.growthbook  CNAME  <anchor>
 ```
 
 ## Deploy

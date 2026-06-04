@@ -30,7 +30,7 @@ frontend:
       memory: 512Mi
   env:
     - name: API_HOST
-      value: https://growthbook-api.morcos.tech
+      value: https://api.growthbook.morcos.tech
 
 backend:
   # External Mongo: disable the chart's built-in URI builders so it neither emits
@@ -115,7 +115,7 @@ ingress:
         - path: /
           pathType: Prefix
           service: frontend
-    - host: growthbook-api.morcos.tech
+    - host: api.growthbook.morcos.tech
       paths:
         - path: /
           pathType: Prefix
@@ -124,4 +124,4 @@ ingress:
     - secretName: growthbook-tls
       hosts:
         - growthbook.morcos.tech
-        - growthbook-api.morcos.tech
+        - api.growthbook.morcos.tech

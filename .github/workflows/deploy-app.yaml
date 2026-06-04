@@ -6,6 +6,7 @@ on:
       - deploy-booking
       - deploy-essenteil
       - deploy-eventlane
+      - deploy-experimentation
       - deploy-games
       - deploy-infrastructure-admin
       - deploy-ma3ady

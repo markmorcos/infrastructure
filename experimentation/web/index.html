@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Datebloom · Experimentation</title>
+    <style>
+      :root {
+        --bg: #0f1020;
+        --card: #1a1b2e;
+        --line: #2a2c45;
+        --text: #e8e8f0;
+        --muted: #9a9ab5;
+        --accent: #ff8a5c;
+        --good: #4ade80;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .wrap { max-width: 860px; margin: 0 auto; padding: 48px 20px; }
+      h1 { font-size: 22px; margin: 0 0 4px; }
+      .sub { color: var(--muted); margin: 0 0 28px; }
+      .meta { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+      table { width: 100%; border-collapse: collapse; background: var(--card);
+        border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+      th, td { text-align: right; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+      th:first-child, td:first-child { text-align: left; }
+      th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+      tr:last-child td { border-bottom: none; }
+      .variant { font-weight: 600; text-transform: capitalize; }
+      .tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); margin-left: 6px; }
+      .pos { color: var(--good); }
+      .neg { color: var(--accent); }
+      .badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; }
+      .sig { background: rgba(74,222,128,.15); color: var(--good); }
+      .nsig { color: var(--muted); }
+      .err { color: var(--accent); }
+      footer { color: var(--muted); font-size: 12px; margin-top: 18px; }
+      code { background: #00000033; padding: 1px 5px; border-radius: 5px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Datebloom · Experimentation</h1>
+      <p class="sub">date_flow_variant — Sunset / Midnight / Linen · metric: <code id="metric">date_confirmed</code></p>
+      <div class="meta" id="meta">Loading…</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Variant</th>
+            <th>Exposed</th>
+            <th>Converted</th>
+            <th>Rate</th>
+            <th>Uplift</th>
+            <th>p-value</th>
+            <th>Significance</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <footer>Auto-refreshes every 10s · control is the baseline for uplift &amp; significance (two-proportion z-test, p&lt;0.05).</footer>
+    </div>
+
+    <script>
+      const EXPERIMENT = "date_flow_variant";
+      const pct = (x) => (x * 100).toFixed(1) + "%";
+      const signed = (x) => (x >= 0 ? "+" : "") + (x * 100).toFixed(1) + "%";
+
+      async function refresh() {
+        const meta = document.getElementById("meta");
+        try {
+          const res = await fetch(`/api/results?experiment=${encodeURIComponent(EXPERIMENT)}`);
+          if (!res.ok) throw new Error(await res.text());
+          const data = await res.json();
+          document.getElementById("metric").textContent = data.metric;
+          meta.textContent = "Updated " + new Date(data.updatedAt).toLocaleTimeString();
+          meta.classList.remove("err");
+
+          const rows = data.variants.map((v) => {
+            const upliftCell = v.isControl ? "—"
+              : `<span class="${v.upliftVsControl >= 0 ? "pos" : "neg"}">${signed(v.upliftVsControl)}</span>`;
+            const pCell = v.isControl ? "—" : v.pValue.toFixed(4);
+            const sigCell = v.isControl ? `<span class="tag">control</span>`
+              : v.significant ? `<span class="badge sig">significant</span>`
+              : `<span class="badge nsig">not yet</span>`;
+            return `<tr>
+              <td class="variant">${v.variant}</td>
+              <td>${v.exposures.toLocaleString()}</td>
+              <td>${v.conversions.toLocaleString()}</td>
+              <td>${pct(v.rate)}</td>
+              <td>${upliftCell}</td>
+              <td>${pCell}</td>
+              <td>${sigCell}</td>
+            </tr>`;
+          });
+          document.getElementById("rows").innerHTML = rows.join("");
+        } catch (e) {
+          meta.textContent = "Error: " + e.message;
+          meta.classList.add("err");
+        }
+      }
+
+      refresh();
+      setInterval(refresh, 10000);
+    </script>
+  </body>
+</html>

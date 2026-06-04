@@ -1,0 +1,106 @@
+# GrowthBook — self-hosted experimentation platform
+#
+# Deployed via the OFFICIAL GrowthBook Helm chart (not charts/infrastructure,
+# which is single-host / single-port and has no PVC). The official chart serves
+# the frontend (:3000) and backend API (:3100) from one release behind a single
+# multi-host ingress, plus an uploads PVC.
+#
+#   Chart:  oci://ghcr.io/growthbook/charts/growthbook   (pinned 4.4.0)
+#   Apply:  see growthbook/README.md
+#
+# Datastore: EXTERNAL native MongoDB on the host (mongo.morcos.lan); the chart's
+# bundled MongoDB subchart is disabled.
+
+# Do not deploy the bundled MongoDB subchart — we use external native Mongo.
+mongodb:
+  enabled: false
+
+# APP_ORIGIN is a Helm global, so it is injected into both frontend and backend.
+global:
+  env:
+    - name: APP_ORIGIN
+      value: https://growthbook.morcos.tech
+
+frontend:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  env:
+    - name: API_HOST
+      value: https://growthbook-api.morcos.tech
+
+backend:
+  # External Mongo: disable the chart's built-in URI builders so it neither emits
+  # its own MONGODB_URI nor references the non-existent <release>-mongodb secret.
+  # We provide MONGODB_URI ourselves from the `growthbook` secret (see below).
+  mongodbEnabled: false
+  mongodbUri: ""
+  # Persist local uploads (e.g. presentation images) on the default local-path SC.
+  volumeClaim:
+    enabled: true
+    name: data
+    mountPath: /usr/local/src/app/packages/back-end/uploads
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      storageClassName: local-path
+      resources:
+        requests:
+          storage: 5Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+  env:
+    - name: MONGODB_URI
+      valueFrom:
+        secretKeyRef:
+          name: growthbook
+          key: mongodb-uri
+    - name: JWT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: growthbook
+          key: jwt-secret
+    - name: ENCRYPTION_KEY
+      valueFrom:
+        secretKeyRef:
+          name: growthbook
+          key: encryption-key
+    - name: UPLOAD_METHOD
+      value: local
+    - name: EMAIL_ENABLED
+      value: "false"
+
+# One Ingress, both hosts, one certificate (two SANs) — no cert flapping.
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: infrastructure-issuer
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
+    # GrowthBook SDK streaming (SSE): don't buffer, keep long-lived connections open.
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+  hosts:
+    - host: growthbook.morcos.tech
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+    - host: growthbook-api.morcos.tech
+      paths:
+        - path: /
+          pathType: Prefix
+          service: backend
+  tls:
+    - secretName: growthbook-tls
+      hosts:
+        - growthbook.morcos.tech
+        - growthbook-api.morcos.tech

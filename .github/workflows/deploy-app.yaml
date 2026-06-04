@@ -4,6 +4,7 @@ on:
   repository_dispatch:
     types:
       - deploy-booking
+      - deploy-datewithmark
       - deploy-essenteil
       - deploy-eventlane
       - deploy-games

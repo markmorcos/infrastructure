@@ -6,11 +6,11 @@ import (
 	"log"
 )
 
-// seed creates the example Datebloom project (the datewithmark.com
+// seed creates the example datewithmark project (the datewithmark.com
 // Sunset/Midnight/Linen experiment) on first boot, so there is something to look
 // at. It is idempotent: it does nothing once the project exists.
 func (s *Server) seed(ctx context.Context) error {
-	_, err := s.store.GetProject(ctx, "datebloom")
+	_, err := s.store.GetProject(ctx, "datewithmark")
 	if err == nil {
 		return nil
 	}
@@ -18,7 +18,7 @@ func (s *Server) seed(ctx context.Context) error {
 		return err
 	}
 
-	p, _, sdkKey, err := s.provisionProject(ctx, "datebloom", "Datebloom")
+	p, _, sdkKey, err := s.provisionProject(ctx, "datewithmark", "Date with Mark")
 	if err != nil {
 		return err
 	}
@@ -38,6 +38,6 @@ func (s *Server) seed(ctx context.Context) error {
 	if _, err := s.store.CreateExperiment(ctx, exp); err != nil {
 		return err
 	}
-	log.Printf("seeded datebloom project; production SDK key: %s", sdkKey)
+	log.Printf("seeded datewithmark project; production SDK key: %s", sdkKey)
 	return nil
 }

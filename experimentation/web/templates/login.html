@@ -1,0 +1,27 @@
+{{define "login"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · Experimentation</title>
+<style>
+  body { margin:0; font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:#0f1020; color:#e8e8f0; }
+  .box { max-width:340px; margin:14vh auto; padding:28px; background:#1a1b2e; border:1px solid #2a2c45; border-radius:12px; }
+  h1 { font-size:20px; margin-top:0; }
+  label { display:block; font-size:13px; color:#9a9ab5; margin-bottom:12px; }
+  input { width:100%; margin-top:4px; background:#0c0d18; color:#e8e8f0; border:1px solid #2a2c45; border-radius:7px; padding:9px; font:inherit; }
+  button { width:100%; background:#3a3d63; color:#fff; border:0; border-radius:7px; padding:10px; font:inherit; cursor:pointer; }
+  .err { color:#ff8a5c; font-size:14px; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>⚙ Experimentation</h1>
+  {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+  <form method="post" action="/ui/login">
+    <label>Admin token<input type="password" name="token" autofocus></label>
+    <button type="submit">Sign in</button>
+  </form>
+</div>
+</body>
+</html>{{end}}

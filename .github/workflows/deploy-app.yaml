@@ -7,6 +7,7 @@ on:
       - deploy-datewithmark
       - deploy-essenteil
       - deploy-eventlane
+      - deploy-experimentation
       - deploy-games
       - deploy-infrastructure-admin
       - deploy-ma3ady

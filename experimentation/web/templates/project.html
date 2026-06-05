@@ -1,0 +1,68 @@
+{{define "project"}}{{template "head" .}}
+<p><a href="/">← Projects</a></p>
+<h1>{{.Project.Name}} <small>{{.Project.Key}}</small></h1>
+
+<h2>Environments &amp; SDK keys</h2>
+<table>
+  <tr><th>Environment</th><th>SDK key</th></tr>
+  {{range .SDKKeys}}<tr><td>{{.Environment}}</td><td><code>{{.Key}}</code></td></tr>{{end}}
+</table>
+<p class="muted">Clients connect with <code>GET /api/v1/config?key=&lt;sdk key&gt;&amp;device=&lt;id&gt;</code> and report via <code>POST /api/v1/track</code>.</p>
+
+<h2>Feature flags</h2>
+{{range .Features}}
+<div class="card">
+  <strong>{{.Feature.Key}}</strong> <span class="tag">{{.Feature.Type}}</span>
+  <span class="muted">default <code>{{str .Feature.DefaultValue}}</code></span>
+  {{if .Feature.Description}}<div class="muted">{{.Feature.Description}}</div>{{end}}
+  <table>
+    <tr><th>env</th><th>enabled</th><th>value</th><th>rollout</th></tr>
+    {{range .Values}}<tr><td>{{.Environment}}</td><td>{{.Enabled}}</td><td><code>{{str .Value}}</code></td><td>{{.Rollout}}%</td></tr>{{end}}
+  </table>
+  <form method="post" action="/ui/projects/{{$.Project.Key}}/features/{{.Feature.Key}}/values" class="row">
+    <select name="environment">{{range $.Environments}}<option value="{{.Key}}">{{.Key}}</option>{{end}}</select>
+    <label><input type="checkbox" name="enabled"> enabled</label>
+    <input name="value" placeholder="value">
+    <input name="rollout" type="number" min="0" max="100" value="100" title="rollout %" style="width:5em">
+    <button type="submit">Set</button>
+  </form>
+</div>
+{{else}}
+<p class="muted">No feature flags yet.</p>
+{{end}}
+
+<h3>New feature</h3>
+<form method="post" action="/ui/projects/{{.Project.Key}}/features" class="row">
+  <input name="key" placeholder="key" required>
+  <select name="type"><option>boolean</option><option>string</option><option>number</option><option>json</option></select>
+  <input name="default" placeholder="default value">
+  <input name="description" placeholder="description">
+  <button type="submit">Create</button>
+</form>
+
+<h2>Experiments</h2>
+<table>
+  <tr><th>Key</th><th>Status</th><th>Metric</th><th>Variants</th></tr>
+  {{range .Experiments}}
+  <tr>
+    <td><a href="/ui/projects/{{$.Project.Key}}/experiments/{{.Key}}">{{.Key}}</a></td>
+    <td><span class="tag">{{.Status}}</span></td>
+    <td><code>{{.Metric}}</code></td>
+    <td>{{range .Variants}}{{.Key}}({{.Weight}}) {{end}}</td>
+  </tr>
+  {{else}}
+  <tr><td colspan="4" class="muted">No experiments yet.</td></tr>
+  {{end}}
+</table>
+
+<h3>New experiment</h3>
+<form method="post" action="/ui/projects/{{.Project.Key}}/experiments" class="col">
+  <label>key<input name="key" required></label>
+  <label>name<input name="name"></label>
+  <label>metric<input name="metric" placeholder="date_confirmed"></label>
+  <label>control (must be a variant key)<input name="control" placeholder="sunset"></label>
+  <label>status<select name="status"><option>draft</option><option>running</option><option>stopped</option></select></label>
+  <label>variants — one per line, <code>key:weight</code><textarea name="variants" rows="4" placeholder="sunset:33&#10;midnight:33&#10;linen:34"></textarea></label>
+  <button type="submit">Create</button>
+</form>
+{{template "foot" .}}{{end}}

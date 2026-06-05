@@ -1,0 +1,20 @@
+{{define "projects"}}{{template "head" .}}
+<h1>Projects</h1>
+{{if .Projects}}
+<table>
+  <tr><th>Project</th><th>Key</th></tr>
+  {{range .Projects}}
+  <tr><td><a href="/ui/projects/{{.Key}}">{{.Name}}</a></td><td><code>{{.Key}}</code></td></tr>
+  {{end}}
+</table>
+{{else}}
+<p class="muted">No projects yet. Create one below.</p>
+{{end}}
+
+<h3>New project</h3>
+<form method="post" action="/ui/projects" class="row">
+  <input name="key" placeholder="key (a-z0-9-)" required>
+  <input name="name" placeholder="name">
+  <button type="submit">Create</button>
+</form>
+{{template "foot" .}}{{end}}

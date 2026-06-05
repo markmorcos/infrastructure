@@ -1,0 +1,46 @@
+version: 0.6.2
+
+namespace: experimentation
+project: experimentation
+
+services:
+  - name: experimentation
+    image: ghcr.io/markmorcos/infrastructure-experimentation
+    context: experimentation
+    port: 8080
+    env:
+      # Reuses the native Postgres connection string. The secret must exist in
+      # the `experimentation` namespace (created out-of-band, like other repos).
+      - name: DATABASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: database-secrets
+            key: DATABASE_URL
+      # Shared admin token gating the management UI + /api/admin (out-of-band).
+      - name: ADMIN_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: experimentation-secrets
+            key: ADMIN_TOKEN
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 3
+      periodSeconds: 10
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 20
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+    ingress:
+      host: experimentation.morcos.tech
+      path: /
+      pathType: Prefix

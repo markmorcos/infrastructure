@@ -19,7 +19,7 @@ jobs:
           client-payload: |-
             {
               "repository": "markmorcos/infrastructure",
-              "token": "${{ secrets.DEPLOYMENT_TOKEN }}",
+              "token": "${{ secrets.EXPERIMENTATION_DEPLOYMENT_TOKEN }}",
               "version": "${{ github.sha }}",
               "config_file": "experimentation/deployment.yaml"
             }

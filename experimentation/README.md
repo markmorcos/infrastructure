@@ -5,8 +5,8 @@ multi-environment, typed flags with percentage rollout, and n-way (A/B, A/B/C, �
 experiments with frequentist results. One Go binary over Postgres, with a
 server-rendered admin UI and an SDK API for clients.
 
-The Datebloom ([datewithmark.com](https://datewithmark.com)) Sunset/Midnight/Linen
-test is just a **seeded example project** here — nothing is hard-coded to it.
+The Date with Mark ([datewithmark.com](https://datewithmark.com)) Sunset/Midnight/Linen
+test is just a **seeded example project** (`datewithmark`) here — nothing is hard-coded to it.
 
 | | |
 | --- | --- |
@@ -38,7 +38,7 @@ Clients authenticate with an **SDK key**, not the admin token.
 One payload: every evaluated flag + a variant assignment per running experiment.
 ```json
 {
-  "project": "datebloom",
+  "project": "datewithmark",
   "environment": "production",
   "features": { "new_booking_flow": true, "cta_label": "Ask out" },
   "experiments": { "date_flow_variant": { "variant": "midnight" } }
@@ -89,7 +89,7 @@ helm-installs `charts/infrastructure` from [`deployment.yaml`](./deployment.yaml
 - `experimentation-secrets` with key `ADMIN_TOKEN` (e.g. `openssl rand -hex 32`).
 - Cloudflare CNAME `experimentation` → the DDNS anchor.
 
-On first boot the `datebloom` project + `date_flow_variant` experiment are seeded
+On first boot the `datewithmark` project + `date_flow_variant` experiment are seeded
 and the production SDK key is logged.
 
 ## Develop / test

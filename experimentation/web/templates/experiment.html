@@ -34,4 +34,10 @@
   <label>variants — one per line, <code>key:weight</code><textarea name="variants" rows="4">{{variantLines .Experiment.Variants}}</textarea></label>
   <button type="submit">Save</button>
 </form>
+
+<h2>Danger zone</h2>
+<form method="post" action="/ui/projects/{{.Project.Key}}/experiments/{{.Experiment.Key}}/delete"
+      onsubmit="return confirm('Delete experiment {{.Experiment.Key}} and its recorded events? This cannot be undone.')">
+  <button type="submit" class="danger">Delete experiment</button>
+</form>
 {{template "foot" .}}{{end}}

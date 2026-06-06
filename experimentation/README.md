@@ -68,10 +68,21 @@ post("exposure");                 // on load
 
 ## Management
 
-- **Web UI** (`/`, admin token): create projects, environments, typed flags +
-  per-env values/rollout, and experiments; view per-experiment results.
-- **JSON API** (`/api/admin/...`, `Authorization: Bearer <ADMIN_TOKEN>`): same
-  operations — projects, environments, features + values, experiments, results.
+- **Web UI** (`/`, admin token): full CRUD — create, **rename and delete**
+  projects, environments, typed flags (+ per-env values/rollout, which can be
+  unset back to default) and experiments; view per-experiment results.
+- **JSON API** (`/api/admin/...`, `Authorization: Bearer <ADMIN_TOKEN>`): the
+  same operations. Create with `POST`, edit with `PATCH`/`PUT`, remove with
+  `DELETE`:
+  - `PATCH`/`DELETE /api/admin/projects/{project}`
+  - `PATCH`/`DELETE /api/admin/projects/{project}/environments/{env}`
+  - `PATCH`/`DELETE /api/admin/projects/{project}/features/{feature}`
+  - `DELETE /api/admin/projects/{project}/features/{feature}/values/{env}` (unset)
+  - `DELETE /api/admin/projects/{project}/experiments/{exp}`
+
+Deletes cascade to everything beneath the resource (a project removes its
+environments, SDK keys, flags, experiments and recorded events); deleting an
+experiment or environment also clears its events so a reused key starts clean.
 
 Results use a pooled **two-proportion z-test** of each non-control variant vs the
 control (significant at p < 0.05), over distinct devices.

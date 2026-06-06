@@ -1,6 +1,17 @@
 {{define "project"}}{{template "head" .}}
 <p><a href="/">← Projects</a></p>
 <h1>{{.Project.Name}} <small>{{.Project.Key}}</small></h1>
+<details>
+  <summary>Rename / delete project</summary>
+  <form method="post" action="/ui/projects/{{.Project.Key}}/update" class="row">
+    <input name="name" value="{{.Project.Name}}" placeholder="project name">
+    <button type="submit">Rename</button>
+  </form>
+  <form method="post" action="/ui/projects/{{.Project.Key}}/delete" class="row"
+        onsubmit="return confirm('Delete project {{.Project.Key}} and ALL its environments, flags and experiments? This cannot be undone.')">
+    <button type="submit" class="danger">Delete project</button>
+  </form>
+</details>
 
 <h2>Environments &amp; SDK keys</h2>
 <table>
@@ -9,23 +20,60 @@
 </table>
 <p class="muted">Clients connect with <code>GET /api/v1/config?key=&lt;sdk key&gt;&amp;device=&lt;id&gt;</code> and report via <code>POST /api/v1/track</code>.</p>
 
+{{range .Environments}}
+<div class="card">
+  <strong>{{.Name}}</strong> <span class="muted">{{.Key}}</span>
+  <form method="post" action="/ui/projects/{{$.Project.Key}}/environments/{{.Key}}/update" class="row">
+    <input name="name" value="{{.Name}}" placeholder="name">
+    <button type="submit">Rename</button>
+  </form>
+  <form method="post" action="/ui/projects/{{$.Project.Key}}/environments/{{.Key}}/delete" class="row"
+        onsubmit="return confirm('Delete environment {{.Key}}? Its SDK key and per-environment flag values are removed.')">
+    <button type="submit" class="danger">Delete environment</button>
+  </form>
+</div>
+{{end}}
+<h3>New environment</h3>
+<form method="post" action="/ui/projects/{{.Project.Key}}/environments" class="row">
+  <input name="key" placeholder="key" required>
+  <input name="name" placeholder="name">
+  <button type="submit">Create</button>
+</form>
+
 <h2>Feature flags</h2>
 {{range .Features}}
+{{$fk := .Feature.Key}}
 <div class="card">
-  <strong>{{.Feature.Key}}</strong> <span class="tag">{{.Feature.Type}}</span>
+  <strong>{{$fk}}</strong> <span class="tag">{{.Feature.Type}}</span>
   <span class="muted">default <code>{{str .Feature.DefaultValue}}</code></span>
   {{if .Feature.Description}}<div class="muted">{{.Feature.Description}}</div>{{end}}
   <table>
-    <tr><th>env</th><th>enabled</th><th>value</th><th>rollout</th></tr>
-    {{range .Values}}<tr><td>{{.Environment}}</td><td>{{.Enabled}}</td><td><code>{{str .Value}}</code></td><td>{{.Rollout}}%</td></tr>{{end}}
+    <tr><th>env</th><th>enabled</th><th>value</th><th>rollout</th><th></th></tr>
+    {{range .Values}}<tr>
+      <td>{{.Environment}}</td><td>{{.Enabled}}</td><td><code>{{str .Value}}</code></td><td>{{.Rollout}}%</td>
+      <td><form method="post" action="/ui/projects/{{$.Project.Key}}/features/{{$fk}}/values/{{.Environment}}/delete"
+            onsubmit="return confirm('Unset {{$fk}} in {{.Environment}}? It reverts to the default.')"><button class="link danger" type="submit">unset</button></form></td>
+    </tr>{{end}}
   </table>
-  <form method="post" action="/ui/projects/{{$.Project.Key}}/features/{{.Feature.Key}}/values" class="row">
+  <form method="post" action="/ui/projects/{{$.Project.Key}}/features/{{$fk}}/values" class="row">
     <select name="environment">{{range $.Environments}}<option value="{{.Key}}">{{.Key}}</option>{{end}}</select>
     <label><input type="checkbox" name="enabled"> enabled</label>
     <input name="value" placeholder="value">
     <input name="rollout" type="number" min="0" max="100" value="100" title="rollout %" style="width:5em">
     <button type="submit">Set</button>
   </form>
+  <details>
+    <summary>Edit / delete flag</summary>
+    <form method="post" action="/ui/projects/{{$.Project.Key}}/features/{{$fk}}/update" class="row">
+      <input name="default" value="{{str .Feature.DefaultValue}}" placeholder="default value">
+      <input name="description" value="{{.Feature.Description}}" placeholder="description">
+      <button type="submit">Save</button>
+    </form>
+    <form method="post" action="/ui/projects/{{$.Project.Key}}/features/{{$fk}}/delete" class="row"
+          onsubmit="return confirm('Delete feature {{$fk}} and all its environment values?')">
+      <button type="submit" class="danger">Delete flag</button>
+    </form>
+  </details>
 </div>
 {{else}}
 <p class="muted">No feature flags yet.</p>
@@ -42,16 +90,18 @@
 
 <h2>Experiments</h2>
 <table>
-  <tr><th>Key</th><th>Status</th><th>Metric</th><th>Variants</th></tr>
+  <tr><th>Key</th><th>Status</th><th>Metric</th><th>Variants</th><th></th></tr>
   {{range .Experiments}}
   <tr>
     <td><a href="/ui/projects/{{$.Project.Key}}/experiments/{{.Key}}">{{.Key}}</a></td>
     <td><span class="tag">{{.Status}}</span></td>
     <td><code>{{.Metric}}</code></td>
     <td>{{range .Variants}}{{.Key}}({{.Weight}}) {{end}}</td>
+    <td><form method="post" action="/ui/projects/{{$.Project.Key}}/experiments/{{.Key}}/delete"
+          onsubmit="return confirm('Delete experiment {{.Key}} and its recorded events?')"><button class="link danger" type="submit">delete</button></form></td>
   </tr>
   {{else}}
-  <tr><td colspan="4" class="muted">No experiments yet.</td></tr>
+  <tr><td colspan="5" class="muted">No experiments yet.</td></tr>
   {{end}}
 </table>
 

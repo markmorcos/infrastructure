@@ -161,6 +161,105 @@ func (s *Server) uiCreateProject(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, "/ui/projects/"+key)
 }
 
+func (s *Server) uiUpdateProject(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	p, err := s.store.GetProject(ctx, r.PathValue("project"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	_ = r.ParseForm()
+	name := strings.TrimSpace(r.FormValue("name"))
+	if name == "" {
+		name = p.Key
+	}
+	if err := s.store.UpdateProject(ctx, p.ID, name); err != nil {
+		log.Printf("ui update project: %v", err)
+	}
+	redirect(w, r, "/ui/projects/"+p.Key)
+}
+
+func (s *Server) uiDeleteProject(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	p, err := s.store.GetProject(ctx, r.PathValue("project"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := s.store.DeleteProject(ctx, p); err != nil {
+		log.Printf("ui delete project: %v", err)
+		redirect(w, r, "/ui/projects/"+p.Key)
+		return
+	}
+	redirect(w, r, "/")
+}
+
+// ---- environments ----
+
+func (s *Server) uiCreateEnv(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	p, err := s.store.GetProject(ctx, r.PathValue("project"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	_ = r.ParseForm()
+	key := strings.TrimSpace(r.FormValue("key"))
+	name := strings.TrimSpace(r.FormValue("name"))
+	if !validKey(key) {
+		redirect(w, r, "/ui/projects/"+p.Key)
+		return
+	}
+	if name == "" {
+		name = key
+	}
+	if _, _, err := s.provisionEnvironment(ctx, p.ID, key, name); err != nil {
+		log.Printf("ui create env: %v", err)
+	}
+	redirect(w, r, "/ui/projects/"+p.Key)
+}
+
+func (s *Server) uiUpdateEnv(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	p, err := s.store.GetProject(ctx, r.PathValue("project"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	env, err := s.store.GetEnvironment(ctx, p.ID, r.PathValue("env"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	_ = r.ParseForm()
+	name := strings.TrimSpace(r.FormValue("name"))
+	if name == "" {
+		name = env.Key
+	}
+	if err := s.store.UpdateEnvironment(ctx, env.ID, name); err != nil {
+		log.Printf("ui update env: %v", err)
+	}
+	redirect(w, r, "/ui/projects/"+p.Key)
+}
+
+func (s *Server) uiDeleteEnv(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	p, err := s.store.GetProject(ctx, r.PathValue("project"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	env, err := s.store.GetEnvironment(ctx, p.ID, r.PathValue("env"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := s.store.DeleteEnvironment(ctx, env); err != nil {
+		log.Printf("ui delete env: %v", err)
+	}
+	redirect(w, r, "/ui/projects/"+p.Key)
+}
+
 // featureView pairs a feature with its per-environment values for display.
 type featureView struct {
 	Feature Feature
@@ -258,6 +357,70 @@ func (s *Server) uiSetFeatureValue(w http.ResponseWriter, r *http.Request) {
 	redirect(w, r, "/ui/projects/"+p.Key)
 }
 
+func (s *Server) uiUpdateFeature(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	p, err := s.store.GetProject(ctx, r.PathValue("project"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	feat, err := s.store.GetFeature(ctx, p.ID, r.PathValue("feature"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	_ = r.ParseForm()
+	def, verr := valueFromForm(feat.Type, r.FormValue("default"))
+	if verr != nil {
+		def = feat.DefaultValue
+	}
+	if err := s.store.UpdateFeature(ctx, feat.ID, strings.TrimSpace(r.FormValue("description")), def); err != nil {
+		log.Printf("ui update feature: %v", err)
+	}
+	redirect(w, r, "/ui/projects/"+p.Key)
+}
+
+func (s *Server) uiDeleteFeature(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	p, err := s.store.GetProject(ctx, r.PathValue("project"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	feat, err := s.store.GetFeature(ctx, p.ID, r.PathValue("feature"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := s.store.DeleteFeature(ctx, feat.ID); err != nil {
+		log.Printf("ui delete feature: %v", err)
+	}
+	redirect(w, r, "/ui/projects/"+p.Key)
+}
+
+func (s *Server) uiDeleteFeatureValue(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	p, err := s.store.GetProject(ctx, r.PathValue("project"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	feat, err := s.store.GetFeature(ctx, p.ID, r.PathValue("feature"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	env, err := s.store.GetEnvironment(ctx, p.ID, r.PathValue("env"))
+	if err != nil {
+		redirect(w, r, "/ui/projects/"+p.Key)
+		return
+	}
+	if err := s.store.DeleteFeatureValue(ctx, feat.ID, env.ID); err != nil {
+		log.Printf("ui delete feature value: %v", err)
+	}
+	redirect(w, r, "/ui/projects/"+p.Key)
+}
+
 func (s *Server) uiCreateExperiment(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	p, err := s.store.GetProject(ctx, r.PathValue("project"))
@@ -325,6 +488,24 @@ func (s *Server) uiUpdateExperiment(w http.ResponseWriter, r *http.Request) {
 		log.Printf("ui update experiment: %v", err)
 	}
 	redirect(w, r, "/ui/projects/"+p.Key+"/experiments/"+exp.Key)
+}
+
+func (s *Server) uiDeleteExperiment(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	p, err := s.store.GetProject(ctx, r.PathValue("project"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	exp, err := s.store.GetExperiment(ctx, p.ID, r.PathValue("exp"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if err := s.store.DeleteExperiment(ctx, exp); err != nil {
+		log.Printf("ui delete experiment: %v", err)
+	}
+	redirect(w, r, "/ui/projects/"+p.Key)
 }
 
 func (s *Server) uiExperiment(w http.ResponseWriter, r *http.Request) {

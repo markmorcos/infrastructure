@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"html/template"
 	"math"
 	"strconv"
 	"testing"
@@ -138,6 +140,70 @@ func TestParseVariants(t *testing.T) {
 	}
 	if vs[2].Key != "linen" || vs[2].Weight != 34 {
 		t.Errorf("third variant = %+v", vs[2])
+	}
+}
+
+// testTemplates parses the embedded templates the same way main() does, failing
+// the test on any parse error.
+func testTemplates(t *testing.T) *template.Template {
+	t.Helper()
+	tmpl, err := template.New("").Funcs(uiFuncs()).ParseFS(templatesFS, "web/templates/*.html")
+	if err != nil {
+		t.Fatalf("parse templates: %v", err)
+	}
+	return tmpl
+}
+
+// TestRoutesRegister builds the full mux to catch malformed/conflicting route
+// patterns (Go's ServeMux panics on a bad or duplicate pattern at registration).
+func TestRoutesRegister(t *testing.T) {
+	srv := &Server{store: &Store{}, auth: authConfig{token: "x"}, tmpl: testTemplates(t)}
+	if srv.routes() == nil {
+		t.Fatal("routes() returned nil")
+	}
+}
+
+// TestRenderTemplates executes every page template with representative data so
+// undefined fields, bad ranges, or renamed actions fail loudly here rather than
+// at request time.
+func TestRenderTemplates(t *testing.T) {
+	srv := &Server{tmpl: testTemplates(t)}
+	proj := Project{Key: "p", Name: "Project P"}
+
+	projectData := map[string]any{
+		"Title":        proj.Name,
+		"Project":      proj,
+		"Environments": []Environment{{Key: "production", Name: "Production"}},
+		"SDKKeys":      []SDKKey{{Key: "sdk_abc", Environment: "production"}},
+		"Features": []featureView{{
+			Feature: Feature{Key: "flag_a", Type: featureBoolean, Description: "desc", DefaultValue: json.RawMessage("false")},
+			Values:  []FeatureValue{{Environment: "production", Enabled: true, Value: json.RawMessage("true"), Rollout: 100}},
+		}},
+		"Experiments": []Experiment{{Key: "exp_a", Status: statusRunning, Metric: "m", Variants: []Variant{{Key: "a", Weight: 1}}}},
+	}
+
+	exp := Experiment{Key: "exp_a", Status: statusRunning, Metric: "m", Control: "a", Variants: []Variant{{Key: "a", Weight: 1}, {Key: "b", Weight: 1}}}
+	experimentData := map[string]any{
+		"Title":      exp.Key,
+		"Project":    proj,
+		"Experiment": exp,
+		"Results":    buildResults(exp, exp.Metric, map[string]VariantStat{"a": {Exposures: 10, Conversions: 1}, "b": {Exposures: 10, Conversions: 3}}),
+	}
+
+	cases := []struct {
+		name string
+		data map[string]any
+	}{
+		{"login", map[string]any{"Title": "Sign in"}},
+		{"projects", map[string]any{"Title": "Projects", "Projects": []Project{proj}}},
+		{"project", projectData},
+		{"experiment", experimentData},
+	}
+	for _, c := range cases {
+		var buf bytes.Buffer
+		if err := srv.tmpl.ExecuteTemplate(&buf, c.name, c.data); err != nil {
+			t.Errorf("render %q: %v", c.name, err)
+		}
 	}
 }
 

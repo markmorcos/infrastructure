@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strings"
 )
 
 var keyRe = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,63}$`)
@@ -55,6 +56,52 @@ func (s *Server) projectFromPath(w http.ResponseWriter, r *http.Request) (Projec
 		return p, false
 	}
 	return p, true
+}
+
+// envFromPath resolves the {env} path value within a project, writing a
+// 404/500 and returning ok=false when it cannot.
+func (s *Server) envFromPath(w http.ResponseWriter, r *http.Request, projectID string) (Environment, bool) {
+	env, err := s.store.GetEnvironment(r.Context(), projectID, r.PathValue("env"))
+	if errors.Is(err, errNotFound) {
+		http.Error(w, "environment not found", http.StatusNotFound)
+		return env, false
+	}
+	if err != nil {
+		log.Printf("get environment: %v", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return env, false
+	}
+	return env, true
+}
+
+// featureFromPath resolves the {feature} path value within a project.
+func (s *Server) featureFromPath(w http.ResponseWriter, r *http.Request, projectID string) (Feature, bool) {
+	feat, err := s.store.GetFeature(r.Context(), projectID, r.PathValue("feature"))
+	if errors.Is(err, errNotFound) {
+		http.Error(w, "feature not found", http.StatusNotFound)
+		return feat, false
+	}
+	if err != nil {
+		log.Printf("get feature: %v", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return feat, false
+	}
+	return feat, true
+}
+
+// experimentFromPath resolves the {exp} path value within a project.
+func (s *Server) experimentFromPath(w http.ResponseWriter, r *http.Request, projectID string) (Experiment, bool) {
+	exp, err := s.store.GetExperiment(r.Context(), projectID, r.PathValue("exp"))
+	if errors.Is(err, errNotFound) {
+		http.Error(w, "experiment not found", http.StatusNotFound)
+		return exp, false
+	}
+	if err != nil {
+		log.Printf("get experiment: %v", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return exp, false
+	}
+	return exp, true
 }
 
 func (s *Server) apiListProjects(w http.ResponseWriter, r *http.Request) {
@@ -111,6 +158,42 @@ func (s *Server) apiGetProject(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) apiUpdateProject(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.projectFromPath(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	body.Name = strings.TrimSpace(body.Name)
+	if body.Name == "" {
+		body.Name = p.Key
+	}
+	if err := s.store.UpdateProject(r.Context(), p.ID, body.Name); err != nil {
+		http.Error(w, "could not update project", http.StatusInternalServerError)
+		return
+	}
+	p.Name = body.Name
+	writeJSON(w, http.StatusOK, p)
+}
+
+func (s *Server) apiDeleteProject(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.projectFromPath(w, r)
+	if !ok {
+		return
+	}
+	if err := s.store.DeleteProject(r.Context(), p); err != nil {
+		http.Error(w, "could not delete project", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) apiCreateEnv(w http.ResponseWriter, r *http.Request) {
 	p, ok := s.projectFromPath(w, r)
 	if !ok {
@@ -134,6 +217,50 @@ func (s *Server) apiCreateEnv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"environment": env, "sdkKey": sdkKey})
+}
+
+func (s *Server) apiUpdateEnv(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.projectFromPath(w, r)
+	if !ok {
+		return
+	}
+	env, ok := s.envFromPath(w, r, p.ID)
+	if !ok {
+		return
+	}
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	body.Name = strings.TrimSpace(body.Name)
+	if body.Name == "" {
+		body.Name = env.Key
+	}
+	if err := s.store.UpdateEnvironment(r.Context(), env.ID, body.Name); err != nil {
+		http.Error(w, "could not update environment", http.StatusInternalServerError)
+		return
+	}
+	env.Name = body.Name
+	writeJSON(w, http.StatusOK, env)
+}
+
+func (s *Server) apiDeleteEnv(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.projectFromPath(w, r)
+	if !ok {
+		return
+	}
+	env, ok := s.envFromPath(w, r, p.ID)
+	if !ok {
+		return
+	}
+	if err := s.store.DeleteEnvironment(r.Context(), env); err != nil {
+		http.Error(w, "could not delete environment", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) apiCreateFeature(w http.ResponseWriter, r *http.Request) {
@@ -166,22 +293,84 @@ func (s *Server) apiCreateFeature(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, f)
 }
 
+func (s *Server) apiUpdateFeature(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.projectFromPath(w, r)
+	if !ok {
+		return
+	}
+	feat, ok := s.featureFromPath(w, r, p.ID)
+	if !ok {
+		return
+	}
+	var body struct {
+		Description string          `json:"description"`
+		Default     json.RawMessage `json:"default"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if len(body.Default) == 0 {
+		body.Default = feat.DefaultValue
+	}
+	if err := s.store.UpdateFeature(r.Context(), feat.ID, body.Description, body.Default); err != nil {
+		http.Error(w, "could not update feature", http.StatusInternalServerError)
+		return
+	}
+	feat.Description, feat.DefaultValue = body.Description, body.Default
+	writeJSON(w, http.StatusOK, feat)
+}
+
+func (s *Server) apiDeleteFeature(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.projectFromPath(w, r)
+	if !ok {
+		return
+	}
+	feat, ok := s.featureFromPath(w, r, p.ID)
+	if !ok {
+		return
+	}
+	if err := s.store.DeleteFeature(r.Context(), feat.ID); err != nil {
+		http.Error(w, "could not delete feature", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) apiDeleteFeatureValue(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.projectFromPath(w, r)
+	if !ok {
+		return
+	}
+	feat, ok := s.featureFromPath(w, r, p.ID)
+	if !ok {
+		return
+	}
+	env, ok := s.envFromPath(w, r, p.ID)
+	if !ok {
+		return
+	}
+	if err := s.store.DeleteFeatureValue(r.Context(), feat.ID, env.ID); err != nil {
+		http.Error(w, "could not delete feature value", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) apiSetFeatureValue(w http.ResponseWriter, r *http.Request) {
 	p, ok := s.projectFromPath(w, r)
 	if !ok {
 		return
 	}
+	feat, ok := s.featureFromPath(w, r, p.ID)
+	if !ok {
+		return
+	}
+	env, ok := s.envFromPath(w, r, p.ID)
+	if !ok {
+		return
+	}
 	ctx := r.Context()
-	feat, err := s.store.GetFeature(ctx, p.ID, r.PathValue("feature"))
-	if errors.Is(err, errNotFound) {
-		http.Error(w, "feature not found", http.StatusNotFound)
-		return
-	}
-	env, err := s.store.GetEnvironment(ctx, p.ID, r.PathValue("env"))
-	if errors.Is(err, errNotFound) {
-		http.Error(w, "environment not found", http.StatusNotFound)
-		return
-	}
 	var body struct {
 		Enabled bool            `json:"enabled"`
 		Value   json.RawMessage `json:"value"`
@@ -280,12 +469,11 @@ func (s *Server) apiUpdateExperiment(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	ctx := r.Context()
-	exp, err := s.store.GetExperiment(ctx, p.ID, r.PathValue("exp"))
-	if errors.Is(err, errNotFound) {
-		http.Error(w, "experiment not found", http.StatusNotFound)
+	exp, ok := s.experimentFromPath(w, r, p.ID)
+	if !ok {
 		return
 	}
+	ctx := r.Context()
 	var body experimentBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -306,17 +494,32 @@ func (s *Server) apiUpdateExperiment(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, exp)
 }
 
+func (s *Server) apiDeleteExperiment(w http.ResponseWriter, r *http.Request) {
+	p, ok := s.projectFromPath(w, r)
+	if !ok {
+		return
+	}
+	exp, ok := s.experimentFromPath(w, r, p.ID)
+	if !ok {
+		return
+	}
+	if err := s.store.DeleteExperiment(r.Context(), exp); err != nil {
+		http.Error(w, "could not delete experiment", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) apiResults(w http.ResponseWriter, r *http.Request) {
 	p, ok := s.projectFromPath(w, r)
 	if !ok {
 		return
 	}
-	ctx := r.Context()
-	exp, err := s.store.GetExperiment(ctx, p.ID, r.PathValue("exp"))
-	if errors.Is(err, errNotFound) {
-		http.Error(w, "experiment not found", http.StatusNotFound)
+	exp, ok := s.experimentFromPath(w, r, p.ID)
+	if !ok {
 		return
 	}
+	ctx := r.Context()
 	envID := ""
 	if envKey := r.URL.Query().Get("environment"); envKey != "" {
 		env, err := s.store.GetEnvironment(ctx, p.ID, envKey)

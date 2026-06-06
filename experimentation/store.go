@@ -50,6 +50,29 @@ func (s *Store) GetProject(ctx context.Context, key string) (Project, error) {
 	return p, err
 }
 
+func (s *Store) UpdateProject(ctx context.Context, id, name string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE projects SET name=$2 WHERE id=$1`, id, name)
+	return err
+}
+
+// DeleteProject removes a project and everything under it. The schema cascades
+// environments, sdk_keys, features, feature_values, experiments and variants;
+// experiment_events have no foreign key, so they are cleared explicitly.
+func (s *Store) DeleteProject(ctx context.Context, p Project) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM experiment_events WHERE project_id=$1`, p.ID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM projects WHERE id=$1`, p.ID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (s *Store) ListProjects(ctx context.Context) ([]Project, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT id, key, name, created_at FROM projects ORDER BY created_at`)
@@ -94,6 +117,28 @@ func (s *Store) ListEnvironments(ctx context.Context, projectID string) ([]Envir
 		out = append(out, e)
 	}
 	return out, rows.Err()
+}
+
+func (s *Store) UpdateEnvironment(ctx context.Context, id, name string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE environments SET name=$2 WHERE id=$1`, id, name)
+	return err
+}
+
+// DeleteEnvironment removes an environment along with its SDK keys and flag
+// values (cascaded by the schema) and its recorded events (no foreign key).
+func (s *Store) DeleteEnvironment(ctx context.Context, env Environment) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM experiment_events WHERE environment_id=$1`, env.ID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM environments WHERE id=$1`, env.ID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (s *Store) GetEnvironment(ctx context.Context, projectID, key string) (Environment, error) {
@@ -204,6 +249,29 @@ func (s *Store) ListFeatures(ctx context.Context, projectID string) ([]Feature, 
 		out = append(out, f)
 	}
 	return out, rows.Err()
+}
+
+// UpdateFeature edits a feature's description and default value. The type and
+// key are immutable (changing the type would invalidate stored values).
+func (s *Store) UpdateFeature(ctx context.Context, id, desc string, def json.RawMessage) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE features SET description=$2, default_value=$3 WHERE id=$1`,
+		id, desc, []byte(def))
+	return err
+}
+
+// DeleteFeature removes a feature and its per-environment values (cascaded).
+func (s *Store) DeleteFeature(ctx context.Context, id string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM features WHERE id=$1`, id)
+	return err
+}
+
+// DeleteFeatureValue unsets a feature in one environment, reverting it to the
+// feature's default for that environment.
+func (s *Store) DeleteFeatureValue(ctx context.Context, featureID, envID string) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM feature_values WHERE feature_id=$1 AND environment_id=$2`, featureID, envID)
+	return err
 }
 
 func (s *Store) UpsertFeatureValue(ctx context.Context, featureID, envID string, enabled bool, value json.RawMessage, rollout int) error {
@@ -330,6 +398,25 @@ func (s *Store) UpdateExperiment(ctx context.Context, e Experiment) error {
 			newID(), e.ID, v.Key, v.Weight, i); err != nil {
 			return err
 		}
+	}
+	return tx.Commit()
+}
+
+// DeleteExperiment removes an experiment and its variants (cascaded). Its
+// events are keyed by experiment_key, so they are cleared too — otherwise a new
+// experiment reusing the key would inherit the old results.
+func (s *Store) DeleteExperiment(ctx context.Context, e Experiment) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM experiment_events WHERE project_id=$1 AND experiment_key=$2`, e.ProjectID, e.Key); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM experiments WHERE id=$1`, e.ID); err != nil {
+		return err
 	}
 	return tx.Commit()
 }

@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 )
@@ -45,9 +46,18 @@ func (s *Server) render(w http.ResponseWriter, name string, data map[string]any)
 	_, _ = buf.WriteTo(w)
 }
 
-func redirect(w http.ResponseWriter, r *http.Request, url string) {
-	http.Redirect(w, r, url, http.StatusSeeOther)
+func redirect(w http.ResponseWriter, r *http.Request, target string) {
+	http.Redirect(w, r, target, http.StatusSeeOther)
 }
+
+// redirectErr sends the user back to a page with a human-readable error in the
+// query string, which the page handler surfaces as a banner. Keeping the message
+// in the URL avoids any server-side flash/session state.
+func redirectErr(w http.ResponseWriter, r *http.Request, path, msg string) {
+	http.Redirect(w, r, path+"?err="+url.QueryEscape(msg), http.StatusSeeOther)
+}
+
+const badKeyMsg = "key must be lowercase letters, numbers, - or _ (e.g. my-project)"
 
 // valueFromForm builds a typed JSON value from a raw form string.
 func valueFromForm(typ, raw string) (json.RawMessage, error) {
@@ -139,7 +149,7 @@ func (s *Server) uiProjects(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	s.render(w, "projects", map[string]any{"Title": "Projects", "Projects": projects})
+	s.render(w, "projects", map[string]any{"Title": "Projects", "Projects": projects, "Error": r.URL.Query().Get("err")})
 }
 
 func (s *Server) uiCreateProject(w http.ResponseWriter, r *http.Request) {
@@ -147,7 +157,7 @@ func (s *Server) uiCreateProject(w http.ResponseWriter, r *http.Request) {
 	key := strings.TrimSpace(r.FormValue("key"))
 	name := strings.TrimSpace(r.FormValue("name"))
 	if !validKey(key) {
-		redirect(w, r, "/")
+		redirectErr(w, r, "/", badKeyMsg)
 		return
 	}
 	if name == "" {
@@ -155,7 +165,7 @@ func (s *Server) uiCreateProject(w http.ResponseWriter, r *http.Request) {
 	}
 	if _, _, _, err := s.provisionProject(r.Context(), key, name); err != nil {
 		log.Printf("ui create project: %v", err)
-		redirect(w, r, "/")
+		redirectErr(w, r, "/", "could not create project — key \""+key+"\" may already exist")
 		return
 	}
 	redirect(w, r, "/ui/projects/"+key)
@@ -207,7 +217,7 @@ func (s *Server) uiCreateEnv(w http.ResponseWriter, r *http.Request) {
 	key := strings.TrimSpace(r.FormValue("key"))
 	name := strings.TrimSpace(r.FormValue("name"))
 	if !validKey(key) {
-		redirect(w, r, "/ui/projects/"+p.Key)
+		redirectErr(w, r, "/ui/projects/"+p.Key, badKeyMsg)
 		return
 	}
 	if name == "" {
@@ -215,6 +225,8 @@ func (s *Server) uiCreateEnv(w http.ResponseWriter, r *http.Request) {
 	}
 	if _, _, err := s.provisionEnvironment(ctx, p.ID, key, name); err != nil {
 		log.Printf("ui create env: %v", err)
+		redirectErr(w, r, "/ui/projects/"+p.Key, "could not create environment — key \""+key+"\" may already exist")
+		return
 	}
 	redirect(w, r, "/ui/projects/"+p.Key)
 }
@@ -295,6 +307,7 @@ func (s *Server) uiProject(w http.ResponseWriter, r *http.Request) {
 		"SDKKeys":      keys,
 		"Features":     views,
 		"Experiments":  exps,
+		"Error":        r.URL.Query().Get("err"),
 	})
 }
 
@@ -308,8 +321,12 @@ func (s *Server) uiCreateFeature(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
 	key := strings.TrimSpace(r.FormValue("key"))
 	typ := r.FormValue("type")
-	if !validKey(key) || !validFeatureType(typ) {
-		redirect(w, r, "/ui/projects/"+p.Key)
+	if !validKey(key) {
+		redirectErr(w, r, "/ui/projects/"+p.Key, badKeyMsg)
+		return
+	}
+	if !validFeatureType(typ) {
+		redirectErr(w, r, "/ui/projects/"+p.Key, "type must be boolean, string, number or json")
 		return
 	}
 	def, verr := valueFromForm(typ, r.FormValue("default"))
@@ -318,6 +335,8 @@ func (s *Server) uiCreateFeature(w http.ResponseWriter, r *http.Request) {
 	}
 	if _, err := s.store.CreateFeature(ctx, p.ID, key, typ, strings.TrimSpace(r.FormValue("description")), def); err != nil {
 		log.Printf("ui create feature: %v", err)
+		redirectErr(w, r, "/ui/projects/"+p.Key, "could not create feature — key \""+key+"\" may already exist")
+		return
 	}
 	redirect(w, r, "/ui/projects/"+p.Key)
 }
@@ -337,7 +356,7 @@ func (s *Server) uiSetFeatureValue(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
 	env, err := s.store.GetEnvironment(ctx, p.ID, r.FormValue("environment"))
 	if err != nil {
-		redirect(w, r, "/ui/projects/"+p.Key)
+		redirectErr(w, r, "/ui/projects/"+p.Key, "unknown environment")
 		return
 	}
 	value, verr := valueFromForm(feat.Type, r.FormValue("value"))
@@ -442,17 +461,16 @@ func (s *Server) uiCreateExperiment(w http.ResponseWriter, r *http.Request) {
 		exp.Status = statusDraft
 	}
 	if !validKey(exp.Key) {
-		redirect(w, r, "/ui/projects/"+p.Key)
+		redirectErr(w, r, "/ui/projects/"+p.Key, badKeyMsg)
 		return
 	}
 	if msg, ok := validateExperiment(experimentBody{Name: exp.Name, Status: exp.Status, Metric: exp.Metric, Control: exp.Control, Variants: exp.Variants}); !ok {
-		log.Printf("ui create experiment: %s", msg)
-		redirect(w, r, "/ui/projects/"+p.Key)
+		redirectErr(w, r, "/ui/projects/"+p.Key, msg)
 		return
 	}
 	if _, err := s.store.CreateExperiment(ctx, exp); err != nil {
 		log.Printf("ui create experiment: %v", err)
-		redirect(w, r, "/ui/projects/"+p.Key)
+		redirectErr(w, r, "/ui/projects/"+p.Key, "could not create experiment — key \""+exp.Key+"\" may already exist")
 		return
 	}
 	redirect(w, r, "/ui/projects/"+p.Key+"/experiments/"+exp.Key)
@@ -480,8 +498,7 @@ func (s *Server) uiUpdateExperiment(w http.ResponseWriter, r *http.Request) {
 		exp.Status = statusDraft
 	}
 	if msg, ok := validateExperiment(experimentBody{Name: exp.Name, Status: exp.Status, Metric: exp.Metric, Control: exp.Control, Variants: exp.Variants}); !ok {
-		log.Printf("ui update experiment: %s", msg)
-		redirect(w, r, "/ui/projects/"+p.Key+"/experiments/"+exp.Key)
+		redirectErr(w, r, "/ui/projects/"+p.Key+"/experiments/"+exp.Key, msg)
 		return
 	}
 	if err := s.store.UpdateExperiment(ctx, exp); err != nil {
@@ -534,5 +551,6 @@ func (s *Server) uiExperiment(w http.ResponseWriter, r *http.Request) {
 		"Project":    p,
 		"Experiment": exp,
 		"Results":    buildResults(exp, exp.Metric, stats),
+		"Error":      r.URL.Query().Get("err"),
 	})
 }

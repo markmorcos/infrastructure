@@ -107,6 +107,14 @@ and the production SDK key is logged.
 
 ```bash
 cd experimentation
-go test ./...          # assignment, rollout, flag eval, z-test, form parsing, auth
+go test ./...                 # unit: assignment, rollout, flag eval, z-test, forms, auth, templates, routes
+go test -tags e2e ./...       # end-to-end: full CRUD + SDK happy path against a real Postgres
 DATABASE_URL=postgres://localhost/exp?sslmode=disable ADMIN_TOKEN=dev PORT=8090 go run .
 ```
+
+The `e2e` suite boots a throwaway Postgres itself (locating the installed
+`initdb`/`postgres`; dropping to the `postgres` system user when run as root) and
+drives the admin JSON API, the server-rendered UI forms and the public SDK
+endpoints through create → use → update → delete for every resource. It skips
+when no Postgres binaries are found; point it at an existing database instead
+with `TEST_DATABASE_URL=postgres://… go test -tags e2e ./...`.

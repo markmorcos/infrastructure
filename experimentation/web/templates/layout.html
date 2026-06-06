@@ -25,6 +25,7 @@
   .tag { font-size:11px; padding:1px 7px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
   .sig { font-size:12px; padding:2px 8px; border-radius:999px; background:rgba(74,222,128,.15); color:var(--good); }
   .err { color:var(--accent); }
+  .banner { background:rgba(255,138,92,.12); border:1px solid var(--accent); color:var(--accent); padding:10px 14px; border-radius:8px; margin-bottom:18px; font-size:14px; }
   input,select,textarea { background:#0c0d18; color:var(--text); border:1px solid var(--line); border-radius:7px; padding:7px 9px; font:inherit; }
   textarea { width:100%; font-family:ui-monospace,monospace; }
   button { background:#3a3d63; color:#fff; border:0; border-radius:7px; padding:8px 14px; font:inherit; cursor:pointer; }
@@ -45,6 +46,6 @@
   <a href="/" class="brand">⚙ Experimentation</a>
   <form method="post" action="/ui/logout"><button class="link">Sign out</button></form>
 </header>
-<main class="wrap">{{end}}
+<main class="wrap">{{if .Error}}<div class="banner">{{.Error}}</div>{{end}}{{end}}
 
 {{define "foot"}}</main></body></html>{{end}}

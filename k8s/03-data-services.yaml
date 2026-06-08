@@ -1,0 +1,61 @@
+# ExternalName services so in-cluster workloads reach the host-resident data
+# stores on m720q by stable DNS names (kafka:9092, opensearch:9200, etc.) instead
+# of hardcoding the host. Same pattern as the MinIO services in 01-minio.yaml.
+#
+# NOTE: ExternalName resolution is namespace-local. These live in `default`; copy
+# them into whatever namespace the PQC app services run in (or add that namespace).
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+spec:
+  type: ExternalName
+  externalName: m720q
+  ports:
+    - port: 9092
+      targetPort: 9092
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opensearch
+spec:
+  type: ExternalName
+  externalName: m720q
+  ports:
+    - port: 9200
+      targetPort: 9200
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  type: ExternalName
+  externalName: m720q
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+spec:
+  type: ExternalName
+  externalName: m720q
+  ports:
+    - port: 27017
+      targetPort: 27017
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  type: ExternalName
+  externalName: m720q
+  ports:
+    - port: 6379
+      targetPort: 6379

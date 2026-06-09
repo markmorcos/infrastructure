@@ -1,0 +1,62 @@
+{{define "head"}}<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · CMS</title>
+<style>
+  :root { --bg:#101412; --card:#1a201c; --line:#2b342e; --text:#e9ede9; --muted:#9bab9e; --accent:#ff8a5c; --good:#4ade80; --warn:#facc15; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  a { color:#9dd4b0; text-decoration:none; } a:hover { text-decoration:underline; }
+  .bar { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; border-bottom:1px solid var(--line); }
+  .brand { font-weight:700; color:var(--text); }
+  .wrap { max-width:900px; margin:0 auto; padding:28px 20px 64px; }
+  h1 { font-size:22px; } h2 { font-size:16px; margin-top:30px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  small, .muted { color:var(--muted); font-weight:400; }
+  code { background:#00000033; padding:1px 6px; border-radius:5px; font-size:13px; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; margin:8px 0; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); font-size:14px; }
+  tr:last-child td { border-bottom:none; }
+  th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.03em; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin:10px 0; }
+  .banner { padding:10px 14px; border-radius:8px; margin-bottom:18px; font-size:14px; }
+  .banner.err { background:rgba(255,138,92,.12); border:1px solid var(--accent); color:var(--accent); }
+  .banner.ok { background:rgba(74,222,128,.10); border:1px solid var(--good); color:var(--good); }
+  .banner.warn { background:rgba(250,204,21,.10); border:1px solid var(--warn); color:var(--warn); }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--warn); margin-left:6px; vertical-align:middle; }
+  input,select,textarea { background:#0d110e; color:var(--text); border:1px solid var(--line); border-radius:7px; padding:8px 10px; font:inherit; width:100%; }
+  input[readonly] { color:var(--muted); background:#13171450; }
+  textarea { resize:vertical; }
+  button { background:#2f4a3a; color:#fff; border:0; border-radius:7px; padding:9px 16px; font:inherit; cursor:pointer; }
+  button:hover { background:#3a5c48; }
+  button.link { background:none; color:var(--muted); padding:2px 6px; }
+  button.link:hover { color:var(--text); background:none; }
+  button.danger { background:#7a2630; } button.danger:hover { background:#9a2f3c; }
+  button.big { font-size:16px; padding:11px 22px; }
+  form.col { display:flex; flex-direction:column; gap:14px; }
+  label.field { display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--muted); }
+  fieldset { border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:0; display:flex; flex-direction:column; gap:10px; }
+  legend { font-size:13px; color:var(--muted); padding:0 6px; }
+  .item { border:1px solid var(--line); border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; gap:8px; background:#161b18; }
+  .item .tools { display:flex; gap:4px; justify-content:flex-end; }
+  .tabs { display:flex; gap:8px; margin:14px 0; }
+  .tabs a { padding:6px 14px; border:1px solid var(--line); border-radius:999px; font-size:13px; color:var(--muted); }
+  .tabs a.active { color:var(--text); border-color:#3a5c48; background:#1d2a22; }
+  .thumb { max-width:180px; max-height:120px; border-radius:8px; border:1px solid var(--line); display:block; }
+  .crumb { font-size:13px; color:var(--muted); margin-bottom:4px; }
+  .toprow { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <a href="/" class="brand">✎ CMS</a>
+  <form method="post" action="/ui/logout"><button class="link">Abmelden</button></form>
+</header>
+<main class="wrap">
+{{if .Error}}<div class="banner err">{{.Error}}</div>{{end}}
+{{if .Warn}}<div class="banner warn">{{.Warn}}</div>{{end}}
+{{if .OK}}<div class="banner ok">{{.OK}}</div>{{end}}
+{{end}}
+
+{{define "foot"}}</main></body></html>{{end}}

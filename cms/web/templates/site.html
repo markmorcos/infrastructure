@@ -1,0 +1,30 @@
+{{define "site"}}{{template "head" .}}
+<div class="toprow">
+  <h1>{{.Site.Name}}</h1>
+  <form method="post" action="/ui/sites/{{.Site.Key}}/publish">
+    <button class="big" type="submit">Veröffentlichen</button>
+  </form>
+</div>
+<p class="muted">
+  {{if .AnyDirty}}Es gibt Änderungen, die noch nicht veröffentlicht wurden.{{else}}Alle Änderungen sind veröffentlicht.{{end}}
+  {{if .LastPublished}}Zuletzt veröffentlicht: {{.LastPublished}}.{{end}}
+  · <a href="/ui/sites/{{.Site.Key}}/assets">Bilder verwalten</a>
+</p>
+
+{{$site := .Site}}
+{{range .Groups}}
+<h2>{{.Name}}</h2>
+<table>
+  {{range .Sections}}
+  <tr>
+    <td>{{.Section.Title}}</td>
+    <td style="text-align:right">
+      {{range .Locales}}
+      <a href="{{.EditURL}}">{{.Label}}{{if .Dirty}}<span class="dot" title="nicht veröffentlichte Änderungen"></span>{{end}}</a>&nbsp;&nbsp;
+      {{end}}
+    </td>
+  </tr>
+  {{end}}
+</table>
+{{end}}
+{{template "foot" .}}{{end}}

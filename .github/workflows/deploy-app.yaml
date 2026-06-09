@@ -10,6 +10,7 @@ on:
       - deploy-experimentation
       - deploy-games
       - deploy-infrastructure-admin
+      - deploy-lea
       - deploy-ma3ady
       - deploy-naharda-analytics
       - deploy-naharda-api

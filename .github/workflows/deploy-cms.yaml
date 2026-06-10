@@ -1,0 +1,25 @@
+name: deploy-cms
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths: ["cms/**"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger infrastructure deployment
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.INFRASTRUCTURE_PAT }}
+          repository: markmorcos/infrastructure
+          event-type: deploy-cms
+          client-payload: |-
+            {
+              "repository": "markmorcos/infrastructure",
+              "token": "${{ secrets.CMS_DEPLOYMENT_TOKEN }}",
+              "version": "${{ github.sha }}",
+              "config_file": "cms/deployment.yaml"
+            }

@@ -51,14 +51,14 @@ func (s *Server) uiLoginForm(w http.ResponseWriter, r *http.Request) {
 		redirect(w, r, "/")
 		return
 	}
-	s.render(w, "login", map[string]any{"Title": "Anmelden"})
+	s.render(w, "login", map[string]any{"Title": "Sign in"})
 }
 
 func (s *Server) uiLogin(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
 	token := r.FormValue("token")
 	if !s.auth.valid(token) {
-		s.render(w, "login", map[string]any{"Title": "Anmelden", "Error": "Ungültiger Zugangscode"})
+		s.render(w, "login", map[string]any{"Title": "Sign in", "Error": "Invalid admin token"})
 		return
 	}
 	http.SetCookie(w, &http.Cookie{
@@ -144,7 +144,7 @@ func (s *Server) uiSite(w http.ResponseWriter, r *http.Request) {
 			d := dirty[sec.ID][localeAll]
 			anyDirty = anyDirty || d
 			row.Locales = append(row.Locales, localeStatus{
-				Locale: localeAll, Label: "Bearbeiten", Dirty: d,
+				Locale: localeAll, Label: "Edit", Dirty: d,
 				EditURL: sectionEditURL(site, sec, localeAll),
 			})
 		}
@@ -242,8 +242,8 @@ func buildFieldViews(fields []Field, obj map[string]any, prefix string, assets [
 				v.Items = append(v.Items, itemView{
 					Index: i, First: i == 0, Last: i == len(items)-1,
 					Fields: []fieldView{
-						{Type: fieldText, Name: fmt.Sprintf("%s.%d.0", v.Name, i), Value: a, Label: "Bezeichnung"},
-						{Type: fieldText, Name: fmt.Sprintf("%s.%d.1", v.Name, i), Value: b, Label: "Wert"},
+						{Type: fieldText, Name: fmt.Sprintf("%s.%d.0", v.Name, i), Value: a, Label: "Label"},
+						{Type: fieldText, Name: fmt.Sprintf("%s.%d.1", v.Name, i), Value: b, Label: "Value"},
 					},
 				})
 			}
@@ -360,11 +360,11 @@ func (s *Server) uiSaveSection(w http.ResponseWriter, r *http.Request) {
 	back := sectionEditURL(site, sec, locale)
 	if err := s.store.UpsertDraft(r.Context(), sec.ID, locale, raw); err != nil {
 		log.Printf("save draft: %v", err)
-		redirectMsg(w, r, back, "err", "Speichern fehlgeschlagen — bitte erneut versuchen")
+		redirectMsg(w, r, back, "err", "Saving failed — please try again")
 		return
 	}
 	if action == "" || action == "save" {
-		redirectMsg(w, r, back, "ok", "Gespeichert. Änderungen sind erst nach „Veröffentlichen“ auf der Website sichtbar.")
+		redirectMsg(w, r, back, "ok", "Saved. Changes only appear on the website after you click Publish.")
 		return
 	}
 	redirect(w, r, back)
@@ -381,16 +381,16 @@ func (s *Server) uiPublish(w http.ResponseWriter, r *http.Request) {
 	dispatched, err := s.publishSite(r.Context(), site)
 	if err != nil {
 		log.Printf("ui publish: %v", err)
-		redirectMsg(w, r, back, "err", "Veröffentlichen fehlgeschlagen — bitte erneut versuchen")
+		redirectMsg(w, r, back, "err", "Publishing failed — please try again")
 		return
 	}
 	if !dispatched {
 		redirectMsg(w, r, back, "warn",
-			"Inhalte veröffentlicht, aber das Website-Update konnte nicht ausgelöst werden — bitte Mark Bescheid geben.")
+			"Content published, but the website rebuild could not be triggered — please let Mark know.")
 		return
 	}
 	redirectMsg(w, r, back, "ok",
-		"Veröffentlicht! Die Website wird neu gebaut und ist in ca. 3 Minuten aktuell.")
+		"Published! The website is rebuilding and will be up to date in about 3 minutes.")
 }
 
 // ---- assets ----
@@ -406,7 +406,7 @@ func (s *Server) uiAssets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, "assets", map[string]any{
-		"Title":          "Bilder",
+		"Title":          "Images",
 		"Site":           site,
 		"Assets":         assets,
 		"UploadsEnabled": s.assets != nil,
@@ -440,11 +440,11 @@ func (s *Server) uiUploadAsset(w http.ResponseWriter, r *http.Request) {
 	if sectionKey != "" && fieldKey != "" && locale != "" {
 		if err := s.setDraftImage(r, site, sectionKey, fieldKey, locale, asset.URL); err != nil {
 			log.Printf("upload: set draft image: %v", err)
-			redirectMsg(w, r, back, "err", "Bild hochgeladen, konnte aber nicht zugewiesen werden")
+			redirectMsg(w, r, back, "err", "Image uploaded but could not be assigned")
 			return
 		}
 	}
-	redirectMsg(w, r, back, "ok", "Bild hochgeladen. Zum Übernehmen auf der Website „Veröffentlichen“ nicht vergessen.")
+	redirectMsg(w, r, back, "ok", "Image uploaded. Remember to click Publish to put it on the website.")
 }
 
 // setDraftImage writes an asset URL into one top-level image field of a
@@ -496,7 +496,7 @@ func (s *Server) uiDeleteAsset(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.deleteAsset(r.Context(), asset); err != nil {
 		log.Printf("ui delete asset: %v", err)
-		redirectMsg(w, r, back, "err", "Löschen fehlgeschlagen")
+		redirectMsg(w, r, back, "err", "Deleting failed")
 		return
 	}
 	redirect(w, r, back)

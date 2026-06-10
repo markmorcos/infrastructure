@@ -2,13 +2,13 @@
 <div class="toprow">
   <h1>{{.Site.Name}}</h1>
   <form method="post" action="/ui/sites/{{.Site.Key}}/publish">
-    <button class="big" type="submit">Veröffentlichen</button>
+    <button class="big" type="submit">Publish</button>
   </form>
 </div>
 <p class="muted">
-  {{if .AnyDirty}}Es gibt Änderungen, die noch nicht veröffentlicht wurden.{{else}}Alle Änderungen sind veröffentlicht.{{end}}
-  {{if .LastPublished}}Zuletzt veröffentlicht: {{.LastPublished}}.{{end}}
-  · <a href="/ui/sites/{{.Site.Key}}/assets">Bilder verwalten</a>
+  {{if .AnyDirty}}There are changes that have not been published yet.{{else}}All changes are published.{{end}}
+  {{if .LastPublished}}Last published: {{.LastPublished}}.{{end}}
+  · <a href="/ui/sites/{{.Site.Key}}/assets">Manage images</a>
 </p>
 
 {{$site := .Site}}
@@ -20,7 +20,7 @@
     <td>{{.Section.Title}}</td>
     <td style="text-align:right">
       {{range .Locales}}
-      <a href="{{.EditURL}}">{{.Label}}{{if .Dirty}}<span class="dot" title="nicht veröffentlichte Änderungen"></span>{{end}}</a>&nbsp;&nbsp;
+      <a href="{{.EditURL}}">{{.Label}}{{if .Dirty}}<span class="dot" title="unpublished changes"></span>{{end}}</a>&nbsp;&nbsp;
       {{end}}
     </td>
   </tr>

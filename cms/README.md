@@ -15,7 +15,7 @@ hook, and image uploads to MinIO. One Go binary over Postgres — same shape as
 1. Section schemas are **owned by code** (`seed.go`) and upserted on every
    boot. When a site's content type changes (e.g. `Dict` in the Lea repo),
    update the matching section schema here in the same change.
-2. Editors save **drafts** per section/locale. **Veröffentlichen** copies all
+2. Editors save **drafts** per section/locale. **Publish** copies all
    drafts to published in one transaction, snapshots the result into
    `publishes`, and fires a `repository_dispatch` (`sites.dispatch_event`) at
    `sites.github_repo` so the site's CI rebuilds with the new content.

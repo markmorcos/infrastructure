@@ -24,7 +24,7 @@ func (s *Server) seed(ctx context.Context) error {
 	if errors.Is(err, errNotFound) {
 		site, err = s.store.CreateSite(ctx, Site{
 			Key:           "lea",
-			Name:          "Lea — Psychologische Beratung",
+			Name:          "Lea Pfaffeneder",
 			Locales:       []string{"de", "en"},
 			DefaultLocale: "de",
 			GitHubRepo:    "markmorcos/Lea",
@@ -51,152 +51,152 @@ func (s *Server) seed(ctx context.Context) error {
 // One section per top-level key; `general` (flatten) holds the root scalars
 // and `media` (non-localized) holds images shared across locales.
 func leaSections() []Section {
-	step := []Field{f("n", fieldText, "Nummer"), f("title", fieldText, "Titel"), f("body", fieldTextarea, "Text")}
+	step := []Field{f("n", fieldText, "Number"), f("title", fieldText, "Title"), f("body", fieldTextarea, "Text")}
 	return []Section{
-		{Key: "general", Title: "Allgemein", PageGroup: "Allgemein", Localized: true, Flatten: true, Fields: []Field{
-			group("nav", fieldList, "Navigation", ro("id", fieldText, "ID (fest)"), f("label", fieldText, "Beschriftung")),
-			f("cta", fieldText, "Haupt-Button (z. B. „Termin anfragen“)"),
-			f("moreAbout", fieldText, "Link „Mehr über mich“"),
+		{Key: "general", Title: "General", PageGroup: "General", Localized: true, Flatten: true, Fields: []Field{
+			group("nav", fieldList, "Navigation", ro("id", fieldText, "ID (fixed)"), f("label", fieldText, "Label")),
+			f("cta", fieldText, "Main button (e.g. “Request an appointment”)"),
+			f("moreAbout", fieldText, "“More about me” link"),
 		}},
-		{Key: "media", Title: "Bilder", PageGroup: "Allgemein", Localized: false, Fields: []Field{
-			f("portraitUrl", fieldImage, "Portraitfoto"),
+		{Key: "media", Title: "Images", PageGroup: "General", Localized: false, Fields: []Field{
+			f("portraitUrl", fieldImage, "Portrait photo"),
 		}},
-		{Key: "footer", Title: "Fußzeile", PageGroup: "Allgemein", Localized: true, Fields: []Field{
-			f("tagline", fieldText, "Untertitel"),
-			f("legal", fieldStringlist, "Rechtliche Links (eine pro Zeile)"),
-			f("safety", fieldTextarea, "Sicherheitshinweis"),
+		{Key: "footer", Title: "Footer", PageGroup: "General", Localized: true, Fields: []Field{
+			f("tagline", fieldText, "Tagline"),
+			f("legal", fieldStringlist, "Legal links (one per line)"),
+			f("safety", fieldTextarea, "Safety notice"),
 		}},
 
-		{Key: "hero", Title: "Startbereich (Hero)", PageGroup: "Startseite", Localized: true, Fields: []Field{
-			f("eyebrow", fieldText, "Überzeile"),
-			f("title", fieldText, "Titel"),
-			f("lead", fieldTextarea, "Einleitung"),
-			f("note", fieldText, "Namenszeile"),
-			f("meta", fieldStringlist, "Stichpunkte (einer pro Zeile)"),
+		{Key: "hero", Title: "Hero", PageGroup: "Home", Localized: true, Fields: []Field{
+			f("eyebrow", fieldText, "Eyebrow"),
+			f("title", fieldText, "Title"),
+			f("lead", fieldTextarea, "Lead text"),
+			f("note", fieldText, "Name line"),
+			f("meta", fieldStringlist, "Bullet points (one per line)"),
 		}},
-		{Key: "forWho", Title: "Für wen", PageGroup: "Startseite", Localized: true, Fields: []Field{
-			f("eyebrow", fieldText, "Überzeile"),
+		{Key: "forWho", Title: "Who it's for", PageGroup: "Home", Localized: true, Fields: []Field{
+			f("eyebrow", fieldText, "Eyebrow"),
 			f("body", fieldTextarea, "Text"),
 		}},
-		{Key: "aboutTeaser", Title: "Über mich (Teaser)", PageGroup: "Startseite", Localized: true, Fields: []Field{
-			f("eyebrow", fieldText, "Überzeile"),
+		{Key: "aboutTeaser", Title: "About teaser", PageGroup: "Home", Localized: true, Fields: []Field{
+			f("eyebrow", fieldText, "Eyebrow"),
 			f("body", fieldTextarea, "Text"),
-			f("link", fieldText, "Linktext"),
+			f("link", fieldText, "Link text"),
 		}},
-		{Key: "homeTopics", Title: "Themen (Startseite)", PageGroup: "Startseite", Localized: true, Fields: []Field{
-			f("eyebrow", fieldText, "Überzeile"),
-			f("title", fieldText, "Titel"),
-			f("chips", fieldStringlist, "Themen-Chips (einer pro Zeile)"),
-			f("link", fieldText, "Linktext"),
+		{Key: "homeTopics", Title: "Topics (home)", PageGroup: "Home", Localized: true, Fields: []Field{
+			f("eyebrow", fieldText, "Eyebrow"),
+			f("title", fieldText, "Title"),
+			f("chips", fieldStringlist, "Topic chips (one per line)"),
+			f("link", fieldText, "Link text"),
 		}},
-		{Key: "homeSteps", Title: "Ablauf (Startseite)", PageGroup: "Startseite", Localized: true, Fields: []Field{
-			f("eyebrow", fieldText, "Überzeile"),
-			f("title", fieldText, "Titel"),
-			group("steps", fieldList, "Schritte", step...),
+		{Key: "homeSteps", Title: "Steps (home)", PageGroup: "Home", Localized: true, Fields: []Field{
+			f("eyebrow", fieldText, "Eyebrow"),
+			f("title", fieldText, "Title"),
+			group("steps", fieldList, "Steps", step...),
 		}},
-		{Key: "ctaBand", Title: "Aufruf-Banner", PageGroup: "Startseite", Localized: true, Fields: []Field{
+		{Key: "ctaBand", Title: "Call-to-action banner", PageGroup: "Home", Localized: true, Fields: []Field{
 			f("text", fieldText, "Text"),
 			f("cta", fieldText, "Button"),
 		}},
 
-		{Key: "about", Title: "Über mich", PageGroup: "Über mich", Localized: true, Fields: []Field{
-			f("eyebrow", fieldText, "Überzeile"),
-			f("title", fieldText, "Titel"),
-			f("bio", fieldParagraphs, "Über mich (Absätze durch Leerzeile trennen)"),
-			f("qualTitle", fieldText, "Titel Qualifikationen"),
-			f("quals", fieldStringlist, "Qualifikationen (eine pro Zeile)"),
-			group("values", fieldList, "Werte", ro("icon", fieldText, "Symbol (fest)"), f("label", fieldText, "Beschriftung")),
+		{Key: "about", Title: "About", PageGroup: "About", Localized: true, Fields: []Field{
+			f("eyebrow", fieldText, "Eyebrow"),
+			f("title", fieldText, "Title"),
+			f("bio", fieldParagraphs, "Bio (separate paragraphs with a blank line)"),
+			f("qualTitle", fieldText, "Qualifications title"),
+			f("quals", fieldStringlist, "Qualifications (one per line)"),
+			group("values", fieldList, "Values", ro("icon", fieldText, "Icon (fixed)"), f("label", fieldText, "Label")),
 		}},
 
-		{Key: "services", Title: "Angebot", PageGroup: "Angebot", Localized: true, Fields: []Field{
-			f("eyebrow", fieldText, "Überzeile"),
-			f("title", fieldText, "Titel"),
-			group("cards", fieldList, "Angebote",
-				ro("icon", fieldText, "Symbol (fest)"),
+		{Key: "services", Title: "Services", PageGroup: "Services", Localized: true, Fields: []Field{
+			f("eyebrow", fieldText, "Eyebrow"),
+			f("title", fieldText, "Title"),
+			group("cards", fieldList, "Service cards",
+				ro("icon", fieldText, "Icon (fixed)"),
 				f("name", fieldText, "Name"),
-				f("body", fieldTextarea, "Beschreibung"),
+				f("body", fieldTextarea, "Description"),
 				f("badge", fieldText, "Badge")),
-			f("disclaimer", fieldTextarea, "Hinweis"),
+			f("disclaimer", fieldTextarea, "Disclaimer"),
 		}},
 
-		{Key: "topics", Title: "Themen", PageGroup: "Themen", Localized: true, Fields: []Field{
-			f("eyebrow", fieldText, "Überzeile"),
-			f("title", fieldText, "Titel"),
-			f("lead", fieldTextarea, "Einleitung"),
-			group("items", fieldList, "Themen",
-				ro("icon", fieldText, "Symbol (fest)"),
-				f("title", fieldText, "Titel"),
+		{Key: "topics", Title: "Topics", PageGroup: "Topics", Localized: true, Fields: []Field{
+			f("eyebrow", fieldText, "Eyebrow"),
+			f("title", fieldText, "Title"),
+			f("lead", fieldTextarea, "Lead text"),
+			group("items", fieldList, "Topics",
+				ro("icon", fieldText, "Icon (fixed)"),
+				f("title", fieldText, "Title"),
 				f("body", fieldTextarea, "Text")),
-			f("safety", fieldTextarea, "Sicherheitshinweis"),
+			f("safety", fieldTextarea, "Safety notice"),
 		}},
 
-		{Key: "fees", Title: "Ablauf & Kosten", PageGroup: "Ablauf & Kosten", Localized: true, Fields: []Field{
-			f("eyebrow", fieldText, "Überzeile"),
-			f("title", fieldText, "Titel"),
-			f("ablaufTitle", fieldText, "Titel Ablauf"),
-			group("steps", fieldList, "Schritte", step...),
-			f("costTitle", fieldText, "Titel Kosten"),
-			f("cost", fieldTextarea, "Kosten-Text"),
-			f("priceFigure", fieldText, "Preis (z. B. 45 €)"),
-			f("priceUnit", fieldText, "Einheit (z. B. 50 Minuten)"),
-			f("insuranceTitle", fieldText, "Titel Krankenkasse"),
-			f("insurance", fieldTextarea, "Krankenkassen-Text"),
+		{Key: "fees", Title: "Process & fees", PageGroup: "Fees", Localized: true, Fields: []Field{
+			f("eyebrow", fieldText, "Eyebrow"),
+			f("title", fieldText, "Title"),
+			f("ablaufTitle", fieldText, "Process title"),
+			group("steps", fieldList, "Steps", step...),
+			f("costTitle", fieldText, "Fees title"),
+			f("cost", fieldTextarea, "Fees text"),
+			f("priceFigure", fieldText, "Price (e.g. 45 €)"),
+			f("priceUnit", fieldText, "Unit (e.g. 50 minutes)"),
+			f("insuranceTitle", fieldText, "Insurance title"),
+			f("insurance", fieldTextarea, "Insurance text"),
 		}},
 
-		{Key: "booking", Title: "Termine", PageGroup: "Termine", Localized: true, Fields: []Field{
-			f("eyebrow", fieldText, "Überzeile"),
-			f("title", fieldText, "Titel"),
-			f("intro", fieldTextarea, "Einleitung"),
-			f("schedulerLabel", fieldText, "Kalender-Beschriftung"),
-			f("schedulerNote", fieldText, "Kalender-Hinweis"),
-			f("formTitle", fieldText, "Titel Formular"),
-			group("fields", fieldObject, "Formularfelder",
+		{Key: "booking", Title: "Booking", PageGroup: "Booking", Localized: true, Fields: []Field{
+			f("eyebrow", fieldText, "Eyebrow"),
+			f("title", fieldText, "Title"),
+			f("intro", fieldTextarea, "Intro"),
+			f("schedulerLabel", fieldText, "Calendar label"),
+			f("schedulerNote", fieldText, "Calendar note"),
+			f("formTitle", fieldText, "Form title"),
+			group("fields", fieldObject, "Form fields",
 				f("name", fieldText, "Name"),
-				f("email", fieldText, "E-Mail"),
-				f("times", fieldText, "Bevorzugte Zeiten"),
-				f("message", fieldText, "Nachricht")),
-			f("timesPlaceholder", fieldText, "Platzhalter Zeiten"),
-			f("consent", fieldTextarea, "Einwilligungstext"),
-			f("submit", fieldText, "Absende-Button"),
+				f("email", fieldText, "Email"),
+				f("times", fieldText, "Preferred times"),
+				f("message", fieldText, "Message")),
+			f("timesPlaceholder", fieldText, "Times placeholder"),
+			f("consent", fieldTextarea, "Consent text"),
+			f("submit", fieldText, "Submit button"),
 		}},
 
-		{Key: "contact", Title: "Kontakt", PageGroup: "Kontakt", Localized: true, Fields: []Field{
-			f("eyebrow", fieldText, "Überzeile"),
-			f("title", fieldText, "Titel"),
-			f("lead", fieldTextarea, "Einleitung"),
-			f("notice", fieldTextarea, "Hinweis"),
-			group("fields", fieldObject, "Formularfelder",
+		{Key: "contact", Title: "Contact", PageGroup: "Contact", Localized: true, Fields: []Field{
+			f("eyebrow", fieldText, "Eyebrow"),
+			f("title", fieldText, "Title"),
+			f("lead", fieldTextarea, "Lead text"),
+			f("notice", fieldTextarea, "Notice"),
+			group("fields", fieldObject, "Form fields",
 				f("name", fieldText, "Name"),
-				f("email", fieldText, "E-Mail"),
-				f("phone", fieldText, "Telefon"),
-				f("message", fieldText, "Nachricht")),
-			f("consent", fieldTextarea, "Einwilligungstext"),
-			f("submit", fieldText, "Absende-Button"),
-			f("errEmail", fieldText, "Fehlermeldung E-Mail"),
-			f("errConsent", fieldText, "Fehlermeldung Einwilligung"),
-			f("successTitle", fieldText, "Erfolgsmeldung Titel"),
-			f("successBody", fieldText, "Erfolgsmeldung Text"),
-			f("sideTitle", fieldText, "Titel Seitenleiste"),
-			group("side", fieldList, "Seitenleiste", ro("icon", fieldText, "Symbol (fest)"), f("label", fieldText, "Text")),
+				f("email", fieldText, "Email"),
+				f("phone", fieldText, "Phone"),
+				f("message", fieldText, "Message")),
+			f("consent", fieldTextarea, "Consent text"),
+			f("submit", fieldText, "Submit button"),
+			f("errEmail", fieldText, "Email error message"),
+			f("errConsent", fieldText, "Consent error message"),
+			f("successTitle", fieldText, "Success title"),
+			f("successBody", fieldText, "Success text"),
+			f("sideTitle", fieldText, "Sidebar title"),
+			group("side", fieldList, "Sidebar", ro("icon", fieldText, "Icon (fixed)"), f("label", fieldText, "Text")),
 		}},
 
-		{Key: "faq", Title: "Häufige Fragen", PageGroup: "FAQ", Localized: true, Fields: []Field{
-			f("eyebrow", fieldText, "Überzeile"),
-			f("title", fieldText, "Titel"),
-			group("items", fieldList, "Fragen", f("q", fieldText, "Frage"), f("a", fieldTextarea, "Antwort")),
+		{Key: "faq", Title: "FAQ", PageGroup: "FAQ", Localized: true, Fields: []Field{
+			f("eyebrow", fieldText, "Eyebrow"),
+			f("title", fieldText, "Title"),
+			group("items", fieldList, "Questions", f("q", fieldText, "Question"), f("a", fieldTextarea, "Answer")),
 		}},
 
-		{Key: "impressum", Title: "Impressum", PageGroup: "Rechtliches", Localized: true, Fields: []Field{
-			f("eyebrow", fieldText, "Überzeile"),
-			f("title", fieldText, "Titel"),
-			group("rows", fieldPairs, "Angaben"),
-			f("note", fieldTextarea, "Hinweis"),
+		{Key: "impressum", Title: "Imprint (Impressum)", PageGroup: "Legal", Localized: true, Fields: []Field{
+			f("eyebrow", fieldText, "Eyebrow"),
+			f("title", fieldText, "Title"),
+			group("rows", fieldPairs, "Entries"),
+			f("note", fieldTextarea, "Note"),
 		}},
-		{Key: "datenschutz", Title: "Datenschutz", PageGroup: "Rechtliches", Localized: true, Fields: []Field{
-			f("eyebrow", fieldText, "Überzeile"),
-			f("title", fieldText, "Titel"),
-			f("intro", fieldTextarea, "Einleitung"),
-			group("sections", fieldList, "Abschnitte", f("h", fieldText, "Überschrift"), f("b", fieldTextarea, "Text")),
+		{Key: "datenschutz", Title: "Privacy policy", PageGroup: "Legal", Localized: true, Fields: []Field{
+			f("eyebrow", fieldText, "Eyebrow"),
+			f("title", fieldText, "Title"),
+			f("intro", fieldTextarea, "Intro"),
+			group("sections", fieldList, "Sections", f("h", fieldText, "Heading"), f("b", fieldTextarea, "Text")),
 		}},
 	}
 }

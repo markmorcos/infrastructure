@@ -1,20 +1,20 @@
 {{define "assets"}}{{template "head" .}}
 <p class="crumb"><a href="/ui/sites/{{.Site.Key}}">← {{.Site.Name}}</a></p>
-<h1>Bilder</h1>
+<h1>Images</h1>
 
 {{if .UploadsEnabled}}
 <form method="post" action="/ui/sites/{{.Site.Key}}/assets" enctype="multipart/form-data" class="card col">
-  <label class="field">Neues Bild hochladen (JPG, PNG, WebP — max. 10 MB)
+  <label class="field">Upload a new image (JPG, PNG, WebP — max 10 MB)
     <input type="file" name="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" required>
   </label>
-  <div><button type="submit">Hochladen</button></div>
+  <div><button type="submit">Upload</button></div>
 </form>
 {{else}}
-<p class="banner warn">Uploads sind nicht konfiguriert (S3-Zugangsdaten fehlen).</p>
+<p class="banner warn">Uploads are not configured (S3 credentials missing).</p>
 {{end}}
 
 <table>
-  <tr><th>Vorschau</th><th>Datei</th><th>Größe</th><th></th></tr>
+  <tr><th>Preview</th><th>File</th><th>Size</th><th></th></tr>
   {{$site := .Site}}
   {{range .Assets}}
   <tr>
@@ -22,13 +22,13 @@
     <td>{{.Filename}}<br><small><a href="{{.URL}}" target="_blank">{{.URL}}</a></small></td>
     <td class="muted">{{.SizeBytes}} B</td>
     <td style="text-align:right">
-      <form method="post" action="/ui/sites/{{$site.Key}}/assets/{{.ID}}/delete" onsubmit="return confirm('Bild wirklich löschen?')">
-        <button class="link danger">✕ löschen</button>
+      <form method="post" action="/ui/sites/{{$site.Key}}/assets/{{.ID}}/delete" onsubmit="return confirm('Really delete this image?')">
+        <button class="link danger">✕ delete</button>
       </form>
     </td>
   </tr>
   {{else}}
-  <tr><td colspan="4" class="muted">Noch keine Bilder hochgeladen.</td></tr>
+  <tr><td colspan="4" class="muted">No images uploaded yet.</td></tr>
   {{end}}
 </table>
 {{template "foot" .}}{{end}}

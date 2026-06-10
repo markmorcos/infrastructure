@@ -1,5 +1,5 @@
 {{define "head"}}<!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -51,7 +51,7 @@
 <body>
 <header class="bar">
   <a href="/" class="brand">✎ CMS</a>
-  <form method="post" action="/ui/logout"><button class="link">Abmelden</button></form>
+  <form method="post" action="/ui/logout"><button class="link">Sign out</button></form>
 </header>
 <main class="wrap">
 {{if .Error}}<div class="banner err">{{.Error}}</div>{{end}}

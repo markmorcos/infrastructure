@@ -1,5 +1,5 @@
 {{define "login"}}<!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -19,8 +19,8 @@
   <h1>✎ CMS</h1>
   {{if .Error}}<p class="err">{{.Error}}</p>{{end}}
   <form method="post" action="/ui/login">
-    <label>Zugangscode<input type="password" name="token" autofocus></label>
-    <button type="submit">Anmelden</button>
+    <label>Admin token<input type="password" name="token" autofocus></label>
+    <button type="submit">Sign in</button>
   </form>
 </div>
 </body>

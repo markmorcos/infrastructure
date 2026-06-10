@@ -18,9 +18,9 @@
     {{else if eq .Type "textarea"}}
       <label class="field">{{.Label}}{{template "input" .}}</label>
     {{else if eq .Type "stringlist"}}
-      <label class="field">{{.Label}}<textarea name="{{.Name}}" rows="5">{{.Value}}</textarea><small>Ein Eintrag pro Zeile.</small></label>
+      <label class="field">{{.Label}}<textarea name="{{.Name}}" rows="5">{{.Value}}</textarea><small>One entry per line.</small></label>
     {{else if eq .Type "paragraphs"}}
-      <label class="field">{{.Label}}<textarea name="{{.Name}}" rows="12">{{.Value}}</textarea><small>Absätze durch eine Leerzeile trennen.</small></label>
+      <label class="field">{{.Label}}<textarea name="{{.Name}}" rows="12">{{.Value}}</textarea><small>Separate paragraphs with a blank line.</small></label>
     {{else if eq .Type "object"}}
       <fieldset><legend>{{.Label}}</legend>
         {{range .Subs}}<label class="field">{{.Label}}{{template "input" .}}</label>{{end}}
@@ -30,7 +30,7 @@
         <select name="{{.Name}}">
           {{range .Options}}<option value="{{.URL}}" {{if .Selected}}selected{{end}}>{{.Label}}</option>{{end}}
         </select>
-        <small>Neues Bild unten hochladen — es wird automatisch übernommen.</small>
+        <small>Upload a new image below — it is applied automatically.</small>
       </label>
       {{if .Value}}<img src="{{.Value}}" class="thumb" alt="">{{end}}
     {{else if eq .Type "list"}}
@@ -41,13 +41,13 @@
         <div class="item">
           {{range .Fields}}<label class="field">{{.Label}}{{template "input" .}}</label>{{end}}
           <div class="tools">
-            <button class="link" name="__action" value="up:{{$f.Key}}:{{.Index}}" {{if .First}}disabled{{end}} title="nach oben">↑</button>
-            <button class="link" name="__action" value="down:{{$f.Key}}:{{.Index}}" {{if .Last}}disabled{{end}} title="nach unten">↓</button>
-            <button class="link" name="__action" value="del:{{$f.Key}}:{{.Index}}" title="entfernen">✕ entfernen</button>
+            <button class="link" name="__action" value="up:{{$f.Key}}:{{.Index}}" {{if .First}}disabled{{end}} title="move up">↑</button>
+            <button class="link" name="__action" value="down:{{$f.Key}}:{{.Index}}" {{if .Last}}disabled{{end}} title="move down">↓</button>
+            <button class="link" name="__action" value="del:{{$f.Key}}:{{.Index}}" title="remove">✕ remove</button>
           </div>
         </div>
         {{end}}
-        <div><button class="link" name="__action" value="add:{{.Key}}">+ Eintrag hinzufügen</button></div>
+        <div><button class="link" name="__action" value="add:{{.Key}}">+ Add entry</button></div>
       </fieldset>
     {{else if eq .Type "pairs"}}
       {{$f := .}}
@@ -57,31 +57,31 @@
         <div class="item">
           {{range .Fields}}<label class="field">{{.Label}}{{template "input" .}}</label>{{end}}
           <div class="tools">
-            <button class="link" name="__action" value="up:{{$f.Key}}:{{.Index}}" {{if .First}}disabled{{end}} title="nach oben">↑</button>
-            <button class="link" name="__action" value="down:{{$f.Key}}:{{.Index}}" {{if .Last}}disabled{{end}} title="nach unten">↓</button>
-            <button class="link" name="__action" value="del:{{$f.Key}}:{{.Index}}" title="entfernen">✕ entfernen</button>
+            <button class="link" name="__action" value="up:{{$f.Key}}:{{.Index}}" {{if .First}}disabled{{end}} title="move up">↑</button>
+            <button class="link" name="__action" value="down:{{$f.Key}}:{{.Index}}" {{if .Last}}disabled{{end}} title="move down">↓</button>
+            <button class="link" name="__action" value="del:{{$f.Key}}:{{.Index}}" title="remove">✕ remove</button>
           </div>
         </div>
         {{end}}
-        <div><button class="link" name="__action" value="add:{{.Key}}">+ Eintrag hinzufügen</button></div>
+        <div><button class="link" name="__action" value="add:{{.Key}}">+ Add entry</button></div>
       </fieldset>
     {{end}}
   {{end}}
-  <div><button type="submit" name="__action" value="save" class="big">Speichern</button></div>
+  <div><button type="submit" name="__action" value="save" class="big">Save</button></div>
 </form>
 
 {{if .HasImage}}
 {{$page := .}}
 {{range .Views}}{{if eq .Type "image"}}
 <form method="post" action="{{$page.UploadURL}}" enctype="multipart/form-data" class="card col">
-  <label class="field">Neues Bild hochladen für „{{.Label}}“ (JPG, PNG, WebP — max. 10 MB)
+  <label class="field">Upload a new image for “{{.Label}}” (JPG, PNG, WebP — max 10 MB)
     <input type="file" name="file" accept="image/jpeg,image/png,image/webp,image/svg+xml" required>
   </label>
   <input type="hidden" name="section" value="{{$page.Section.Key}}">
   <input type="hidden" name="field" value="{{.Key}}">
   <input type="hidden" name="locale" value="{{$page.Locale}}">
   <input type="hidden" name="back" value="{{$page.PostURL}}">
-  <div><button type="submit">Hochladen &amp; übernehmen</button></div>
+  <div><button type="submit">Upload &amp; apply</button></div>
 </form>
 {{end}}{{end}}
 {{end}}

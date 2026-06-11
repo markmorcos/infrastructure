@@ -26,6 +26,9 @@ spec:
         app: {{ $resourceName }}
         build-timestamp: '{{ now | date "20060102150405" }}'
     spec:
+{{- if .serviceAccountName }}
+      serviceAccountName: {{ .serviceAccountName }}
+{{- end }}
 {{- if .terminationGracePeriodSeconds }}
       terminationGracePeriodSeconds: {{ .terminationGracePeriodSeconds }}
 {{- end }}

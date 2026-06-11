@@ -79,6 +79,10 @@
             "type": "string",
             "description": "Container image to use"
           },
+          "serviceAccountName": {
+            "type": "string",
+            "description": "Pod ServiceAccount name. Set when the service needs Kubernetes API access (e.g. reading/writing secrets). The ServiceAccount + RBAC must be provisioned separately (see k8s/)."
+          },
           "tag": {
             "type": "string",
             "default": "latest",

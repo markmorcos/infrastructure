@@ -1,4 +1,4 @@
-version: 0.5.0
+version: 0.7.0
 
 namespace: infrastructure-admin
 project: infrastructure-admin
@@ -8,6 +8,7 @@ services:
     image: ghcr.io/markmorcos/infrastructure-admin
     context: admin
     port: 3000
+    serviceAccountName: infrastructure-admin
     env:
       - name: DATABASE_URL
         valueFrom:
@@ -19,6 +20,11 @@ services:
           secretKeyRef:
             name: jwt-secret
             key: JWT_SECRET
+      - name: GITHUB_PAT
+        valueFrom:
+          secretKeyRef:
+            name: github-credentials
+            key: GITHUB_PAT
     ingress:
       host: admin.morcos.tech
       path: /

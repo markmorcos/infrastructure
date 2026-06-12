@@ -110,8 +110,61 @@ jobs:
           CONFIG_FILE="client/${{ github.event.client_payload.config_file }}" \
           bash scripts/build.sh
 
+  # Apply database migrations before rollout. Opt-in: only runs when the client
+  # payload carries a `migrations` object. Pulls DATABASE_URL from the cluster
+  # secret it names, then applies the repo's idempotent migration files.
+  migrate:
+    if: ${{ github.event.client_payload.migrations }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout infrastructure
+        uses: actions/checkout@v4
+
+      - name: Checkout client
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.client_payload.repository }}
+          path: client
+
+      # Install before joining the tailnet so apt uses the runner's normal DNS.
+      - name: Install psql
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+
+      # accept-dns is required so postgres.morcos.lan resolves via the tailnet
+      # split-DNS nameserver.
+      - name: Configure VPN
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TAILSCALE_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TAILSCALE_CLIENT_SECRET }}
+          tags: tag:ci
+          args: --accept-dns=true
+
+      - name: Configure Kubernetes
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Run migrations
+        env:
+          KUBECONFIG: /home/runner/.kube/config
+          MIGRATIONS: ${{ toJson(github.event.client_payload.migrations) }}
+        run: |
+          ns=$(echo "$MIGRATIONS" | jq -r '.namespace')
+          secret=$(echo "$MIGRATIONS" | jq -r '.secret')
+          key=$(echo "$MIGRATIONS" | jq -r '.key')
+          dir=$(echo "$MIGRATIONS" | jq -r '.dir')
+          DATABASE_URL=$(kubectl get secret "$secret" -n "$ns" \
+            -o jsonpath="{.data.$key}" | base64 --decode)
+          export DATABASE_URL
+          MIGRATIONS_DIR="client/$dir" bash scripts/migrate.sh
+
   deploy:
-    needs: merge
+    needs: [merge, migrate]
+    if: ${{ always() && needs.merge.result == 'success' && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout infrastructure

@@ -21,5 +21,11 @@ jobs:
               "repository": "markmorcos/infrastructure",
               "token": "${{ secrets.DEPLOYMENT_TOKEN }}",
               "version": "${{ github.sha }}",
-              "config_file": "admin/deployment.yaml"
+              "config_file": "admin/deployment.yaml",
+              "migrations": {
+                "dir": "sql/migrations",
+                "secret": "database-secrets",
+                "namespace": "infrastructure-admin",
+                "key": "DATABASE_URL"
+              }
             }

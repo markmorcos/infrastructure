@@ -21,6 +21,7 @@ function NavBar() {
   return (
     <nav>
       <Link href="/">Home</Link>
+      {isAuthenticated && isAdmin && <Link href="/projects">Projects</Link>}
       {isAuthenticated && isAdmin && (
         <Link href="/deployments">Deployments</Link>
       )}

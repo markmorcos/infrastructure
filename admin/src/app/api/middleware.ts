@@ -15,8 +15,12 @@ export async function middleware(req: NextRequest) {
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
       role: string;
     };
-    // Restrict /api/deployments to admin only
-    if (pathname.startsWith("/api/deployments") && payload.role !== "admin") {
+    // Restrict /api/deployments and /api/projects to admin only
+    if (
+      (pathname.startsWith("/api/deployments") ||
+        pathname.startsWith("/api/projects")) &&
+      payload.role !== "admin"
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     // Attach user info to request if needed (not shown here)

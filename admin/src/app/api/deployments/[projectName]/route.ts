@@ -17,7 +17,7 @@ export async function GET(
 
   try {
     const { rows } = await pool.query(
-      `SELECT project_name, token, created_at, updated_at FROM deployments WHERE project_name = $1`,
+      `SELECT project_name, token, created_at, updated_at FROM projects WHERE project_name = $1`,
       [projectName]
     );
     if (rows.length === 0) {

@@ -14,20 +14,20 @@ interface DatabaseDeployment {
 export async function GET() {
   try {
     const { rows } = await pool.query(
-      `SELECT project_name, token, enabled, created_at, updated_at FROM deployments ORDER BY created_at DESC`
+      `SELECT project_name, token, enabled, created_at, updated_at FROM projects ORDER BY created_at DESC`
     );
-    const deployments = rows.map((row: DatabaseDeployment) => ({
+    const projects = rows.map((row: DatabaseDeployment) => ({
       projectName: row.project_name,
       token: row.token,
       enabled: row.enabled,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));
-    return NextResponse.json(deployments);
+    return NextResponse.json(projects);
   } catch (error) {
     console.error(error);
     return NextResponse.json(
-      { error: "Failed to fetch deployments" },
+      { error: "Failed to fetch projects" },
       { status: 500 }
     );
   }
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { projectName, token } = body;
     const { rows } = await pool.query(
-      `INSERT INTO deployments (project_name, token) VALUES ($1, $2) RETURNING project_name, token, created_at, updated_at`,
+      `INSERT INTO projects (project_name, token) VALUES ($1, $2) RETURNING project_name, token, created_at, updated_at`,
       [projectName, token]
     );
     const deployment = {
@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const { projectName, token, enabled } = body;
     const { rows } = await pool.query(
-      `UPDATE deployments SET token = $2, enabled = $3, updated_at = NOW() WHERE project_name = $1 RETURNING project_name, token, enabled, created_at, updated_at`,
+      `UPDATE projects SET token = $2, enabled = $3, updated_at = NOW() WHERE project_name = $1 RETURNING project_name, token, enabled, created_at, updated_at`,
       [projectName, token, enabled]
     );
     if (rows.length === 0) {
@@ -90,7 +90,7 @@ export async function DELETE(req: NextRequest) {
   try {
     const body = await req.json();
     const { projectName } = body;
-    await pool.query(`DELETE FROM deployments WHERE project_name = $1`, [
+    await pool.query(`DELETE FROM projects WHERE project_name = $1`, [
       projectName,
     ]);
     return NextResponse.json({ success: true }, { status: 200 });

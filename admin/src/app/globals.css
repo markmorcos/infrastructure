@@ -622,6 +622,141 @@ nav a:hover::after {
   }
 }
 
+/* Projects dashboard */
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.project-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.project-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.project-card .project-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.project-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--font-mono), monospace;
+  white-space: nowrap;
+}
+.badge-ok {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--success);
+}
+.badge-off {
+  background: var(--secondary);
+  color: var(--foreground);
+  opacity: 0.7;
+}
+.badge-err {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--error);
+}
+
+.secret-block {
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.75rem;
+}
+
+.secret-block-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+  opacity: 0.6;
+  margin-bottom: 0.5rem;
+}
+
+.required-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.secret-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.2rem 0;
+  font-size: 0.85rem;
+}
+
+.secret-row.k8s {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+}
+
+.secret-key {
+  font-family: var(--font-mono), monospace;
+  font-weight: 600;
+}
+
+.secret-meta {
+  font-size: 0.78rem;
+  opacity: 0.7;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.k8s-key {
+  font-family: var(--font-mono), monospace;
+  background: var(--secondary);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-sm);
+}
+
+.secret-empty {
+  font-size: 0.82rem;
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.secret-error {
+  font-size: 0.8rem;
+  color: var(--error);
+  opacity: 0.85;
+  font-family: var(--font-mono), monospace;
+}
+
 /* Make CodeMirror responsive */
 .deployment-form .cm-editor {
   min-width: 0;

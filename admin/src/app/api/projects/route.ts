@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { listRepoSecrets } from "@/lib/github";
 import { listNamespaceSecrets } from "@/lib/k8s";
-import { decodeDeploymentToken } from "@/lib/jwt";
+import { decodeDeploymentToken, mintDeploymentToken } from "@/lib/jwt";
 
 type ProjectRow = {
   project_name: string;
@@ -60,6 +60,33 @@ export async function GET() {
     console.error(error);
     return NextResponse.json(
       { error: "Failed to fetch projects" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const projectName: string | undefined = body.projectName;
+    if (!projectName) {
+      return NextResponse.json({ error: "projectName is required" }, { status: 400 });
+    }
+    const repo = body.repo || null;
+    const namespace = body.namespace || null;
+    const token = body.token || mintDeploymentToken(projectName);
+
+    const { rows } = await pool.query(
+      `INSERT INTO projects (project_name, token, repo, namespace)
+       VALUES ($1, $2, $3, $4)
+       RETURNING project_name`,
+      [projectName, token, repo, namespace]
+    );
+    return NextResponse.json({ projectName: rows[0].project_name }, { status: 201 });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Failed to create project (name may already exist)" },
       { status: 500 }
     );
   }

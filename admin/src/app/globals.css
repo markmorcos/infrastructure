@@ -757,6 +757,19 @@ nav a:hover::after {
   font-family: var(--font-mono), monospace;
 }
 
+.card-actions {
+  display: flex;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.75rem;
+}
+
+.card-actions button.edit-link {
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+
 /* Make CodeMirror responsive */
 .deployment-form .cm-editor {
   min-width: 0;

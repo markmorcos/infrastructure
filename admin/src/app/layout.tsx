@@ -22,9 +22,6 @@ function NavBar() {
     <nav>
       <Link href="/">Home</Link>
       {isAuthenticated && isAdmin && <Link href="/projects">Projects</Link>}
-      {isAuthenticated && isAdmin && (
-        <Link href="/deployments">Deployments</Link>
-      )}
       {isAuthenticated && (
         <button onClick={logout} style={{ marginLeft: 16 }}>
           Logout

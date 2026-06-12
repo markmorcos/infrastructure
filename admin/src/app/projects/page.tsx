@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 interface RepoSecret {
@@ -29,24 +29,78 @@ interface Project {
 const REQUIRED_SECRETS = ["INFRASTRUCTURE_PAT", "DEPLOYMENT_TOKEN"];
 const MASK = "••••••••";
 
-function timeAgo(iso: string): string {
-  return new Date(iso).toLocaleString();
-}
-
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch("/api/projects")
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Failed to load projects");
-        setProjects(await res.json());
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+  const [newName, setNewName] = useState("");
+  const [newRepo, setNewRepo] = useState("");
+  const [newNamespace, setNewNamespace] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  const fetchProjects = useCallback(async () => {
+    const res = await fetch("/api/projects");
+    if (!res.ok) {
+      setError("Failed to load projects");
+      return;
+    }
+    setProjects(await res.json());
   }, []);
+
+  useEffect(() => {
+    fetchProjects().finally(() => setLoading(false));
+  }, [fetchProjects]);
+
+  const create = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    setError(null);
+    const res = await fetch("/api/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectName: newName,
+        repo: newRepo,
+        namespace: newNamespace,
+      }),
+    });
+    setCreating(false);
+    if (!res.ok) {
+      setError("Failed to create project (name may already exist)");
+      return;
+    }
+    setNewName("");
+    setNewRepo("");
+    setNewNamespace("");
+    fetchProjects();
+  };
+
+  const rotate = async (projectName: string) => {
+    if (!confirm(`Re-mint the deployment token for ${projectName}?`)) return;
+    const res = await fetch(
+      `/api/projects/${encodeURIComponent(projectName)}/rotate`,
+      { method: "POST" }
+    );
+    const d = await res.json();
+    if (!res.ok) {
+      setError(d.error || "Rotate failed");
+      return;
+    }
+    fetchProjects();
+  };
+
+  const remove = async (projectName: string) => {
+    if (!confirm(`Delete project ${projectName}?`)) return;
+    const res = await fetch(`/api/projects/${encodeURIComponent(projectName)}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      setError("Failed to delete project");
+      return;
+    }
+    fetchProjects();
+  };
 
   if (loading) return <div className="loading-state">Loading...</div>;
 
@@ -60,12 +114,54 @@ export default function ProjectsPage() {
         </p>
       </div>
 
+      <form className="deployment-form" onSubmit={create} autoComplete="off">
+        <div className="form-group">
+          <label>
+            Project name
+            <br />
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="lea"
+              required
+              autoComplete="off"
+            />
+          </label>
+        </div>
+        <div className="form-group">
+          <label>
+            Repo (owner/name, optional)
+            <br />
+            <input
+              value={newRepo}
+              onChange={(e) => setNewRepo(e.target.value)}
+              placeholder="markmorcos/lea"
+              autoComplete="off"
+            />
+          </label>
+        </div>
+        <div className="form-group">
+          <label>
+            Namespace (optional)
+            <br />
+            <input
+              value={newNamespace}
+              onChange={(e) => setNewNamespace(e.target.value)}
+              placeholder="lea"
+              autoComplete="off"
+            />
+          </label>
+        </div>
+        {error && <div className="form-error">{error}</div>}
+        <button type="submit" disabled={creating}>
+          {creating ? "Creating..." : "Create Project (mints token)"}
+        </button>
+      </form>
+
       <div className="section-title">
         <h2>All Projects</h2>
         <span className="deployment-count">{projects.length}</span>
       </div>
-
-      {error && <div className="edit-deployment-error">{error}</div>}
 
       {projects.length === 0 ? (
         <div className="empty-state">No projects found</div>
@@ -76,7 +172,7 @@ export default function ProjectsPage() {
               <div className="project-card-head">
                 <div>
                   <Link
-                    href={`/deployments/edit/${encodeURIComponent(p.projectName)}`}
+                    href={`/projects/edit/${encodeURIComponent(p.projectName)}`}
                     className="project-name"
                   >
                     {p.projectName}
@@ -122,7 +218,9 @@ export default function ProjectsPage() {
                       p.github.secrets.map((s) => (
                         <div className="secret-row" key={s.name}>
                           <span className="secret-key">{s.name}</span>
-                          <span className="secret-meta">{timeAgo(s.updatedAt)}</span>
+                          <span className="secret-meta">
+                            {new Date(s.updatedAt).toLocaleString()}
+                          </span>
                         </div>
                       ))
                     )}
@@ -156,6 +254,21 @@ export default function ProjectsPage() {
                 ) : (
                   <div className="secret-error">{p.k8s.error}</div>
                 )}
+              </div>
+
+              <div className="card-actions">
+                <Link
+                  href={`/projects/edit/${encodeURIComponent(p.projectName)}`}
+                  className="edit-link"
+                >
+                  Edit
+                </Link>
+                <button className="edit-link" onClick={() => rotate(p.projectName)}>
+                  Rotate
+                </button>
+                <button className="edit-link" onClick={() => remove(p.projectName)}>
+                  Delete
+                </button>
               </div>
             </div>
           ))}

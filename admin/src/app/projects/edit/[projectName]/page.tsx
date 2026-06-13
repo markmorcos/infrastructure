@@ -25,6 +25,13 @@ export default function EditProjectPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [secretName, setSecretName] = useState("");
+  const [secretKey, setSecretKey] = useState("");
+  const [secretValue, setSecretValue] = useState("");
+  const [secretMsg, setSecretMsg] = useState<string | null>(null);
+  const [secretError, setSecretError] = useState<string | null>(null);
+  const [secretSaving, setSecretSaving] = useState(false);
+
   const load = useCallback(async () => {
     const res = await fetch(`/api/projects/${encodeURIComponent(projectName)}`);
     if (!res.ok) {
@@ -88,6 +95,32 @@ export default function EditProjectPage() {
         : "Rotated (DB only — no repo set)"
     );
     load();
+  };
+
+  const setK8sSecret = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSecretSaving(true);
+    setSecretError(null);
+    setSecretMsg(null);
+    const res = await fetch(
+      `/api/projects/${encodeURIComponent(projectName)}/k8s-secrets`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secretName,
+          data: { [secretKey]: secretValue },
+        }),
+      }
+    );
+    const d = await res.json();
+    setSecretSaving(false);
+    if (!res.ok) {
+      setSecretError(d.error || "Failed to set secret");
+      return;
+    }
+    setSecretMsg(`Set ${secretKey} in ${d.secretName} (${d.namespace})`);
+    setSecretValue("");
   };
 
   if (!loaded) return <div className="loading-state">Loading...</div>;
@@ -167,6 +200,59 @@ export default function EditProjectPage() {
             Rotate token
           </button>
         </div>
+      </form>
+
+      <div className="section-title">
+        <h2>Set Kubernetes secret</h2>
+      </div>
+      <form className="deployment-form" onSubmit={setK8sSecret} autoComplete="off">
+        <p className="page-description">
+          Writes into namespace <strong>{namespace || "—"}</strong>. Creates the
+          secret if missing, otherwise updates the key (other keys preserved).
+        </p>
+        <div className="form-group">
+          <label>
+            Secret name
+            <br />
+            <input
+              value={secretName}
+              onChange={(e) => setSecretName(e.target.value)}
+              placeholder="resend-credentials"
+              required
+              autoComplete="off"
+            />
+          </label>
+        </div>
+        <div className="form-group">
+          <label>
+            Key
+            <br />
+            <input
+              value={secretKey}
+              onChange={(e) => setSecretKey(e.target.value)}
+              placeholder="RESEND_API_KEY"
+              required
+              autoComplete="off"
+            />
+          </label>
+        </div>
+        <div className="form-group">
+          <label>
+            Value
+            <br />
+            <input
+              type="password"
+              value={secretValue}
+              onChange={(e) => setSecretValue(e.target.value)}
+              autoComplete="off"
+            />
+          </label>
+        </div>
+        {secretError && <div className="form-error">{secretError}</div>}
+        {secretMsg && <div className="form-success">{secretMsg}</div>}
+        <button type="submit" disabled={secretSaving || !namespace}>
+          {secretSaving ? "Writing..." : "Set Secret"}
+        </button>
       </form>
     </div>
   );

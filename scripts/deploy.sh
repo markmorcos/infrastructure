@@ -120,6 +120,35 @@ verify_deployment_token() {
   verify_jwt "$DEPLOYMENT_TOKEN" "$jwt_secret"
 }
 
+# Check the project registry's `enabled` flag via the admin verify endpoint
+# (authenticated by the deployment token itself). Fail-CLOSED only on an explicit
+# disable (enabled = false); fail-OPEN on every other condition (no curl,
+# endpoint unreachable, malformed response, missing row) so a transient outage
+# never blocks deploys.
+verify_enabled() {
+  local token=$1
+  local url="${ADMIN_VERIFY_URL:-https://admin.morcos.tech/api/verify}"
+
+  command -v curl >/dev/null || {
+    log "⚠️  curl not available — skipping enabled check"
+    return 0
+  }
+
+  local resp
+  if ! resp=$(curl -fsS --max-time 10 -X POST "$url" \
+      -H 'Content-Type: application/json' \
+      -d "{\"token\":\"$token\"}" 2>/dev/null); then
+    log "⚠️  verify endpoint unreachable — proceeding"
+    return 0
+  fi
+
+  if [[ "$(echo "$resp" | jq -r '.enabled')" == "false" ]]; then
+    log "❌ project '$(echo "$resp" | jq -r '.project // "?"')' is disabled in the registry — refusing deploy"
+    exit 1
+  fi
+  log "✅ enabled check passed"
+}
+
 # Execute a command with proper error handling
 run_command() {
   log "▶️  ${*}"
@@ -153,6 +182,9 @@ main() {
 
   log "🔍 Verifying deployment token"
   verify_deployment_token
+
+  log "🔎 Checking project is enabled"
+  verify_enabled "$DEPLOYMENT_TOKEN"
 
   namespace=$(yq -r .namespace "$CONFIG_FILE")
   project=$(yq -r .project "$CONFIG_FILE")

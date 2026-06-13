@@ -11,7 +11,9 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Auth routes (login/register/logout/me) are reachable without a prior session.
-  if (pathname.startsWith("/api/auth")) {
+  // /api/verify is a machine endpoint authenticated by the deployment token in
+  // its body, not by a cookie.
+  if (pathname.startsWith("/api/auth") || pathname === "/api/verify") {
     return NextResponse.next();
   }
 

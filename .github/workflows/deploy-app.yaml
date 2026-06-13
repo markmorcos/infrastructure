@@ -3,7 +3,6 @@ name: deploy-app
 on:
   repository_dispatch:
     types:
-      - deploy-provision-test
       - deploy-booking
       - deploy-cms
       - deploy-datewithmark

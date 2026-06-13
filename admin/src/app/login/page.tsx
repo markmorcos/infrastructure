@@ -31,7 +31,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main style={{ maxWidth: 400, margin: "4rem auto" }}>
+    <div className="auth-page">
       <h1 style={{ fontSize: "2rem", marginBottom: 24 }}>Login</h1>
       <form onSubmit={handleSubmit} className="deployment-form">
         <div className="form-group">
@@ -68,6 +68,6 @@ export default function LoginPage() {
       <div style={{ marginTop: 16 }}>
         Don&apos;t have an account? <Link href="/register">Register</Link>
       </div>
-    </main>
+    </div>
   );
 }

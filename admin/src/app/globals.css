@@ -66,24 +66,113 @@ body {
   position: relative;
 }
 
-header {
-  background: var(--card-bg);
-  padding: 1.25rem 2rem;
-  border-bottom: 1px solid var(--border-color);
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: var(--shadow-sm);
+  gap: 1rem;
+  padding: 0.8rem 1.75rem;
+  background: color-mix(in srgb, var(--card-bg) 78%, transparent);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--border-color);
 }
 
-.app-title {
-  font-size: 1.5rem;
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+}
+.brand:hover {
+  text-decoration: none;
+}
+
+.brand-name {
+  font-size: 1.15rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
   background: linear-gradient(90deg, var(--primary), var(--accent));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  letter-spacing: -0.025em;
+}
+
+.topnav {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.topnav a,
+.nav-logout {
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--foreground);
+  opacity: 0.85;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.topnav a:hover,
+.nav-logout:hover {
+  opacity: 1;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  text-decoration: none;
+}
+
+.app-main {
+  flex: 1;
+}
+
+.auth-page {
+  max-width: 420px;
+  margin: 4rem auto;
+  padding: 0 1rem;
+}
+
+.home {
+  display: flex;
+  justify-content: center;
+  padding: 5rem 1.5rem;
+}
+
+.home-card {
+  max-width: 640px;
+  text-align: center;
+}
+
+.home-card .page-description {
+  margin: 1rem auto 2rem;
+}
+
+.home-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.85rem 1.6rem;
+  font-weight: 600;
+  color: #fff;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--primary) 65%, transparent);
+  transition: all 0.2s ease;
+}
+
+.home-cta:hover {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+  text-decoration: none;
+  color: #fff;
 }
 
 h1,
@@ -257,7 +346,7 @@ a:hover {
 }
 
 .deployment-form button {
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   color: white;
   border: none;
   border-radius: var(--radius-md);
@@ -272,12 +361,13 @@ a:hover {
   justify-content: center;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--primary) 60%, transparent);
 }
 
 .deployment-form button:hover {
-  background: var(--primary-hover);
+  filter: brightness(1.07);
   transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--primary) 70%, transparent);
 }
 
 .deployment-form button:active {
@@ -480,35 +570,7 @@ a:hover {
   font-weight: 500;
 }
 
-nav {
-  background: var(--card-bg);
-  border-bottom: 1px solid var(--border-color);
-  padding: 1rem 2rem;
-  display: flex;
-  align-items: center;
-  box-shadow: var(--shadow-sm);
-}
-
-nav a {
-  margin-right: 1.5rem;
-  font-weight: 500;
-  position: relative;
-}
-
-nav a::after {
-  content: "";
-  position: absolute;
-  width: 0;
-  height: 2px;
-  bottom: -4px;
-  left: 0;
-  background: linear-gradient(90deg, var(--primary), var(--accent));
-  transition: width 0.3s ease;
-}
-
-nav a:hover::after {
-  width: 100%;
-}
+/* top-bar nav styles live in .topbar / .topnav above */
 
 @keyframes fadeIn {
   from {
@@ -555,16 +617,8 @@ nav a:hover::after {
   .page-header {
     margin-bottom: 1.2rem;
   }
-  nav {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-  }
-  nav a,
-  nav button {
-    margin-right: 0;
-    margin-bottom: 0.5rem;
+  .topbar {
+    padding: 0.7rem 1rem;
   }
 }
 
@@ -639,6 +693,13 @@ nav a:hover::after {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.project-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border-color));
 }
 
 .project-card-head {

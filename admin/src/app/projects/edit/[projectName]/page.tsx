@@ -145,7 +145,7 @@ export default function EditProjectPage() {
             <input
               value={repo}
               onChange={(e) => setRepo(e.target.value)}
-              placeholder="markmorcos/lea"
+              placeholder="markmorcos/my-app"
               autoComplete="off"
             />
           </label>
@@ -157,7 +157,7 @@ export default function EditProjectPage() {
             <input
               value={namespace}
               onChange={(e) => setNamespace(e.target.value)}
-              placeholder="lea"
+              placeholder="my-app"
               autoComplete="off"
             />
           </label>

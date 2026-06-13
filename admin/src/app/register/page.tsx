@@ -30,7 +30,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <main style={{ maxWidth: 400, margin: "4rem auto" }}>
+    <div className="auth-page">
       <h1 style={{ fontSize: "2rem", marginBottom: 24 }}>Register</h1>
       <form onSubmit={handleSubmit} className="deployment-form">
         <div className="form-group">
@@ -67,6 +67,6 @@ export default function RegisterPage() {
       <div style={{ marginTop: 16 }}>
         Already have an account? <Link href="/login">Login</Link>
       </div>
-    </main>
+    </div>
   );
 }

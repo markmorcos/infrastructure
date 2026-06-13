@@ -1,9 +1,7 @@
-"use client";
-
-import Link from "next/link";
+import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { AuthProvider, useAuth } from "./auth/AuthProvider";
+import AppShell from "./AppShell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,21 +13,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-function NavBar() {
-  const { isAuthenticated, isAdmin, logout } = useAuth();
-
-  return (
-    <nav>
-      <Link href="/">Home</Link>
-      {isAuthenticated && isAdmin && <Link href="/projects">Projects</Link>}
-      {isAuthenticated && (
-        <button onClick={logout} style={{ marginLeft: 16 }}>
-          Logout
-        </button>
-      )}
-    </nav>
-  );
-}
+export const metadata: Metadata = {
+  title: {
+    default: "Control Plane · morcos.tech",
+    template: "%s · Control Plane",
+  },
+  description:
+    "Infrastructure control plane — keys, secrets, and one-click project provisioning across morcos.tech.",
+};
 
 export default function RootLayout({
   children,
@@ -38,16 +29,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <AuthProvider>
-          <header>
-            <div className="app-title">Infrastructure</div>
-          </header>
-          <NavBar />
-          {children}
-        </AuthProvider>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

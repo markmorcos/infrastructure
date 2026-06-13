@@ -112,6 +112,9 @@ export default function ProjectsPage() {
           Every project, its GitHub Actions secrets and Kubernetes secrets, and
           its deployment token — at a glance.
         </p>
+        <Link href="/projects/provision" className="edit-link">
+          + Provision new project
+        </Link>
       </div>
 
       <form className="deployment-form" onSubmit={create} autoComplete="off">

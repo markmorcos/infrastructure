@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AuthProvider, useAuth } from "./auth/AuthProvider";
 
-const BARE_ROUTES = ["/", "/login", "/register"];
+const BARE_ROUTES = ["/", "/login"];
 
 function pageMeta(pathname: string): { title: string; sub: string } {
   if (pathname === "/projects")

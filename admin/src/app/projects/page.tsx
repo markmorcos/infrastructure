@@ -9,7 +9,7 @@ import {
   SORT_KEY,
   REQUIRED_SECRETS,
   computeStatus,
-  ghHas,
+  reqState,
   tokenValid,
   issuesOf,
   ghCount,
@@ -368,7 +368,13 @@ function Card({
       <div style={{ padding: "13px 16px 13px 18px", borderTop: "1px solid var(--md-sys-color-outline-variant)" }}>
         <div style={{ display: "flex", gap: 7, alignItems: "center" }}>
           {REQUIRED_SECRETS.map((n) => {
-            const ok = ghHas(p, n);
+            const st = reqState(p, n);
+            const c =
+              st === "ok"
+                ? { fg: "var(--cp-ok)", bg: "var(--cp-ok-dim)", bd: "rgba(70,224,160,.22)", icon: "check" }
+                : st === "missing"
+                ? { fg: "var(--cp-err)", bg: "var(--cp-err-dim)", bd: "rgba(255,122,107,.22)", icon: "close" }
+                : { fg: "var(--md-sys-color-on-surface-variant)", bg: "var(--md-sys-color-surface-container)", bd: "var(--md-sys-color-outline-variant)", icon: "remove" };
             return (
               <div
                 key={n}
@@ -379,14 +385,12 @@ function Card({
                   height: 26,
                   padding: "0 9px",
                   borderRadius: 7,
-                  background: ok ? "var(--cp-ok-dim)" : "var(--cp-err-dim)",
-                  border: "1px solid " + (ok ? "rgba(70,224,160,.22)" : "rgba(255,122,107,.22)"),
+                  background: c.bg,
+                  border: "1px solid " + c.bd,
                 }}
               >
-                <span className="msym" style={{ fontSize: 14, color: ok ? "var(--cp-ok)" : "var(--cp-err)" }}>
-                  {ok ? "check" : "close"}
-                </span>
-                <span style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, color: ok ? "var(--cp-ok)" : "var(--cp-err)" }}>
+                <span className="msym" style={{ fontSize: 14, color: c.fg }}>{c.icon}</span>
+                <span style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, color: c.fg }}>
                   {n === "INFRASTRUCTURE_PAT" ? "PAT" : "DEPLOY"}
                 </span>
               </div>

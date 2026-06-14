@@ -38,9 +38,6 @@ export default function LoginPage() {
       setEmail={setEmail}
       setPassword={setPassword}
       onSubmit={handleSubmit}
-      swapText="No account?"
-      swapHref="/register"
-      swapLabel="register"
     />
   );
 }

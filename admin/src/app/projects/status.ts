@@ -28,17 +28,35 @@ export const REQUIRED_SECRETS = ["INFRASTRUCTURE_PAT", "DEPLOYMENT_TOKEN"];
 export function ghHas(p: Project, name: string): boolean {
   return p.github.ok && p.github.secrets.some((s) => s.name === name);
 }
-export function reqOk(p: Project): boolean {
-  return REQUIRED_SECRETS.every((n) => ghHas(p, n));
-}
 export function tokenValid(p: Project): boolean {
   return !!p.jwt?.valid;
 }
 
+// Required-secret state is only meaningful when a repo exists and is readable.
+// No repo (or unreadable) => "unknown" (neutral), never a red "missing".
+export type ReqState = "ok" | "missing" | "unknown";
+export function reqState(p: Project, name: string): ReqState {
+  if (!p.repo || !p.github.ok) return "unknown";
+  return ghHas(p, name) ? "ok" : "missing";
+}
+
+export function issuesOf(p: Project): string[] {
+  const out: string[] = [];
+  if (p.namespace && !tokenValid(p)) {
+    out.push(`Deployment token sub=${p.jwt?.sub ?? "?"} is invalid`);
+  }
+  for (const n of REQUIRED_SECRETS) {
+    if (reqState(p, n) === "missing") out.push(`Missing required secret ${n}`);
+  }
+  return out;
+}
+
+// A project "needs attention" iff it has a real, actionable problem — so the
+// card's issue strip and the fleet summary always agree.
 export function computeStatus(p: Project): Status {
   if (!p.enabled) return "disabled";
+  if (issuesOf(p).length > 0) return "attention";
   if (!p.namespace) return "dormant";
-  if (!tokenValid(p) || !reqOk(p)) return "attention";
   return "healthy";
 }
 
@@ -58,17 +76,6 @@ export const SORT_KEY: Record<Status, number> = {
   dormant: 2,
   disabled: 3,
 };
-
-export function issuesOf(p: Project): string[] {
-  const out: string[] = [];
-  if (p.namespace && !tokenValid(p)) {
-    out.push(`Deployment token sub=${p.jwt?.sub ?? "?"} is invalid`);
-  }
-  for (const n of REQUIRED_SECRETS) {
-    if (!ghHas(p, n)) out.push(`Missing required secret ${n}`);
-  }
-  return out;
-}
 
 export function ghCount(p: Project): number {
   return p.github.ok ? p.github.secrets.length : 0;

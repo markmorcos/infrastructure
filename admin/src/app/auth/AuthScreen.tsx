@@ -15,9 +15,9 @@ interface Props {
   setEmail: (v: string) => void;
   setPassword: (v: string) => void;
   onSubmit: (e: React.FormEvent) => void;
-  swapText: string;
-  swapHref: string;
-  swapLabel: string;
+  swapText?: string;
+  swapHref?: string;
+  swapLabel?: string;
 }
 
 export default function AuthScreen(p: Props) {
@@ -71,9 +71,11 @@ export default function AuthScreen(p: Props) {
             {p.loading ? "…" : p.cta}
           </button>
 
-          <div style={{ textAlign: "center", marginTop: 18, fontSize: 13, color: "var(--md-sys-color-on-surface-variant)", fontFamily: "var(--cp-mono)" }}>
-            {p.swapText} <Link href={p.swapHref} style={{ color: "var(--md-sys-color-primary)" }}>{p.swapLabel}</Link>
-          </div>
+          {p.swapHref && (
+            <div style={{ textAlign: "center", marginTop: 18, fontSize: 13, color: "var(--md-sys-color-on-surface-variant)", fontFamily: "var(--cp-mono)" }}>
+              {p.swapText} <Link href={p.swapHref} style={{ color: "var(--md-sys-color-primary)" }}>{p.swapLabel}</Link>
+            </div>
+          )}
         </form>
       </div>
     </div>

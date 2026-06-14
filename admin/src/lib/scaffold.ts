@@ -32,21 +32,3 @@ jobs:
             }
 `;
 }
-
-export function deploymentYaml(project: string, namespace: string): string {
-  return `version: 0.7.0
-
-namespace: ${namespace}
-project: ${project}
-
-services:
-  - name: ${project}
-    image: ghcr.io/markmorcos/${project}
-    context: .
-    port: 3000
-    ingress:
-      host: ${project}.morcos.tech
-      path: /
-      pathType: Prefix
-`;
-}

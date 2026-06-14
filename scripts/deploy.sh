@@ -149,6 +149,23 @@ verify_enabled() {
   log "✅ enabled check passed"
 }
 
+# Ensure the target namespace has a GHCR pull secret so PRIVATE images pull.
+# Idempotent (apply). Fail-open: skips if GHCR_PAT isn't provided.
+ensure_pull_secret() {
+  local ns=$1
+  [[ -n "${GHCR_PAT:-}" ]] || {
+    log "⚠️  GHCR_PAT not set — skipping image pull secret"
+    return 0
+  }
+  kubectl create namespace "$ns" --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1 || true
+  kubectl create secret docker-registry ghcr-pull \
+    --docker-server=ghcr.io \
+    --docker-username="${GHCR_USERNAME:-markmorcos}" \
+    --docker-password="$GHCR_PAT" \
+    -n "$ns" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+  log "🔑 ensured ghcr-pull secret in $ns"
+}
+
 # Execute a command with proper error handling
 run_command() {
   log "▶️  ${*}"
@@ -189,6 +206,9 @@ main() {
   namespace=$(yq -r .namespace "$CONFIG_FILE")
   project=$(yq -r .project "$CONFIG_FILE")
   version=$(yq -r .version "$CONFIG_FILE")
+
+  log "🔑 Ensuring image pull secret in $namespace"
+  ensure_pull_secret "$namespace"
 
   log "🚀 Starting deployment for $project"
   

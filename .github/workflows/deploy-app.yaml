@@ -199,6 +199,7 @@ jobs:
       - name: Deploy services using Helm
         run: |
           KUBECONFIG=~/.kube/config \
+          GHCR_PAT=${{ secrets.INFRASTRUCTURE_PAT }} \
           DEPLOYMENT_TOKEN=${{ github.event.client_payload.token }} \
           DEPLOYMENT_VERSION=${{ github.event.client_payload.version }} \
           CONFIG_FILE="client/${{ github.event.client_payload.config_file }}" \

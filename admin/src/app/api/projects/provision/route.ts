@@ -9,7 +9,8 @@ import {
   createFileIfAbsent,
   registerDispatchType,
 } from "@/lib/github";
-import { deployWorkflow, deploymentYaml } from "@/lib/scaffold";
+import { deployWorkflow } from "@/lib/scaffold";
+import { getStack, deploymentYaml, StackOpts } from "@/lib/templates";
 
 type StepStatus = "created" | "exists" | "set" | "registered" | "updated" | "error";
 interface Step {
@@ -28,11 +29,27 @@ export async function POST(req: NextRequest) {
   if (!projectName) {
     return NextResponse.json({ error: "projectName is required" }, { status: 400 });
   }
+
+  const stack = getStack(body.stack || "nextjs");
+  if (!stack) {
+    return NextResponse.json({ error: "unknown stack" }, { status: 400 });
+  }
+
   const repo: string = body.repo || `${GITHUB_OWNER}/${projectName}`;
   const namespace: string = body.namespace || projectName;
-  const configFile: string = body.configFile || "deployment.yaml";
+  const configFile = "deployment.yaml";
   const isPrivate: boolean = body.private !== false;
   const repoName = repo.includes("/") ? repo.split("/")[1] : repo;
+
+  const opts: StackOpts = {
+    project: projectName,
+    namespace,
+    port: Number(body.port) || stack.defaultPort,
+    ingressHost: body.ingressHost || `${projectName}.morcos.tech`,
+    env: Array.isArray(body.env)
+      ? body.env.filter((e: { name?: string }) => e && e.name)
+      : [],
+  };
 
   const steps: Step[] = [];
   const run = async (label: string, fn: () => Promise<StepStatus>) => {
@@ -52,7 +69,7 @@ export async function POST(req: NextRequest) {
     return "created";
   });
 
-  // 2. Secrets
+  // 2. Secrets (must exist before the deploy workflow runs)
   await run("secret:INFRASTRUCTURE_PAT", async () => {
     await putRepoSecret(repo, "INFRASTRUCTURE_PAT", process.env.GITHUB_PAT as string);
     return "set";
@@ -62,7 +79,22 @@ export async function POST(req: NextRequest) {
     return "set";
   });
 
-  // 3. Scaffold
+  // 3. Scaffold the app + deployment config FIRST (so the build has something
+  //    to build), then register the dispatch type, then commit the workflow
+  //    LAST — that final push is what triggers the (now buildable) auto-deploy.
+  await run("scaffold:deployment.yaml", () =>
+    createFileIfAbsent(repo, configFile, deploymentYaml(opts, stack.ingress), "chore: add deployment config")
+  );
+  for (const [path, content] of Object.entries(stack.files(opts))) {
+    await run(`scaffold:${path}`, () =>
+      createFileIfAbsent(repo, path, content, `chore: scaffold ${path}`)
+    );
+  }
+
+  // 4. Register dispatch type in infrastructure (before the workflow fires)
+  await run("dispatch-type", () => registerDispatchType(projectName));
+
+  // 5. Workflow last — triggers the auto-deploy
   await run("scaffold:workflow", () =>
     createFileIfAbsent(
       repo,
@@ -71,19 +103,8 @@ export async function POST(req: NextRequest) {
       `ci: add deploy-${projectName} workflow`
     )
   );
-  await run("scaffold:deployment", () =>
-    createFileIfAbsent(
-      repo,
-      configFile,
-      deploymentYaml(projectName, namespace),
-      "chore: add deployment config"
-    )
-  );
 
-  // 4. Register dispatch type in infrastructure
-  await run("dispatch-type", () => registerDispatchType(projectName));
-
-  // 5. Upsert DB row
+  // 6. Upsert DB row
   await run("db", async () => {
     const { rowCount } = await pool.query(
       `INSERT INTO projects (project_name, token, repo, namespace)

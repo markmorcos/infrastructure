@@ -1,17 +1,29 @@
 import {
   KubeConfig,
   CoreV1Api,
+  AppsV1Api,
   ApiException,
 } from "@kubernetes/client-node";
 
+let _kc: KubeConfig | null = null;
+function kc(): KubeConfig {
+  if (!_kc) {
+    _kc = new KubeConfig();
+    _kc.loadFromCluster();
+  }
+  return _kc;
+}
+
 let _core: CoreV1Api | null = null;
 function core(): CoreV1Api {
-  if (!_core) {
-    const kc = new KubeConfig();
-    kc.loadFromCluster();
-    _core = kc.makeApiClient(CoreV1Api);
-  }
+  if (!_core) _core = kc().makeApiClient(CoreV1Api);
   return _core;
+}
+
+let _apps: AppsV1Api | null = null;
+function apps(): AppsV1Api {
+  if (!_apps) _apps = kc().makeApiClient(AppsV1Api);
+  return _apps;
 }
 
 function isNotFound(e: unknown): boolean {
@@ -83,4 +95,68 @@ export async function upsertNamespaceSecret(
       },
     });
   }
+}
+
+// ---- live runtime health (across all namespaces in one batch) ----
+
+export type RuntimeStatus = "healthy" | "progressing" | "degraded" | "down" | "none";
+
+export interface PodInfo {
+  name: string;
+  phase: string;
+  ready: boolean;
+  restarts: number;
+  reason: string;
+}
+export interface Runtime {
+  desired: number;
+  ready: number;
+  status: RuntimeStatus;
+  pods: PodInfo[];
+}
+
+export async function getAllRuntime(): Promise<Record<string, Runtime>> {
+  const [deps, pods] = await Promise.all([
+    apps().listDeploymentForAllNamespaces(),
+    core().listPodForAllNamespaces(),
+  ]);
+
+  const out: Record<string, Runtime> = {};
+  const ensure = (ns: string): Runtime =>
+    (out[ns] ??= { desired: 0, ready: 0, status: "none", pods: [] });
+
+  for (const d of deps.items ?? []) {
+    const ns = d.metadata?.namespace;
+    if (!ns) continue;
+    const r = ensure(ns);
+    r.desired += d.spec?.replicas ?? 0;
+    r.ready += d.status?.readyReplicas ?? 0;
+  }
+
+  for (const p of pods.items ?? []) {
+    const ns = p.metadata?.namespace;
+    if (!ns || !(ns in out)) continue; // only namespaces that have a deployment
+    const cs = p.status?.containerStatuses ?? [];
+    const waiting = cs.map((c) => c.state?.waiting?.reason).find(Boolean);
+    ensure(ns).pods.push({
+      name: p.metadata?.name ?? "",
+      phase: p.status?.phase ?? "",
+      ready: cs.length > 0 && cs.every((c) => c.ready),
+      restarts: cs.reduce((n, c) => n + (c.restartCount ?? 0), 0),
+      reason: waiting ?? "",
+    });
+  }
+
+  for (const r of Object.values(out)) {
+    const bad = r.pods.some(
+      (p) => p.reason === "CrashLoopBackOff" || p.reason === "ImagePullBackOff" || p.reason === "ErrImagePull" || p.phase === "Failed"
+    );
+    if (r.desired === 0) r.status = "none";
+    else if (bad) r.status = "degraded";
+    else if (r.ready === 0) r.status = "down";
+    else if (r.ready < r.desired) r.status = "progressing";
+    else r.status = "healthy";
+  }
+
+  return out;
 }

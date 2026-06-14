@@ -225,3 +225,13 @@ export async function reRunRun(runId: number): Promise<void> {
     run_id: runId,
   });
 }
+
+export async function dispatchRollback(project: string, namespace: string): Promise<void> {
+  await octokit().rest.actions.createWorkflowDispatch({
+    owner: GITHUB_OWNER,
+    repo: INFRA_REPO,
+    workflow_id: "rollback.yaml",
+    ref: "main",
+    inputs: { project, namespace },
+  });
+}

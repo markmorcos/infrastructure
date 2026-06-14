@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Project,
+  Runtime,
   Status,
   STATUS_META,
   SORT_KEY,
@@ -21,6 +22,7 @@ type Filter = "all" | Status;
 export default function FleetPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [runtime, setRuntime] = useState<Record<string, Runtime>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -37,9 +39,16 @@ export default function FleetPage() {
     setProjects(await res.json());
   }, []);
 
+  const fetchRuntime = useCallback(async () => {
+    const res = await fetch("/api/runtime");
+    if (res.ok) setRuntime(await res.json());
+  }, []);
+
   useEffect(() => {
-    fetchProjects().finally(() => setLoading(false));
-  }, [fetchProjects]);
+    Promise.all([fetchProjects(), fetchRuntime()]).finally(() => setLoading(false));
+    const t = setInterval(fetchRuntime, 10000);
+    return () => clearInterval(t);
+  }, [fetchProjects, fetchRuntime]);
 
   const decorated = useMemo(
     () => projects.map((p) => ({ p, status: computeStatus(p) })),
@@ -260,6 +269,7 @@ export default function FleetPage() {
               key={p.projectName}
               p={p}
               status={status}
+              runtime={p.namespace ? runtime[p.namespace] : undefined}
               rotating={!!rotating[p.projectName]}
               onOpen={() => router.push(`/projects/edit/${encodeURIComponent(p.projectName)}`)}
               onRotate={() => rotate(p.projectName)}
@@ -295,9 +305,32 @@ function StatusDot({ status }: { status: Status }) {
   );
 }
 
+const RUNTIME_UI: Record<Runtime["status"], { color: string; dim: string; icon: string }> = {
+  healthy: { color: "var(--cp-ok)", dim: "var(--cp-ok-dim)", icon: "bolt" },
+  progressing: { color: "var(--cp-warn)", dim: "var(--cp-warn-dim)", icon: "pending" },
+  degraded: { color: "var(--cp-err)", dim: "var(--cp-err-dim)", icon: "error" },
+  down: { color: "var(--cp-err)", dim: "var(--cp-err-dim)", icon: "cancel" },
+  none: { color: "var(--cp-dormant)", dim: "var(--cp-dormant-dim)", icon: "cloud_off" },
+};
+
+function RuntimeChip({ r }: { r?: Runtime }) {
+  if (!r || r.status === "none") return null;
+  const ui = RUNTIME_UI[r.status];
+  const restarts = r.pods.reduce((n, p) => n + p.restarts, 0);
+  const bad = r.pods.find((p) => p.reason);
+  const text = bad ? bad.reason : `${r.ready}/${r.desired} ready${restarts ? ` · ${restarts}↻` : ""}`;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, height: 26, padding: "0 10px", borderRadius: 7, background: ui.dim, fontFamily: "var(--cp-mono)", fontSize: 11, color: ui.color }}>
+      <span className="msym" style={{ fontSize: 14, animation: r.status === "progressing" ? "cpSpin 1.4s linear infinite" : "none" }}>{ui.icon}</span>
+      {text}
+    </span>
+  );
+}
+
 function Card({
   p,
   status,
+  runtime,
   rotating,
   onOpen,
   onRotate,
@@ -306,6 +339,7 @@ function Card({
 }: {
   p: Project;
   status: Status;
+  runtime?: Runtime;
   rotating: boolean;
   onOpen: () => void;
   onRotate: () => void;
@@ -348,6 +382,7 @@ function Card({
             color={valid ? "var(--cp-ok)" : "var(--cp-err)"}
             tinted={valid ? "var(--cp-ok-dim)" : "var(--cp-err-dim)"}
           />
+          <RuntimeChip r={runtime} />
         </div>
       </div>
 

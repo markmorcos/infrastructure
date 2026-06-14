@@ -21,6 +21,13 @@ export interface Project {
   k8s: Source<K8sSecret>;
 }
 
+export interface Runtime {
+  desired: number;
+  ready: number;
+  status: "healthy" | "progressing" | "degraded" | "down" | "none";
+  pods: { name: string; phase: string; ready: boolean; restarts: number; reason: string }[];
+}
+
 export type Status = "healthy" | "attention" | "dormant" | "disabled";
 
 export const REQUIRED_SECRETS = ["INFRASTRUCTURE_PAT", "DEPLOYMENT_TOKEN"];

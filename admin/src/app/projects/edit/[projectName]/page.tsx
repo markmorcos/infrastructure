@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   Project,
+  Runtime,
   STATUS_META,
   computeStatus,
   tokenValid,
@@ -28,6 +29,14 @@ function buildUi(status: string, conclusion: string | null) {
   return { color: "var(--cp-idle)", icon: "do_not_disturb_on", spin: false, label: conclusion || "done" };
 }
 
+const RT_UI: Record<Runtime["status"], { color: string; icon: string; label: string }> = {
+  healthy: { color: "var(--cp-ok)", icon: "bolt", label: "healthy" },
+  progressing: { color: "var(--cp-warn)", icon: "pending", label: "progressing" },
+  degraded: { color: "var(--cp-err)", icon: "error", label: "degraded" },
+  down: { color: "var(--cp-err)", icon: "cancel", label: "down" },
+  none: { color: "var(--cp-dormant)", icon: "cloud_off", label: "not running" },
+};
+
 export default function DetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -45,12 +54,15 @@ export default function DetailPage() {
   const [secretValue, setSecretValue] = useState("");
   const [secretMsg, setSecretMsg] = useState<string | null>(null);
   const [builds, setBuilds] = useState<BuildRow[]>([]);
+  const [runtime, setRuntime] = useState<Runtime | null>(null);
+  const [rollMsg, setRollMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [listRes, oneRes, buildsRes] = await Promise.all([
+    const [listRes, oneRes, buildsRes, rtRes] = await Promise.all([
       fetch("/api/projects"),
       fetch(`/api/projects/${encodeURIComponent(name)}`),
       fetch("/api/builds"),
+      fetch("/api/runtime"),
     ]);
     const list: Project[] = await listRes.json();
     const p = list.find((x) => x.projectName === name) || null;
@@ -68,7 +80,19 @@ export default function DetailPage() {
       const d = await buildsRes.json();
       setBuilds((d.runs as BuildRow[]).filter((r) => r.project === name).slice(0, 5));
     }
+    if (rtRes.ok && p?.namespace) {
+      const m: Record<string, Runtime> = await rtRes.json();
+      setRuntime(m[p.namespace] ?? null);
+    }
   }, [name]);
+
+  const rollback = async () => {
+    if (!confirm(`Roll back ${name} to the previous Helm revision?`)) return;
+    setRollMsg(null);
+    const res = await fetch(`/api/projects/${encodeURIComponent(name)}/rollback`, { method: "POST" });
+    const d = await res.json();
+    setRollMsg(res.ok ? "rollback dispatched — watch it in Builds/Actions" : d.error || "rollback failed");
+  };
 
   useEffect(() => {
     load();
@@ -143,6 +167,32 @@ export default function DetailPage() {
               <span className="msym" style={{ fontSize: 16 }}>error</span>{iss}
             </div>
           ))}
+        </div>
+      )}
+
+      {runtime && runtime.status !== "none" && (
+        <div className="cp-card" style={{ padding: 20, marginTop: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span className="msym" style={{ fontSize: 18, color: RT_UI[runtime.status].color, animation: runtime.status === "progressing" ? "cpSpin 1.4s linear infinite" : "none" }}>{RT_UI[runtime.status].icon}</span>
+              <SectionLabel inline>RUNTIME · {runtime.ready}/{runtime.desired} ready · {RT_UI[runtime.status].label}</SectionLabel>
+            </div>
+            <button onClick={rollback} className="cp-btn-ghost" style={{ height: 30, padding: "0 12px", fontSize: 11 }}>
+              <span className="msym" style={{ fontSize: 15 }}>undo</span>rollback
+            </button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {runtime.pods.map((pod) => (
+              <div key={pod.name} style={{ display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--cp-mono)", fontSize: 12, padding: "5px 0" }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: pod.ready ? "var(--cp-ok)" : pod.reason ? "var(--cp-err)" : "var(--cp-warn)" }} />
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pod.name}</span>
+                {pod.reason && <span style={{ color: "var(--cp-err)", fontSize: 11 }}>{pod.reason}</span>}
+                <span style={{ color: "var(--md-sys-color-on-surface-variant)", fontSize: 11 }}>{pod.phase}</span>
+                {pod.restarts > 0 && <span style={{ color: "var(--cp-warn)", fontSize: 11 }}>{pod.restarts}↻</span>}
+              </div>
+            ))}
+          </div>
+          {rollMsg && <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--cp-ok)", marginTop: 10 }}>{rollMsg}</div>}
         </div>
       )}
 

@@ -1,0 +1,45 @@
+name: rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: Project (for display)
+        required: true
+      namespace:
+        description: Namespace whose Helm releases to roll back
+        required: true
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout infrastructure
+        uses: actions/checkout@v4
+
+      - name: Configure VPN
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TAILSCALE_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TAILSCALE_CLIENT_SECRET }}
+          tags: tag:ci
+
+      - name: Configure Kubernetes
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Helm rollback
+        run: |
+          export KUBECONFIG=~/.kube/config
+          ns='${{ inputs.namespace }}'
+          releases=$(helm list -n "$ns" -q)
+          if [ -z "$releases" ]; then
+            echo "No Helm releases in $ns"
+            exit 1
+          fi
+          for rel in $releases; do
+            echo "↩️  rolling back $rel in $ns to previous revision"
+            helm rollback "$rel" -n "$ns" --wait --timeout 3m
+          done

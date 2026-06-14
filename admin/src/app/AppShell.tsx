@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AuthProvider, useAuth } from "./auth/AuthProvider";
-import { useIsMobile } from "@/lib/useMediaQuery";
 
 const BARE_ROUTES = ["/", "/login"];
 
@@ -53,7 +52,6 @@ function Shell({ children }: { children: React.ReactNode }) {
   const { logout } = useAuth();
   const meta = pageMeta(pathname);
   const onProvision = pathname.startsWith("/projects/provision");
-  const mobile = useIsMobile();
   const [drawer, setDrawer] = useState(false);
 
   // close the drawer whenever the route changes
@@ -61,15 +59,15 @@ function Shell({ children }: { children: React.ReactNode }) {
     setDrawer(false);
   }, [pathname]);
 
-  // lock body scroll while the mobile drawer is open
+  // lock body scroll while the mobile drawer is open (drawer only opens on phones)
   useEffect(() => {
-    if (mobile && drawer) {
+    if (drawer) {
       document.body.style.overflow = "hidden";
       return () => {
         document.body.style.overflow = "";
       };
     }
-  }, [mobile, drawer]);
+  }, [drawer]);
 
   const navItems = [
     {
@@ -92,50 +90,28 @@ function Shell({ children }: { children: React.ReactNode }) {
     },
   ];
 
-  const asideStyle: React.CSSProperties = mobile
-    ? {
-        width: "min(82vw, 290px)",
-        background: "var(--md-sys-color-surface-container-low)",
-        borderRight: "1px solid var(--md-sys-color-outline-variant)",
-        display: "flex",
-        flexDirection: "column",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        height: "100dvh",
-        zIndex: 60,
-        transform: drawer ? "translateX(0)" : "translateX(-105%)",
-        transition: "transform .24s cubic-bezier(.2,0,0,1)",
-        boxShadow: drawer ? "0 0 40px -8px rgba(0,0,0,.6)" : "none",
-      }
-    : {
-        width: 262,
-        flexShrink: 0,
-        background: "var(--md-sys-color-surface-container-low)",
-        borderRight: "1px solid var(--md-sys-color-outline-variant)",
-        display: "flex",
-        flexDirection: "column",
-        position: "sticky",
-        top: 0,
-        height: "100vh",
-      };
-
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
-      {mobile && drawer && (
+      {drawer && (
         <div
           onClick={() => setDrawer(false)}
+          className="fixed inset-0 z-[55] md:hidden"
           style={{
-            position: "fixed",
-            inset: 0,
             background: "rgba(0,0,0,.55)",
-            zIndex: 55,
             backdropFilter: "blur(2px)",
             WebkitBackdropFilter: "blur(2px)",
           }}
         />
       )}
-      <aside style={asideStyle}>
+      <aside
+        className={`fixed left-0 top-0 z-[60] flex h-[100dvh] w-[min(82vw,290px)] flex-col transition-transform duration-200 ease-[cubic-bezier(.2,0,0,1)] md:sticky md:z-auto md:h-screen md:w-[262px] md:flex-shrink-0 md:translate-x-0 md:shadow-none ${
+          drawer ? "translate-x-0 shadow-[0_0_40px_-8px_rgba(0,0,0,.6)]" : "-translate-x-[105%]"
+        }`}
+        style={{
+          background: "var(--md-sys-color-surface-container-low)",
+          borderRight: "1px solid var(--md-sys-color-outline-variant)",
+        }}
+      >
         <Link
           href="/"
           style={{ display: "flex", alignItems: "center", gap: 11, padding: "20px 18px 18px" }}
@@ -176,12 +152,9 @@ function Shell({ children }: { children: React.ReactNode }) {
 
       <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         <header
+          className="flex items-center gap-3 px-[14px] md:gap-[18px] md:px-7"
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: mobile ? 12 : 18,
             height: 68,
-            padding: mobile ? "0 14px" : "0 28px",
             borderBottom: "1px solid var(--md-sys-color-outline-variant)",
             position: "sticky",
             top: 0,
@@ -191,18 +164,16 @@ function Shell({ children }: { children: React.ReactNode }) {
             zIndex: 20,
           }}
         >
-          {mobile && (
-            <button
-              onClick={() => setDrawer(true)}
-              aria-label="open menu"
-              className="cp-btn-soft"
-              style={{ width: 40, height: 40, padding: 0, flexShrink: 0, borderRadius: 10 }}
-            >
-              <span className="msym" style={{ fontSize: 22 }}>
-                menu
-              </span>
-            </button>
-          )}
+          <button
+            onClick={() => setDrawer(true)}
+            aria-label="open menu"
+            className="cp-btn-soft md:hidden"
+            style={{ width: 40, height: 40, padding: 0, flexShrink: 0, borderRadius: 10 }}
+          >
+            <span className="msym" style={{ fontSize: 22 }}>
+              menu
+            </span>
+          </button>
           <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
             <span
               style={{
@@ -216,8 +187,9 @@ function Shell({ children }: { children: React.ReactNode }) {
             >
               {meta.title}
             </span>
-            {meta.sub && !mobile && (
+            {meta.sub && (
               <span
+                className="hidden md:block"
                 style={{
                   fontFamily: "var(--cp-mono)",
                   fontSize: 11,
@@ -236,20 +208,14 @@ function Shell({ children }: { children: React.ReactNode }) {
           {!onProvision && (
             <Link
               href="/projects/provision"
-              className="cp-btn-primary"
-              style={{
-                height: 42,
-                padding: mobile ? 0 : "0 18px",
-                width: mobile ? 42 : undefined,
-                fontSize: 12.5,
-                flexShrink: 0,
-              }}
+              className="cp-btn-primary w-[42px] px-0 md:w-auto md:px-[18px]"
+              style={{ height: 42, fontSize: 12.5, flexShrink: 0 }}
               aria-label="provision"
             >
               <span className="msym" style={{ fontSize: 18 }}>
                 add
               </span>
-              {!mobile && "provision"}
+              <span className="hidden md:inline">provision</span>
             </Link>
           )}
           <button

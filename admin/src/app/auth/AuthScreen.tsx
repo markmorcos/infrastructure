@@ -3,7 +3,6 @@
 import React from "react";
 import Link from "next/link";
 import { Brand } from "../AppShell";
-import { useIsCompact } from "@/lib/useMediaQuery";
 
 interface Props {
   title: string;
@@ -22,11 +21,9 @@ interface Props {
 }
 
 export default function AuthScreen(p: Props) {
-  const compact = useIsCompact();
   return (
-    <div style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: compact ? "1fr" : "1.1fr 1fr", background: "var(--md-sys-color-surface)" }}>
-      {!compact && (
-      <div style={{ position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 40, background: "radial-gradient(100% 80% at 20% 10%, #11231f 0%, #0A0D11 60%)", overflow: "hidden" }}>
+    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.1fr_1fr]" style={{ background: "var(--md-sys-color-surface)" }}>
+      <div className="relative hidden flex-col justify-between p-10 lg:flex" style={{ background: "radial-gradient(100% 80% at 20% 10%, #11231f 0%, #0A0D11 60%)", overflow: "hidden" }}>
         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(var(--md-sys-color-outline-variant) 1px,transparent 1px),linear-gradient(90deg,var(--md-sys-color-outline-variant) 1px,transparent 1px)", backgroundSize: "38px 38px", opacity: 0.3 }} />
         <Link href="/" style={{ position: "relative", display: "flex", alignItems: "center", gap: 12 }}>
           <Brand size={34} />
@@ -52,9 +49,8 @@ export default function AuthScreen(p: Props) {
         </div>
         <div style={{ position: "relative", fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-outline)" }}>self-hosted · k3s · single-tenant</div>
       </div>
-      )}
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: compact ? "32px 24px" : 40 }}>
+      <div className="flex items-center justify-center px-6 py-8 lg:p-10">
         <form onSubmit={p.onSubmit} style={{ width: "100%", maxWidth: 360 }}>
           <h2 style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-.4px" }}>{p.title}</h2>
           <p style={{ margin: "8px 0 30px", fontSize: 14, color: "var(--md-sys-color-on-surface-variant)" }}>{p.sub}</p>

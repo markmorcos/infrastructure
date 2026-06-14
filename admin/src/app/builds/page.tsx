@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useIsMobile } from "@/lib/useMediaQuery";
 
 interface DeployRun {
   id: number;
@@ -57,7 +56,6 @@ function dur(a: string, b: string): string {
 }
 
 export default function BuildsPage() {
-  const mobile = useIsMobile();
   const [runs, setRuns] = useState<DeployRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -146,7 +144,7 @@ export default function BuildsPage() {
   ];
 
   return (
-    <div style={{ padding: mobile ? "16px 14px 48px" : "24px 28px 60px" }}>
+    <div className="px-[14px] pb-12 pt-4 md:px-7 md:pb-[60px] md:pt-6">
       {error && (
         <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 14px", borderRadius: 12, background: "var(--cp-err-dim)", color: "var(--cp-err)", fontFamily: "var(--cp-mono)", fontSize: 12.5, marginBottom: 16 }}>
           <span className="msym" style={{ fontSize: 16 }}>error</span>{error}
@@ -181,8 +179,8 @@ export default function BuildsPage() {
             </button>
           );
         })}
-        {!mobile && <div style={{ flex: 1 }} />}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, height: 38, padding: "0 14px", borderRadius: 9999, background: "var(--md-sys-color-surface-container-high)", width: mobile ? "100%" : 280, order: mobile ? 1 : undefined }}>
+        <div className="hidden flex-1 md:block" />
+        <div className="order-1 flex h-[38px] w-full items-center gap-[10px] rounded-full px-[14px] md:order-none md:w-[280px]" style={{ background: "var(--md-sys-color-surface-container-high)" }}>
           <span className="msym" style={{ fontSize: 19, color: "var(--md-sys-color-on-surface-variant)" }}>search</span>
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="search project…" style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", color: "var(--md-sys-color-on-surface)", fontFamily: "var(--cp-mono)", fontSize: 12.5 }} />
         </div>
@@ -195,8 +193,8 @@ export default function BuildsPage() {
         </div>
       ) : (
         <div className="cp-card" style={{ overflow: "hidden" }}>
-          <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: mobile ? 660 : undefined }}>
+          <div className="overflow-x-auto">
+          <div className="min-w-[660px]">
           {view.map((r) => {
             const ui = runUi(r.status, r.conclusion);
             const isOpen = open === r.id;

@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useIsMobile } from "@/lib/useMediaQuery";
 import {
   Project,
   Runtime,
@@ -41,7 +40,6 @@ const RT_UI: Record<Runtime["status"], { color: string; icon: string; label: str
 export default function DetailPage() {
   const params = useParams();
   const router = useRouter();
-  const mobile = useIsMobile();
   const name = decodeURIComponent(params.projectName as string);
 
   const [project, setProject] = useState<Project | null>(null);
@@ -150,17 +148,15 @@ export default function DetailPage() {
   const issues = issuesOf(project);
   const deployed = !!project.namespace;
 
-  const twoCol = mobile ? "1fr" : "1fr 1fr";
-
   return (
-    <div style={{ padding: mobile ? "16px 14px 48px" : "24px 28px 60px", maxWidth: 1080 }}>
+    <div className="px-[14px] pb-12 pt-4 md:px-7 md:pb-[60px] md:pt-6" style={{ maxWidth: 1080 }}>
       <button onClick={() => router.push("/projects")} className="cp-btn-ghost" style={{ height: 34, padding: "0 14px 0 10px", fontSize: 12, marginBottom: 20 }}>
         <span className="msym" style={{ fontSize: 17 }}>arrow_back</span>fleet
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
         <span style={{ width: 13, height: 13, borderRadius: "50%", flexShrink: 0, background: meta.color, animation: status === "healthy" ? "cpPulse 2.6s ease-in-out infinite" : "none" }} />
-        <h2 style={{ margin: 0, fontFamily: "var(--cp-mono)", fontSize: mobile ? 21 : 26, fontWeight: 600, letterSpacing: ".01em", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{project.projectName}</h2>
+        <h2 className="text-[21px] md:text-[26px]" style={{ margin: 0, fontFamily: "var(--cp-mono)", fontWeight: 600, letterSpacing: ".01em", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{project.projectName}</h2>
         <span style={{ display: "inline-flex", alignItems: "center", height: 26, padding: "0 12px", borderRadius: 9999, background: meta.dim, color: meta.color, fontFamily: "var(--cp-mono)", fontSize: 11.5 }}>{meta.label}</span>
       </div>
 
@@ -200,7 +196,7 @@ export default function DetailPage() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: twoCol, gap: 16, marginTop: 20 }}>
+      <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 16, marginTop: 20 }}>
         {/* METADATA */}
         <div className="cp-card" style={{ padding: 20 }}>
           <SectionLabel>{"// METADATA"}</SectionLabel>
@@ -250,7 +246,7 @@ export default function DetailPage() {
       </div>
 
       {/* SECRETS */}
-      <div style={{ display: "grid", gridTemplateColumns: twoCol, gap: 16, marginTop: 16 }}>
+      <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 16, marginTop: 16 }}>
         <div className="cp-card" style={{ padding: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <span className="msym" style={{ fontSize: 17, color: "var(--md-sys-color-on-surface-variant)" }}>key</span>
@@ -311,7 +307,7 @@ export default function DetailPage() {
                   <input value={secretName} onChange={(e) => setSecretName(e.target.value)} placeholder="secret-name" className="cp-input" style={{ height: 40, flex: "1 1 120px", minWidth: 0 }} />
                   <input value={secretKey} onChange={(e) => setSecretKey(e.target.value)} placeholder="KEY" className="cp-input" style={{ height: 40, flex: "1 1 90px", minWidth: 0 }} />
                   <input type="password" value={secretValue} onChange={(e) => setSecretValue(e.target.value)} placeholder="value" className="cp-input" style={{ height: 40, flex: "1 1 120px", minWidth: 0 }} />
-                  <button onClick={setK8s} className="cp-btn-tonal" style={{ height: 40, padding: "0 16px", fontSize: 12, flex: mobile ? "1 1 100%" : "0 0 auto" }}>set</button>
+                  <button onClick={setK8s} className="cp-btn-tonal basis-full md:basis-auto" style={{ height: 40, padding: "0 16px", fontSize: 12, flexGrow: 0, flexShrink: 0 }}>set</button>
                 </div>
                 {secretMsg && <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--cp-ok)", marginTop: 8 }}>{secretMsg}</div>}
               </div>

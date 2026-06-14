@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { STACK_LIST } from "@/lib/templates";
-import { useIsMobile } from "@/lib/useMediaQuery";
 
 interface Step {
   step: string;
@@ -21,7 +20,6 @@ const OK = ["created", "exists", "set", "registered", "updated"];
 
 export default function ProvisionPage() {
   const router = useRouter();
-  const mobile = useIsMobile();
   const [name, setName] = useState("");
   const [repo, setRepo] = useState("");
   const [namespace, setNamespace] = useState("");
@@ -91,9 +89,9 @@ export default function ProvisionPage() {
     : "var(--md-sys-color-outline)";
 
   return (
-    <div style={{ padding: mobile ? "16px 14px 48px" : "24px 28px 60px", display: "grid", gridTemplateColumns: mobile ? "1fr" : "380px 1fr", gap: mobile ? 14 : 18, alignItems: "start" }}>
+    <div className="grid grid-cols-1 items-start gap-[14px] px-[14px] pb-12 pt-4 md:grid-cols-[380px_1fr] md:gap-[18px] md:px-7 md:pb-[60px] md:pt-6">
       {/* FORM */}
-      <div className="cp-card" style={{ padding: mobile ? 16 : 22, position: mobile ? "static" : "sticky", top: 90 }}>
+      <div className="cp-card static p-4 md:sticky md:top-[90px] md:p-[22px]">
         <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, letterSpacing: ".08em", color: "var(--md-sys-color-on-surface-variant)", marginBottom: 18 }}>{"// NEW PROJECT"}</div>
         {[
           { label: "NAME", value: name, set: setName, ph: "my-new-app" },

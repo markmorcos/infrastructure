@@ -50,6 +50,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ github.event.client_payload.repository }}
+          token: ${{ secrets.INFRASTRUCTURE_PAT }}
           path: client
 
       - name: Login to GHCR
@@ -94,6 +95,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ github.event.client_payload.repository }}
+          token: ${{ secrets.INFRASTRUCTURE_PAT }}
           path: client
 
       - name: Login to GHCR
@@ -124,6 +126,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ github.event.client_payload.repository }}
+          token: ${{ secrets.INFRASTRUCTURE_PAT }}
           path: client
 
       # Install before joining the tailnet so apt uses the runner's normal DNS.
@@ -174,6 +177,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ github.event.client_payload.repository }}
+          token: ${{ secrets.INFRASTRUCTURE_PAT }}
           path: client
 
       - name: Login to GHCR

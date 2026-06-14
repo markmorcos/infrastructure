@@ -12,7 +12,7 @@ export default function HomePage() {
     <div style={{ position: "relative", minHeight: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", background: "radial-gradient(120% 90% at 50% -10%, #10211f 0%, #0C0F13 55%)" }}>
       <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(var(--md-sys-color-outline-variant) 1px,transparent 1px),linear-gradient(90deg,var(--md-sys-color-outline-variant) 1px,transparent 1px)", backgroundSize: "46px 46px", opacity: 0.35, maskImage: "radial-gradient(80% 60% at 50% 30%,#000 0%,transparent 75%)", WebkitMaskImage: "radial-gradient(80% 60% at 50% 30%,#000 0%,transparent 75%)" }} />
 
-      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 36px" }}>
+      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "24px clamp(18px, 5vw, 36px)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Brand size={34} />
           <span style={{ fontFamily: "var(--cp-mono)", fontSize: 14, letterSpacing: ".12em", fontWeight: 600 }}>
@@ -29,14 +29,14 @@ export default function HomePage() {
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--cp-ok)", animation: "cpPulse 2.4s ease-in-out infinite" }} />
           <span style={{ fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--md-sys-color-on-surface-variant)", letterSpacing: ".06em" }}>single-tenant · self-hosted · k3s</span>
         </div>
-        <h1 style={{ margin: 0, fontSize: 64, lineHeight: 1.04, letterSpacing: "-1.5px", fontWeight: 500, maxWidth: "14ch" }}>
+        <h1 style={{ margin: 0, fontSize: "clamp(34px, 8.5vw, 64px)", lineHeight: 1.04, letterSpacing: "-1.5px", fontWeight: 500, maxWidth: "14ch" }}>
           One pane of glass for every<span style={{ color: "var(--md-sys-color-primary)" }}> key</span>.
         </h1>
-        <p style={{ margin: "22px 0 0", maxWidth: "54ch", fontSize: 17, lineHeight: 1.6, color: "var(--md-sys-color-on-surface-variant)" }}>
+        <p style={{ margin: "22px 0 0", maxWidth: "54ch", fontSize: "clamp(15px, 4vw, 17px)", lineHeight: 1.6, color: "var(--md-sys-color-on-surface-variant)" }}>
           See every secret across your homelab, rotate stale deployment tokens, and stand up a whole project in one click — without ever exposing a value.
         </p>
-        <div style={{ display: "flex", gap: 14, marginTop: 38 }}>
-          <Link href={target} className="cp-btn-primary" style={{ height: 50, padding: "0 28px", fontSize: 14, boxShadow: "0 8px 30px -12px rgba(91,214,208,.6)" }}>
+        <div style={{ display: "flex", gap: 14, marginTop: 38, width: "100%", justifyContent: "center", maxWidth: 360 }}>
+          <Link href={target} className="cp-btn-primary" style={{ height: 50, padding: "0 28px", fontSize: 14, boxShadow: "0 8px 30px -12px rgba(91,214,208,.6)", flex: "0 1 auto" }}>
             enter control plane
             <span className="msym" style={{ fontSize: 18 }}>arrow_forward</span>
           </Link>

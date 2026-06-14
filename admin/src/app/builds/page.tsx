@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useIsMobile } from "@/lib/useMediaQuery";
 
 interface DeployRun {
   id: number;
@@ -56,6 +57,7 @@ function dur(a: string, b: string): string {
 }
 
 export default function BuildsPage() {
+  const mobile = useIsMobile();
   const [runs, setRuns] = useState<DeployRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -144,7 +146,7 @@ export default function BuildsPage() {
   ];
 
   return (
-    <div style={{ padding: "24px 28px 60px" }}>
+    <div style={{ padding: mobile ? "16px 14px 48px" : "24px 28px 60px" }}>
       {error && (
         <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 14px", borderRadius: 12, background: "var(--cp-err-dim)", color: "var(--cp-err)", fontFamily: "var(--cp-mono)", fontSize: 12.5, marginBottom: 16 }}>
           <span className="msym" style={{ fontSize: 16 }}>error</span>{error}
@@ -179,10 +181,10 @@ export default function BuildsPage() {
             </button>
           );
         })}
-        <div style={{ flex: 1 }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 10, height: 38, padding: "0 14px", borderRadius: 9999, background: "var(--md-sys-color-surface-container-high)", width: 280 }}>
+        {!mobile && <div style={{ flex: 1 }} />}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, height: 38, padding: "0 14px", borderRadius: 9999, background: "var(--md-sys-color-surface-container-high)", width: mobile ? "100%" : 280, order: mobile ? 1 : undefined }}>
           <span className="msym" style={{ fontSize: 19, color: "var(--md-sys-color-on-surface-variant)" }}>search</span>
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="search project…" style={{ flex: 1, border: "none", outline: "none", background: "transparent", color: "var(--md-sys-color-on-surface)", fontFamily: "var(--cp-mono)", fontSize: 12.5 }} />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="search project…" style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", color: "var(--md-sys-color-on-surface)", fontFamily: "var(--cp-mono)", fontSize: 12.5 }} />
         </div>
       </div>
 
@@ -193,6 +195,8 @@ export default function BuildsPage() {
         </div>
       ) : (
         <div className="cp-card" style={{ overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+          <div style={{ minWidth: mobile ? 660 : undefined }}>
           {view.map((r) => {
             const ui = runUi(r.status, r.conclusion);
             const isOpen = open === r.id;
@@ -253,6 +257,8 @@ export default function BuildsPage() {
               </div>
             );
           })}
+          </div>
+          </div>
         </div>
       )}
     </div>

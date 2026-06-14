@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AuthProvider, useAuth } from "./auth/AuthProvider";
+import { useIsMobile } from "@/lib/useMediaQuery";
 
 const BARE_ROUTES = ["/", "/login"];
 
@@ -51,6 +53,23 @@ function Shell({ children }: { children: React.ReactNode }) {
   const { logout } = useAuth();
   const meta = pageMeta(pathname);
   const onProvision = pathname.startsWith("/projects/provision");
+  const mobile = useIsMobile();
+  const [drawer, setDrawer] = useState(false);
+
+  // close the drawer whenever the route changes
+  useEffect(() => {
+    setDrawer(false);
+  }, [pathname]);
+
+  // lock body scroll while the mobile drawer is open
+  useEffect(() => {
+    if (mobile && drawer) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, [mobile, drawer]);
 
   const navItems = [
     {
@@ -73,21 +92,50 @@ function Shell({ children }: { children: React.ReactNode }) {
     },
   ];
 
+  const asideStyle: React.CSSProperties = mobile
+    ? {
+        width: "min(82vw, 290px)",
+        background: "var(--md-sys-color-surface-container-low)",
+        borderRight: "1px solid var(--md-sys-color-outline-variant)",
+        display: "flex",
+        flexDirection: "column",
+        position: "fixed",
+        top: 0,
+        left: 0,
+        height: "100dvh",
+        zIndex: 60,
+        transform: drawer ? "translateX(0)" : "translateX(-105%)",
+        transition: "transform .24s cubic-bezier(.2,0,0,1)",
+        boxShadow: drawer ? "0 0 40px -8px rgba(0,0,0,.6)" : "none",
+      }
+    : {
+        width: 262,
+        flexShrink: 0,
+        background: "var(--md-sys-color-surface-container-low)",
+        borderRight: "1px solid var(--md-sys-color-outline-variant)",
+        display: "flex",
+        flexDirection: "column",
+        position: "sticky",
+        top: 0,
+        height: "100vh",
+      };
+
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
-      <aside
-        style={{
-          width: 262,
-          flexShrink: 0,
-          background: "var(--md-sys-color-surface-container-low)",
-          borderRight: "1px solid var(--md-sys-color-outline-variant)",
-          display: "flex",
-          flexDirection: "column",
-          position: "sticky",
-          top: 0,
-          height: "100vh",
-        }}
-      >
+      {mobile && drawer && (
+        <div
+          onClick={() => setDrawer(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.55)",
+            zIndex: 55,
+            backdropFilter: "blur(2px)",
+            WebkitBackdropFilter: "blur(2px)",
+          }}
+        />
+      )}
+      <aside style={asideStyle}>
         <Link
           href="/"
           style={{ display: "flex", alignItems: "center", gap: 11, padding: "20px 18px 18px" }}
@@ -131,9 +179,9 @@ function Shell({ children }: { children: React.ReactNode }) {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 18,
+            gap: mobile ? 12 : 18,
             height: 68,
-            padding: "0 28px",
+            padding: mobile ? "0 14px" : "0 28px",
             borderBottom: "1px solid var(--md-sys-color-outline-variant)",
             position: "sticky",
             top: 0,
@@ -143,17 +191,41 @@ function Shell({ children }: { children: React.ReactNode }) {
             zIndex: 20,
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: 19, fontWeight: 500, letterSpacing: "-.2px" }}>
+          {mobile && (
+            <button
+              onClick={() => setDrawer(true)}
+              aria-label="open menu"
+              className="cp-btn-soft"
+              style={{ width: 40, height: 40, padding: 0, flexShrink: 0, borderRadius: 10 }}
+            >
+              <span className="msym" style={{ fontSize: 22 }}>
+                menu
+              </span>
+            </button>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <span
+              style={{
+                fontSize: 19,
+                fontWeight: 500,
+                letterSpacing: "-.2px",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {meta.title}
             </span>
-            {meta.sub && (
+            {meta.sub && !mobile && (
               <span
                 style={{
                   fontFamily: "var(--cp-mono)",
                   fontSize: 11,
                   color: "var(--md-sys-color-on-surface-variant)",
                   letterSpacing: ".04em",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {meta.sub}
@@ -165,12 +237,19 @@ function Shell({ children }: { children: React.ReactNode }) {
             <Link
               href="/projects/provision"
               className="cp-btn-primary"
-              style={{ height: 42, padding: "0 18px", fontSize: 12.5 }}
+              style={{
+                height: 42,
+                padding: mobile ? 0 : "0 18px",
+                width: mobile ? 42 : undefined,
+                fontSize: 12.5,
+                flexShrink: 0,
+              }}
+              aria-label="provision"
             >
               <span className="msym" style={{ fontSize: 18 }}>
                 add
               </span>
-              provision
+              {!mobile && "provision"}
             </Link>
           )}
           <button

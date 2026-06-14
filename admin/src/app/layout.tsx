@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Roboto, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import AppShell from "./AppShell";
@@ -22,6 +22,12 @@ export const metadata: Metadata = {
   },
   description:
     "One pane of glass for every key — inventory secrets, rotate deployment tokens, and provision projects across a self-hosted k3s fleet.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0c0f13",
 };
 
 export default function RootLayout({

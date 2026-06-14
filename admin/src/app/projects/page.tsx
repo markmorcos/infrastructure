@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useIsMobile } from "@/lib/useMediaQuery";
 import {
   Project,
   Runtime,
@@ -21,6 +22,7 @@ type Filter = "all" | Status;
 
 export default function FleetPage() {
   const router = useRouter();
+  const mobile = useIsMobile();
   const [projects, setProjects] = useState<Project[]>([]);
   const [runtime, setRuntime] = useState<Record<string, Runtime>>({});
   const [loading, setLoading] = useState(true);
@@ -145,7 +147,7 @@ export default function FleetPage() {
   ];
 
   return (
-    <div style={{ padding: "24px 28px 60px" }}>
+    <div style={{ padding: mobile ? "16px 14px 48px" : "24px 28px 60px" }}>
       {error && (
         <div style={{ ...calloutErr, marginBottom: 16 }}>
           <span className="msym" style={{ fontSize: 16 }}>error</span>
@@ -154,8 +156,13 @@ export default function FleetPage() {
       )}
 
       {/* FLEET SUMMARY */}
-      <div style={summaryGrid}>
-        <div className="cp-card" style={{ padding: 18 }}>
+      <div
+        style={{
+          ...summaryGrid,
+          gridTemplateColumns: mobile ? "1fr 1fr" : summaryGrid.gridTemplateColumns,
+        }}
+      >
+        <div className="cp-card" style={{ padding: 18, gridColumn: mobile ? "1 / -1" : undefined }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
             <span style={{ fontFamily: "var(--cp-mono)", fontSize: 38, fontWeight: 600, lineHeight: 1 }}>
               {summary.total}
@@ -223,14 +230,14 @@ export default function FleetPage() {
             </button>
           );
         })}
-        <div style={{ flex: 1 }} />
-        <div style={searchBox}>
+        {!mobile && <div style={{ flex: 1 }} />}
+        <div style={{ ...searchBox, width: mobile ? "100%" : searchBox.width, order: mobile ? 1 : undefined }}>
           <span className="msym" style={{ fontSize: 19, color: "var(--md-sys-color-on-surface-variant)" }}>search</span>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="search projects, repos, namespaces…"
-            style={{ flex: 1, border: "none", outline: "none", background: "transparent", color: "var(--md-sys-color-on-surface)", fontFamily: "var(--cp-mono)", fontSize: 12.5 }}
+            style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", color: "var(--md-sys-color-on-surface)", fontFamily: "var(--cp-mono)", fontSize: 12.5 }}
           />
         </div>
         <div style={{ display: "flex", background: "var(--md-sys-color-surface-container)", border: "1px solid var(--md-sys-color-outline-variant)", borderRadius: 9999, padding: 3 }}>
@@ -263,7 +270,7 @@ export default function FleetPage() {
           <div style={{ marginTop: 12, fontSize: 13 }}>no projects match this view</div>
         </div>
       ) : view === "grid" ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(340px,1fr))", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "repeat(auto-fill,minmax(340px,1fr))", gap: 14 }}>
           {view_.map(({ p, status }) => (
             <Card
               key={p.projectName}
@@ -472,6 +479,8 @@ function Table({
   const cols = "18px 1.4fr 1.6fr 1fr 1.3fr 90px 110px";
   return (
     <div className="cp-card" style={{ overflow: "hidden" }}>
+      <div style={{ overflowX: "auto" }}>
+      <div style={{ minWidth: 760 }}>
       <div style={{ display: "grid", gridTemplateColumns: cols, gap: 14, padding: "12px 18px", borderBottom: "1px solid var(--md-sys-color-outline-variant)", fontFamily: "var(--cp-mono)", fontSize: 10.5, letterSpacing: ".08em", color: "var(--md-sys-color-on-surface-variant)" }}>
         <span /><span>PROJECT</span><span>REPO</span><span>NAMESPACE</span><span>TOKEN</span><span>SECRETS</span>
         <span style={{ textAlign: "right" }}>ACTIONS</span>
@@ -510,6 +519,8 @@ function Table({
           </div>
         );
       })}
+      </div>
+      </div>
     </div>
   );
 }

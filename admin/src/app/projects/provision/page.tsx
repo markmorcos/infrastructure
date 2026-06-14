@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { STACK_LIST } from "@/lib/templates";
+import { useIsMobile } from "@/lib/useMediaQuery";
 
 interface Step {
   step: string;
@@ -20,6 +21,7 @@ const OK = ["created", "exists", "set", "registered", "updated"];
 
 export default function ProvisionPage() {
   const router = useRouter();
+  const mobile = useIsMobile();
   const [name, setName] = useState("");
   const [repo, setRepo] = useState("");
   const [namespace, setNamespace] = useState("");
@@ -89,9 +91,9 @@ export default function ProvisionPage() {
     : "var(--md-sys-color-outline)";
 
   return (
-    <div style={{ padding: "24px 28px 60px", display: "grid", gridTemplateColumns: "380px 1fr", gap: 18, alignItems: "start" }}>
+    <div style={{ padding: mobile ? "16px 14px 48px" : "24px 28px 60px", display: "grid", gridTemplateColumns: mobile ? "1fr" : "380px 1fr", gap: mobile ? 14 : 18, alignItems: "start" }}>
       {/* FORM */}
-      <div className="cp-card" style={{ padding: 22, position: "sticky", top: 90 }}>
+      <div className="cp-card" style={{ padding: mobile ? 16 : 22, position: mobile ? "static" : "sticky", top: 90 }}>
         <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, letterSpacing: ".08em", color: "var(--md-sys-color-on-surface-variant)", marginBottom: 18 }}>{"// NEW PROJECT"}</div>
         {[
           { label: "NAME", value: name, set: setName, ph: "my-new-app" },

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   Project,
@@ -9,6 +10,23 @@ import {
   tokenValid,
   issuesOf,
 } from "../../status";
+
+interface BuildRow {
+  id: number;
+  project: string;
+  status: string;
+  conclusion: string | null;
+  runNumber: number;
+  createdAt: string;
+  url: string;
+}
+
+function buildUi(status: string, conclusion: string | null) {
+  if (status !== "completed") return { color: "var(--cp-warn)", icon: "progress_activity", spin: true, label: "running" };
+  if (conclusion === "success") return { color: "var(--cp-ok)", icon: "check_circle", spin: false, label: "success" };
+  if (conclusion === "failure") return { color: "var(--cp-err)", icon: "cancel", spin: false, label: "failed" };
+  return { color: "var(--cp-idle)", icon: "do_not_disturb_on", spin: false, label: conclusion || "done" };
+}
 
 export default function DetailPage() {
   const params = useParams();
@@ -26,11 +44,13 @@ export default function DetailPage() {
   const [secretKey, setSecretKey] = useState("");
   const [secretValue, setSecretValue] = useState("");
   const [secretMsg, setSecretMsg] = useState<string | null>(null);
+  const [builds, setBuilds] = useState<BuildRow[]>([]);
 
   const load = useCallback(async () => {
-    const [listRes, oneRes] = await Promise.all([
+    const [listRes, oneRes, buildsRes] = await Promise.all([
       fetch("/api/projects"),
       fetch(`/api/projects/${encodeURIComponent(name)}`),
+      fetch("/api/builds"),
     ]);
     const list: Project[] = await listRes.json();
     const p = list.find((x) => x.projectName === name) || null;
@@ -43,6 +63,10 @@ export default function DetailPage() {
     if (oneRes.ok) {
       const one = await oneRes.json();
       setToken(one.token ?? "");
+    }
+    if (buildsRes.ok) {
+      const d = await buildsRes.json();
+      setBuilds((d.runs as BuildRow[]).filter((r) => r.project === name).slice(0, 5));
     }
   }, [name]);
 
@@ -242,6 +266,33 @@ export default function DetailPage() {
             <Empty icon="cloud_off" text="no namespace — not deployed" big />
           )}
         </div>
+      </div>
+
+      <div className="cp-card" style={{ padding: 20, marginTop: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span className="msym" style={{ fontSize: 17, color: "var(--md-sys-color-on-surface-variant)" }}>manage_history</span>
+            <SectionLabel inline>RECENT BUILDS</SectionLabel>
+          </div>
+          <Link href="/builds" className="cp-btn-ghost" style={{ height: 28, padding: "0 12px", fontSize: 11 }}>
+            all builds<span className="msym" style={{ fontSize: 14 }}>arrow_forward</span>
+          </Link>
+        </div>
+        {builds.length === 0 ? (
+          <Empty icon="history" text="no builds yet" />
+        ) : (
+          builds.map((b) => {
+            const ui = buildUi(b.status, b.conclusion);
+            return (
+              <a key={b.id} href={b.url} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", fontFamily: "var(--cp-mono)", fontSize: 12 }}>
+                <span className="msym" style={{ fontSize: 16, color: ui.color, animation: ui.spin ? "cpSpin 1s linear infinite" : "none" }}>{ui.icon}</span>
+                <span style={{ flex: 1, color: ui.color }}>{ui.label}</span>
+                <span style={{ color: "var(--md-sys-color-on-surface-variant)" }}>#{b.runNumber}</span>
+                <span style={{ color: "var(--md-sys-color-outline)" }}>{new Date(b.createdAt).toLocaleString()}</span>
+              </a>
+            );
+          })
+        )}
       </div>
     </div>
   );

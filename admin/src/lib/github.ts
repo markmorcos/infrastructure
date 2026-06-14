@@ -139,3 +139,89 @@ export async function registerDispatchType(
   });
   return "registered";
 }
+
+// ---- GitHub Actions: deploy-app runs (the actual build/deploy pipeline) ----
+
+const INFRA_REPO = "infrastructure";
+const DEPLOY_WORKFLOW = "deploy-app.yaml";
+
+export interface DeployRun {
+  id: number;
+  project: string;
+  title: string;
+  event: string;
+  status: string;
+  conclusion: string | null;
+  runNumber: number;
+  createdAt: string;
+  updatedAt: string;
+  url: string;
+}
+
+export interface RunJob {
+  id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  url: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export async function listDeployRuns(perPage = 50): Promise<DeployRun[]> {
+  const res = await octokit().rest.actions.listWorkflowRuns({
+    owner: GITHUB_OWNER,
+    repo: INFRA_REPO,
+    workflow_id: DEPLOY_WORKFLOW,
+    per_page: perPage,
+  });
+  return res.data.workflow_runs.map((r) => {
+    const title = (r as { display_title?: string }).display_title || r.name || "";
+    return {
+      id: r.id,
+      project: title.replace(/^deploy-/, ""),
+      title,
+      event: r.event,
+      status: r.status || "",
+      conclusion: r.conclusion ?? null,
+      runNumber: r.run_number,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      url: r.html_url,
+    };
+  });
+}
+
+export async function listRunJobs(runId: number): Promise<RunJob[]> {
+  const res = await octokit().rest.actions.listJobsForWorkflowRun({
+    owner: GITHUB_OWNER,
+    repo: INFRA_REPO,
+    run_id: runId,
+    per_page: 50,
+  });
+  return res.data.jobs.map((j) => ({
+    id: j.id,
+    name: j.name,
+    status: j.status,
+    conclusion: j.conclusion ?? null,
+    url: j.html_url ?? "",
+    startedAt: j.started_at ?? null,
+    completedAt: j.completed_at ?? null,
+  }));
+}
+
+export async function reRunFailedJobs(runId: number): Promise<void> {
+  await octokit().rest.actions.reRunWorkflowFailedJobs({
+    owner: GITHUB_OWNER,
+    repo: INFRA_REPO,
+    run_id: runId,
+  });
+}
+
+export async function reRunRun(runId: number): Promise<void> {
+  await octokit().rest.actions.reRunWorkflow({
+    owner: GITHUB_OWNER,
+    repo: INFRA_REPO,
+    run_id: runId,
+  });
+}

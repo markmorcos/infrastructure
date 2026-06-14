@@ -16,6 +16,8 @@ function pageMeta(pathname: string): { title: string; sub: string } {
       title: "Project",
       sub: decodeURIComponent(pathname.split("/").pop() || ""),
     };
+  if (pathname.startsWith("/builds"))
+    return { title: "Builds", sub: "deploy pipeline runs" };
   return { title: "Control Plane", sub: "" };
 }
 
@@ -56,6 +58,12 @@ function Shell({ children }: { children: React.ReactNode }) {
       icon: "grid_view",
       label: "fleet",
       active: pathname === "/projects" || pathname.startsWith("/projects/edit"),
+    },
+    {
+      href: "/builds",
+      icon: "manage_history",
+      label: "builds",
+      active: pathname.startsWith("/builds"),
     },
     {
       href: "/projects/provision",

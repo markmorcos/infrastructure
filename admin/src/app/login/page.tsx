@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-
 import { useAuth } from "../auth/AuthProvider";
+import AuthScreen from "../auth/AuthScreen";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -23,51 +22,25 @@ export default function LoginPage() {
     });
     setLoading(false);
     const data = await res.json();
-    if (res.ok) {
-      auth.setUser(data);
-    } else {
-      setError(data.error || "Login failed");
-    }
+    if (res.ok) auth.setUser(data);
+    else setError(data.error || "Login failed");
   };
 
   return (
-    <div className="auth-page">
-      <h1 style={{ fontSize: "2rem", marginBottom: 24 }}>Login</h1>
-      <form onSubmit={handleSubmit} className="deployment-form">
-        <div className="form-group">
-          <label>
-            Email
-            <br />
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
-          </label>
-        </div>
-        <div className="form-group">
-          <label>
-            Password
-            <br />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </label>
-        </div>
-        {error && <div className="form-error">{error}</div>}
-        <button type="submit" disabled={loading}>
-          {loading ? "Logging in..." : "Login"}
-        </button>
-      </form>
-      <div style={{ marginTop: 16 }}>
-        Don&apos;t have an account? <Link href="/register">Register</Link>
-      </div>
-    </div>
+    <AuthScreen
+      title="Sign in"
+      sub="Access your control plane."
+      cta="sign in"
+      loading={loading}
+      error={error}
+      email={email}
+      password={password}
+      setEmail={setEmail}
+      setPassword={setPassword}
+      onSubmit={handleSubmit}
+      swapText="No account?"
+      swapHref="/register"
+      swapLabel="register"
+    />
   );
 }

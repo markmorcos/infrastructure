@@ -26,6 +26,8 @@ spec:
         app: {{ $resourceName }}
         build-timestamp: '{{ now | date "20060102150405" }}'
     spec:
+      imagePullSecrets:
+        - name: {{ $.Values.imagePullSecret | default "ghcr-pull" }}
 {{- if .serviceAccountName }}
       serviceAccountName: {{ .serviceAccountName }}
 {{- end }}

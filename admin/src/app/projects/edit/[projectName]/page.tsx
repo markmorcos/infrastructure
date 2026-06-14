@@ -89,7 +89,7 @@ export default function DetailPage() {
   if (!project)
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "80px 28px", fontFamily: "var(--cp-mono)", color: "var(--md-sys-color-on-surface-variant)" }}>
-        <span className="msym" style={{ fontSize: 20, animation: "cpSpin 1s linear infinite" }}>progress_activity</span>
+        <span className="cp-spinner" />
         loading…
       </div>
     );

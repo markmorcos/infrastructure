@@ -115,9 +115,7 @@ export default function FleetPage() {
   if (loading)
     return (
       <div style={loadingStyle}>
-        <span className="msym" style={{ fontSize: 22, animation: "cpSpin 1s linear infinite" }}>
-          progress_activity
-        </span>
+        <span className="cp-spinner" />
         loading fleet…
       </div>
     );

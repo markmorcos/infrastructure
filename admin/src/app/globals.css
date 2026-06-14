@@ -296,3 +296,13 @@ a {
 .cp-row-hover:hover {
   background: var(--md-sys-color-surface-container);
 }
+
+.cp-spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--md-sys-color-surface-container-highest);
+  border-top-color: var(--md-sys-color-primary);
+  animation: cpSpin 0.7s linear infinite;
+  flex-shrink: 0;
+}

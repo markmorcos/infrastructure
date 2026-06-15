@@ -11,7 +11,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Persist Next's incremental build cache so unchanged routes aren't recompiled.
-RUN --mount=type=cache,target=/app/.next/cache npm run build
+# Call `next build` directly (not `npm run build`, whose `clean` does `rm -rf
+# .next` and fails on the mounted .next/cache — and a fresh container has
+# nothing stale to clean anyway).
+RUN --mount=type=cache,target=/app/.next/cache npx next build
 
 FROM node:20-alpine AS runner
 WORKDIR /app

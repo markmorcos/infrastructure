@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type { Asset } from "../../types";
+import { Button, Card, Label, Spinner } from "@/components/ui";
 
 // Assets page (/cms/[site]/assets). Upload form (disabled with a notice if S3 is
 // unconfigured) + a list with thumbnail, filename, size and delete. Ports
@@ -81,16 +82,16 @@ export default function AssetsPage() {
   if (loading)
     return (
       <div style={loadingStyle}>
-        <span className="cp-spinner" />
+        <Spinner />
         loading images…
       </div>
     );
 
   return (
     <div className="px-[14px] pb-12 pt-4 md:px-7 md:pb-[60px] md:pt-6" style={{ maxWidth: 1000 }}>
-      <button onClick={() => router.push(`/cms/${encodeURIComponent(siteKey)}`)} className="cp-btn-ghost" style={{ height: 34, padding: "0 14px 0 10px", fontSize: 12, marginBottom: 20 }}>
+      <Button variant="ghost" size="sm" onClick={() => router.push(`/cms/${encodeURIComponent(siteKey)}`)} className="pl-[10px]! pr-[14px]! mb-5">
         <span className="msym" style={{ fontSize: 17 }}>arrow_back</span>{siteKey}
-      </button>
+      </Button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
         <span className="msym fill" style={{ fontSize: 24, color: "var(--md-sys-color-primary)" }}>image</span>
@@ -108,8 +109,8 @@ export default function AssetsPage() {
         </div>
       )}
 
-      <div className="cp-card" style={{ padding: 20, marginBottom: 22 }}>
-        <div className="cp-label" style={{ marginBottom: 12 }}>{"// UPLOAD"}</div>
+      <Card pad={false} className="p-5 mb-[22px]">
+        <Label as="div" style={{ marginBottom: 12 }}>{"// UPLOAD"}</Label>
         {uploadsEnabled ? (
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <input
@@ -125,7 +126,7 @@ export default function AssetsPage() {
             />
             {uploading && (
               <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--md-sys-color-on-surface-variant)" }}>
-                <span className="cp-spinner" />uploading…
+                <Spinner />uploading…
               </span>
             )}
             <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-outline)" }}>
@@ -138,7 +139,7 @@ export default function AssetsPage() {
             Uploads are not configured (S3_* env missing).
           </div>
         )}
-      </div>
+      </Card>
 
       {assets.length === 0 ? (
         <div style={{ textAlign: "center", padding: "60px 0", fontFamily: "var(--cp-mono)", color: "var(--md-sys-color-on-surface-variant)" }}>
@@ -148,7 +149,7 @@ export default function AssetsPage() {
       ) : (
         <div className="grid grid-cols-2 gap-[14px] md:grid-cols-[repeat(auto-fill,minmax(220px,1fr))]">
           {assets.map((a) => (
-            <div key={a.id} className="cp-card" style={{ overflow: "hidden" }}>
+            <Card key={a.id} pad={false} style={{ overflow: "hidden" }}>
               <div style={{ height: 140, background: "var(--md-sys-color-surface-container)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={a.url} alt={a.filename} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
@@ -161,12 +162,12 @@ export default function AssetsPage() {
                   <span style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, color: "var(--md-sys-color-on-surface-variant)", flex: 1 }}>
                     {fmtSize(a.sizeBytes)}
                   </span>
-                  <button onClick={() => remove(a)} className="cp-btn-soft" style={{ width: 30, height: 30, padding: 0 }} title="delete">
+                  <Button variant="soft" onClick={() => remove(a)} className="w-[30px]! h-[30px]! p-0!" title="delete">
                     <span className="msym" style={{ fontSize: 16 }}>delete</span>
-                  </button>
+                  </Button>
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}

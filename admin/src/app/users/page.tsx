@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
+import { Button, Card, Input, Select, Label, Spinner, Chip } from "@/components/ui";
 
 interface User {
   id: number;
@@ -65,8 +66,8 @@ export default function UsersPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: 28 }}>
-        <div className="cp-spinner" />
+      <div className="p-7">
+        <Spinner />
       </div>
     );
   }
@@ -74,60 +75,44 @@ export default function UsersPage() {
   return (
     <div className="px-[14px] py-5 md:px-7 md:py-7" style={{ maxWidth: 900 }}>
       {/* create */}
-      <form onSubmit={create} className="cp-card" style={{ padding: 18, marginBottom: 22 }}>
-        <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 14 }}>Add a user</div>
-        <div className="flex flex-col gap-3 md:flex-row">
-          <input
-            className="cp-input"
-            placeholder="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            className="cp-input"
-            placeholder="password"
-            type="text"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <select className="cp-input" value={role} onChange={(e) => setRole(e.target.value)} style={{ maxWidth: 140 }}>
-            <option value="editor">editor</option>
-            <option value="admin">admin</option>
-          </select>
-        </div>
-        {role === "editor" && (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-on-surface-variant)", marginBottom: 7 }}>
-              SITES THIS EDITOR OWNS
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {sites.map((s) => (
-                <button
-                  type="button"
-                  key={s.key}
-                  onClick={() => setOwnedSites((p) => toggle(p, s.key))}
-                  className={ownedSites.includes(s.key) ? "cp-btn-tonal" : "cp-btn-soft"}
-                  style={{ height: 32, padding: "0 14px", fontSize: 12 }}
-                >
-                  {s.key}
-                </button>
-              ))}
-              {sites.length === 0 && (
-                <span style={{ fontSize: 12, color: "var(--md-sys-color-on-surface-variant)" }}>no sites yet</span>
-              )}
-            </div>
+      <Card className="mb-[22px]">
+        <form onSubmit={create}>
+          <div className="mb-3.5 text-[15px] font-medium">Add a user</div>
+          <div className="flex flex-col gap-3 md:flex-row">
+            <Input placeholder="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Input placeholder="password" type="text" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <Select value={role} onChange={(e) => setRole(e.target.value)} className="md:max-w-[140px]">
+              <option value="editor">editor</option>
+              <option value="admin">admin</option>
+            </Select>
           </div>
-        )}
-        {err && <div style={{ color: "var(--cp-err)", fontSize: 12.5, marginTop: 10 }}>{err}</div>}
-        <div style={{ marginTop: 14 }}>
-          <button type="submit" className="cp-btn-primary" style={{ height: 40, padding: "0 22px", fontSize: 13 }}>
-            create user
-          </button>
-        </div>
-      </form>
+          {role === "editor" && (
+            <div className="mt-3">
+              <Label as="div" className="mb-[7px] block">SITES THIS EDITOR OWNS</Label>
+              <div className="flex flex-wrap gap-2">
+                {sites.map((s) => (
+                  <Button
+                    type="button"
+                    key={s.key}
+                    size="sm"
+                    variant={ownedSites.includes(s.key) ? "tonal" : "soft"}
+                    onClick={() => setOwnedSites((p) => toggle(p, s.key))}
+                  >
+                    {s.key}
+                  </Button>
+                ))}
+                {sites.length === 0 && (
+                  <span className="text-[12px] text-[var(--md-sys-color-on-surface-variant)]">no sites yet</span>
+                )}
+              </div>
+            </div>
+          )}
+          {err && <div className="mt-2.5 text-[12.5px] text-[var(--cp-err)]">{err}</div>}
+          <div className="mt-3.5">
+            <Button type="submit" size="lg">create user</Button>
+          </div>
+        </form>
+      </Card>
 
       {/* list */}
       <div className="flex flex-col gap-3">
@@ -194,73 +179,46 @@ function UserRow({
   }
 
   return (
-    <div className="cp-card" style={{ padding: 16 }}>
-      <div className="flex items-center gap-3" style={{ flexWrap: "wrap" }}>
-        <span style={{ fontWeight: 500 }}>{user.email}</span>
-        <span
-          className="cp-chip"
-          style={{
-            fontFamily: "var(--cp-mono)",
-            fontSize: 10.5,
-            padding: "2px 8px",
-            borderRadius: 6,
-            background: role === "admin" ? "var(--md-sys-color-primary-container)" : "var(--md-sys-color-surface-container-high)",
-            color: role === "admin" ? "var(--md-sys-color-on-primary-container)" : "var(--md-sys-color-on-surface-variant)",
-          }}
-        >
-          {role}
-        </span>
-        {isSelf && (
-          <span style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, color: "var(--md-sys-color-on-surface-variant)" }}>you</span>
-        )}
-        <div style={{ flex: 1 }} />
-        <select className="cp-input" value={role} onChange={(e) => setRole(e.target.value)} disabled={isSelf} style={{ height: 34, maxWidth: 120, fontSize: 12 }}>
+    <Card>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="font-medium">{user.email}</span>
+        <Chip tone={role === "admin" ? "primary" : "neutral"}>{role}</Chip>
+        {isSelf && <span className="font-[var(--cp-mono)] text-[10.5px] text-[var(--md-sys-color-on-surface-variant)]">you</span>}
+        <div className="flex-1" />
+        <Select size="sm" value={role} onChange={(e) => setRole(e.target.value)} disabled={isSelf} className="max-w-[120px]">
           <option value="editor">editor</option>
           <option value="admin">admin</option>
-        </select>
+        </Select>
       </div>
 
       {role === "editor" && (
-        <div style={{ marginTop: 12 }}>
-          <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-on-surface-variant)", marginBottom: 7 }}>
-            OWNED SITES
-          </div>
+        <div className="mt-3">
+          <Label as="div" className="mb-[7px] block">OWNED SITES</Label>
           <div className="flex flex-wrap gap-2">
             {sites.map((s) => (
-              <button
+              <Button
                 type="button"
                 key={s.key}
+                size="sm"
+                variant={owned.includes(s.key) ? "tonal" : "soft"}
                 onClick={() => toggle(s.key)}
-                className={owned.includes(s.key) ? "cp-btn-tonal" : "cp-btn-soft"}
-                style={{ height: 30, padding: "0 14px", fontSize: 12 }}
               >
                 {s.key}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
       )}
 
-      <div className="flex items-center gap-2" style={{ marginTop: 12, flexWrap: "wrap" }}>
-        <input
-          className="cp-input"
-          placeholder="reset password…"
-          type="text"
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          style={{ height: 34, maxWidth: 220, fontSize: 12 }}
-        />
-        <button onClick={save} disabled={!dirty || busy} className="cp-btn-primary" style={{ height: 34, padding: "0 18px", fontSize: 12 }}>
-          save
-        </button>
-        <div style={{ flex: 1 }} />
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Input size="sm" placeholder="reset password…" type="text" value={pw} onChange={(e) => setPw(e.target.value)} className="max-w-[220px]" />
+        <Button size="sm" onClick={save} disabled={!dirty || busy}>save</Button>
+        <div className="flex-1" />
         {!isSelf && (
-          <button onClick={remove} disabled={busy} className="cp-btn-ghost" style={{ height: 34, padding: "0 16px", fontSize: 12, color: "var(--cp-err)" }}>
-            delete
-          </button>
+          <Button variant="ghost" size="sm" danger onClick={remove} disabled={busy}>delete</Button>
         )}
       </div>
-      {msg && <div style={{ color: "var(--cp-err)", fontSize: 12, marginTop: 8 }}>{msg}</div>}
-    </div>
+      {msg && <div className="mt-2 text-[12px] text-[var(--cp-err)]">{msg}</div>}
+    </Card>
   );
 }

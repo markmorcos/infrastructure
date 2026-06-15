@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Brand } from "../AppShell";
+import { Button, Input, Label } from "@/components/ui";
 
 interface Props {
   title: string;
@@ -55,11 +56,11 @@ export default function AuthScreen(p: Props) {
           <h2 style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-.4px" }}>{p.title}</h2>
           <p style={{ margin: "8px 0 30px", fontSize: 14, color: "var(--md-sys-color-on-surface-variant)" }}>{p.sub}</p>
 
-          <label className="cp-label">EMAIL</label>
-          <input type="email" value={p.email} onChange={(e) => p.setEmail(e.target.value)} placeholder="you@domain.tech" required className="cp-input" style={{ height: 46, margin: "8px 0 18px" }} />
+          <Label>EMAIL</Label>
+          <Input type="email" value={p.email} onChange={(e) => p.setEmail(e.target.value)} placeholder="you@domain.tech" required className="h-[46px]!" style={{ margin: "8px 0 18px" }} />
 
-          <label className="cp-label">PASSWORD</label>
-          <input type="password" value={p.password} onChange={(e) => p.setPassword(e.target.value)} placeholder="••••••••" required className="cp-input" style={{ height: 46, margin: "8px 0 26px" }} />
+          <Label>PASSWORD</Label>
+          <Input type="password" value={p.password} onChange={(e) => p.setPassword(e.target.value)} placeholder="••••••••" required className="h-[46px]!" style={{ margin: "8px 0 26px" }} />
 
           {p.error && (
             <div style={{ marginBottom: 16, fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--cp-err)", display: "flex", alignItems: "center", gap: 8 }}>
@@ -67,9 +68,9 @@ export default function AuthScreen(p: Props) {
             </div>
           )}
 
-          <button type="submit" disabled={p.loading} className="cp-btn-primary" style={{ width: "100%", height: 48, fontSize: 14 }}>
+          <Button type="submit" disabled={p.loading} className="w-full h-[48px]! text-[14px]!">
             {p.loading ? "…" : p.cta}
-          </button>
+          </Button>
 
           {p.swapHref && (
             <div style={{ textAlign: "center", marginTop: 18, fontSize: 13, color: "var(--md-sys-color-on-surface-variant)", fontFamily: "var(--cp-mono)" }}>

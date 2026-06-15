@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button, Spinner } from "@/components/ui";
 import {
   Project,
   Runtime,
@@ -124,7 +125,7 @@ export default function FleetPage() {
   if (loading)
     return (
       <div style={loadingStyle}>
-        <span className="cp-spinner" />
+        <Spinner />
         loading fleet…
       </div>
     );
@@ -445,13 +446,13 @@ function Card({
           <span style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, color: "var(--md-sys-color-outline)", flex: 1 }}>
             upd {new Date(p.updatedAt).toISOString().slice(0, 16).replace("T", " ")}
           </span>
-          <button onClick={(e) => stop(e, onRotate)} className="cp-btn-ghost" style={{ height: 30, padding: "0 12px", fontSize: 11 }}>
+          <Button onClick={(e) => stop(e, onRotate)} variant="ghost" className="h-[30px] px-3 text-[11px]">
             <span className="msym" style={{ fontSize: 14, animation: rotating ? "cpSpin 1s linear infinite" : "none" }}>autorenew</span>
             {rotating ? "rotating" : "rotate"}
-          </button>
-          <button onClick={(e) => stop(e, onDelete)} className="cp-btn-soft" style={{ height: 30, width: 30, padding: 0 }} title="delete">
+          </Button>
+          <Button onClick={(e) => stop(e, onDelete)} variant="soft" className="h-[30px] w-[30px] p-0" title="delete">
             <span className="msym" style={{ fontSize: 16 }}>delete</span>
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -497,17 +498,17 @@ function Table({
             </span>
             <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11.5, color: "var(--md-sys-color-on-surface-variant)" }}>{ghCount(p)}gh · {keyCount(p)}k</span>
             <span style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-              <button
+              <Button
                 onClick={(e) => { e.stopPropagation(); onRotate(p.projectName); }}
-                className="cp-btn-ghost"
-                style={{ width: 30, height: 30, padding: 0, borderRadius: 8 }}
+                variant="ghost"
+                className="w-[30px] h-[30px] p-0 rounded-lg"
                 title="rotate token"
               >
                 <span className="msym" style={{ fontSize: 16, animation: rotating[p.projectName] ? "cpSpin 1s linear infinite" : "none" }}>autorenew</span>
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); onOpen(p.projectName); }} className="cp-btn-soft" style={{ width: 30, height: 30, padding: 0, borderRadius: 8 }} title="edit">
+              </Button>
+              <Button onClick={(e) => { e.stopPropagation(); onOpen(p.projectName); }} variant="soft" className="w-[30px] h-[30px] p-0 rounded-lg" title="edit">
                 <span className="msym" style={{ fontSize: 16 }}>edit</span>
-              </button>
+              </Button>
             </span>
           </div>
         );

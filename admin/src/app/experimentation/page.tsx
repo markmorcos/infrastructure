@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Project } from "./types";
+import { Button, Card, Input, Label, Spinner, Callout } from "@/components/ui";
 
 export default function ExperimentationProjectsPage() {
   const router = useRouter();
@@ -60,7 +61,7 @@ export default function ExperimentationProjectsPage() {
   if (loading)
     return (
       <div style={loadingStyle}>
-        <span className="cp-spinner" />
+        <Spinner />
         loading projects…
       </div>
     );
@@ -78,10 +79,9 @@ export default function ExperimentationProjectsPage() {
       </div>
 
       {error && (
-        <div style={{ ...calloutErr, marginBottom: 16 }}>
-          <span className="msym" style={{ fontSize: 16 }}>error</span>
+        <Callout icon="error" className="mb-4">
           {error}
-        </div>
+        </Callout>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-[1fr_320px]" style={{ gap: 16 }}>
@@ -98,10 +98,10 @@ export default function ExperimentationProjectsPage() {
           </div>
 
           {view.length === 0 ? (
-            <div className="cp-card" style={{ padding: "48px 0", textAlign: "center", fontFamily: "var(--cp-mono)", fontSize: 13, color: "var(--md-sys-color-on-surface-variant)" }}>
+            <Card pad={false} style={{ padding: "48px 0", textAlign: "center", fontFamily: "var(--cp-mono)", fontSize: 13, color: "var(--md-sys-color-on-surface-variant)" }}>
               <span className="msym" style={{ fontSize: 36, opacity: 0.5, display: "block", marginBottom: 10 }}>science</span>
               no projects yet — create one
-            </div>
+            </Card>
           ) : (
             <div className="grid grid-cols-1 gap-[12px] md:grid-cols-2">
               {view.map((p) => (
@@ -131,35 +131,32 @@ export default function ExperimentationProjectsPage() {
         </div>
 
         {/* CREATE */}
-        <div className="cp-card" style={{ padding: 20, height: "fit-content" }}>
+        <Card pad={false} className="p-5" style={{ height: "fit-content" }}>
           <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, letterSpacing: ".08em", color: "var(--md-sys-color-on-surface-variant)", marginBottom: 16 }}>
             {"// NEW PROJECT"}
           </div>
           <form onSubmit={create}>
             <div style={{ marginBottom: 16 }}>
-              <label className="cp-label">KEY</label>
-              <input
+              <Label>KEY</Label>
+              <Input
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
-                className="cp-input"
                 placeholder="my-project"
                 style={{ marginTop: 7, fontFamily: "var(--cp-mono)" }}
               />
             </div>
             <div style={{ marginBottom: 16 }}>
-              <label className="cp-label">NAME</label>
-              <input
+              <Label>NAME</Label>
+              <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="cp-input"
                 placeholder="(defaults to key)"
                 style={{ marginTop: 7 }}
               />
             </div>
-            <button type="submit" className="cp-btn-primary" disabled={creating || !key.trim()} style={{ width: "100%", height: 44, fontSize: 13 }}>
-              <span className="msym" style={{ fontSize: 18 }}>add</span>
+            <Button type="submit" icon="add" disabled={creating || !key.trim()} className="w-full h-[44px] text-[13px]">
               {creating ? "creating…" : "create project"}
-            </button>
+            </Button>
             {formErr && (
               <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--cp-err)", marginTop: 10 }}>{formErr}</div>
             )}
@@ -167,7 +164,7 @@ export default function ExperimentationProjectsPage() {
               auto-creates a production environment + sdk key
             </div>
           </form>
-        </div>
+        </Card>
       </div>
     </div>
   );
@@ -190,16 +187,4 @@ const searchBox: React.CSSProperties = {
   padding: "0 14px",
   borderRadius: 9999,
   background: "var(--md-sys-color-surface-container-high)",
-};
-const calloutErr: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 9,
-  padding: "11px 14px",
-  borderRadius: 12,
-  background: "var(--cp-err-dim)",
-  border: "1px solid rgba(255,122,107,.22)",
-  color: "var(--cp-err)",
-  fontFamily: "var(--cp-mono)",
-  fontSize: 12.5,
 };

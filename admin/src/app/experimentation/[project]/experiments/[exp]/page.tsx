@@ -11,6 +11,15 @@ import {
   signedPct,
   parseVariants,
 } from "../../../types";
+import {
+  Button,
+  Card,
+  Input,
+  Select,
+  Textarea,
+  Label,
+  Spinner,
+} from "@/components/ui";
 
 function variantLines(variants: { key: string; weight: number }[]): string {
   return variants.map((v) => `${v.key}:${v.weight}`).join("\n");
@@ -78,9 +87,9 @@ export default function ExperimentPage() {
         <span className="msym" style={{ fontSize: 40, opacity: 0.5, display: "block", marginBottom: 12 }}>science_off</span>
         experiment not found
         <div style={{ marginTop: 16 }}>
-          <button onClick={() => router.push(`/experimentation/${encodeURIComponent(projectKey)}`)} className="cp-btn-ghost" style={{ height: 34, padding: "0 14px" }}>
+          <Button variant="ghost" size="sm" onClick={() => router.push(`/experimentation/${encodeURIComponent(projectKey)}`)}>
             back to project
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -88,7 +97,7 @@ export default function ExperimentPage() {
   if (!exp)
     return (
       <div style={loadingStyle}>
-        <span className="cp-spinner" />
+        <Spinner />
         loading…
       </div>
     );
@@ -135,13 +144,13 @@ export default function ExperimentPage() {
         <span style={{ fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--md-sys-color-on-surface-variant)" }}>{exp.key}</span>
         <span style={{ display: "inline-flex", alignItems: "center", height: 24, padding: "0 10px", borderRadius: 9999, background: meta.dim, color: meta.color, fontFamily: "var(--cp-mono)", fontSize: 10.5 }}>{exp.status}</span>
         <div style={{ flex: 1 }} />
-        <button onClick={remove} className="cp-btn-soft" style={{ height: 32, padding: "0 12px", fontSize: 11 }}>
+        <Button variant="soft" onClick={remove} className="h-[32px] px-3 text-[11px]">
           <span className="msym" style={{ fontSize: 15 }}>delete</span>delete
-        </button>
+        </Button>
       </div>
 
       {/* RESULTS */}
-      <div className="cp-card" style={{ padding: 20, marginTop: 20 }}>
+      <Card pad={false} className="p-5 mt-5">
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
           <span className="msym" style={{ fontSize: 17, color: "var(--md-sys-color-on-surface-variant)" }}>insights</span>
           <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, letterSpacing: ".08em", color: "var(--md-sys-color-on-surface-variant)" }}>
@@ -153,31 +162,31 @@ export default function ExperimentPage() {
         ) : (
           <ResultsTable results={results} />
         )}
-      </div>
+      </Card>
 
       {/* EDIT */}
-      <div className="cp-card" style={{ padding: 20, marginTop: 16 }}>
+      <Card pad={false} className="p-5 mt-4">
         <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, letterSpacing: ".08em", color: "var(--md-sys-color-on-surface-variant)", marginBottom: 16 }}>{"// EDIT"}</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="name" className="cp-input" style={{ height: 40, flex: "1 1 140px", minWidth: 0 }} />
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="cp-input" style={{ height: 40, flex: "0 1 130px" }}>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="name" style={{ height: 40, flex: "1 1 140px", minWidth: 0 }} />
+          <Select value={status} onChange={(e) => setStatus(e.target.value)} style={{ height: 40, flex: "0 1 130px" }}>
             {STATUSES.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-          <input value={metric} onChange={(e) => setMetric(e.target.value)} placeholder="metric" className="cp-input" style={{ height: 40, flex: "1 1 140px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
-          <input value={control} onChange={(e) => setControl(e.target.value)} placeholder="control variant key" className="cp-input" style={{ height: 40, flex: "1 1 140px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
+          <Input value={metric} onChange={(e) => setMetric(e.target.value)} placeholder="metric" style={{ height: 40, flex: "1 1 140px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
+          <Input value={control} onChange={(e) => setControl(e.target.value)} placeholder="control variant key" style={{ height: 40, flex: "1 1 140px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
         </div>
         <div style={{ marginTop: 8 }}>
-          <label className="cp-label">VARIANTS (one per line, key:weight)</label>
-          <textarea value={variantsRaw} onChange={(e) => setVariantsRaw(e.target.value)} className="cp-input" rows={4} style={{ marginTop: 6, fontFamily: "var(--cp-mono)", fontSize: 12, resize: "vertical" }} />
+          <Label>VARIANTS (one per line, key:weight)</Label>
+          <Textarea value={variantsRaw} onChange={(e) => setVariantsRaw(e.target.value)} rows={4} style={{ marginTop: 6, fontFamily: "var(--cp-mono)", fontSize: 12, resize: "vertical" }} />
         </div>
-        <button onClick={save} className="cp-btn-primary" style={{ height: 44, padding: "0 20px", fontSize: 13, marginTop: 12 }}>save changes</button>
+        <Button onClick={save} className="h-[44px] px-5 text-[13px] mt-3">save changes</Button>
         {saveMsg && <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--cp-ok)", marginLeft: 12 }}>{saveMsg}</span>}
         {saveErr && <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--cp-err)", marginTop: 8 }}>{saveErr}</div>}
-      </div>
+      </Card>
     </div>
   );
 }

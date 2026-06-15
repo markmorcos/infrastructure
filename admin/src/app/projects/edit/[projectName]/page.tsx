@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { Button, buttonClass, Card, Input, Label, Spinner } from "@/components/ui";
 import {
   Project,
   Runtime,
@@ -137,7 +138,7 @@ export default function DetailPage() {
   if (!project)
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "80px 28px", fontFamily: "var(--cp-mono)", color: "var(--md-sys-color-on-surface-variant)" }}>
-        <span className="cp-spinner" />
+        <Spinner />
         loading…
       </div>
     );
@@ -150,9 +151,9 @@ export default function DetailPage() {
 
   return (
     <div className="px-[14px] pb-12 pt-4 md:px-7 md:pb-[60px] md:pt-6" style={{ maxWidth: 1080 }}>
-      <button onClick={() => router.push("/projects")} className="cp-btn-ghost" style={{ height: 34, padding: "0 14px 0 10px", fontSize: 12, marginBottom: 20 }}>
+      <Button onClick={() => router.push("/projects")} variant="ghost" className="h-[34px] pr-[14px] pl-[10px] text-[12px] mb-5">
         <span className="msym" style={{ fontSize: 17 }}>arrow_back</span>fleet
-      </button>
+      </Button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
         <span style={{ width: 13, height: 13, borderRadius: "50%", flexShrink: 0, background: meta.color, animation: status === "healthy" ? "cpPulse 2.6s ease-in-out infinite" : "none" }} />
@@ -171,15 +172,15 @@ export default function DetailPage() {
       )}
 
       {runtime && runtime.status !== "none" && (
-        <div className="cp-card" style={{ padding: 20, marginTop: 16 }}>
+        <Card pad={false} className="p-5" style={{ marginTop: 16 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span className="msym" style={{ fontSize: 18, color: RT_UI[runtime.status].color, animation: runtime.status === "progressing" ? "cpSpin 1.4s linear infinite" : "none" }}>{RT_UI[runtime.status].icon}</span>
               <SectionLabel inline>RUNTIME · {runtime.ready}/{runtime.desired} ready · {RT_UI[runtime.status].label}</SectionLabel>
             </div>
-            <button onClick={rollback} className="cp-btn-ghost" style={{ height: 30, padding: "0 12px", fontSize: 11 }}>
+            <Button onClick={rollback} variant="ghost" className="h-[30px] px-3 text-[11px]">
               <span className="msym" style={{ fontSize: 15 }}>undo</span>rollback
-            </button>
+            </Button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {runtime.pods.map((pod) => (
@@ -193,18 +194,18 @@ export default function DetailPage() {
             ))}
           </div>
           {rollMsg && <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--cp-ok)", marginTop: 10 }}>{rollMsg}</div>}
-        </div>
+        </Card>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 16, marginTop: 20 }}>
         {/* METADATA */}
-        <div className="cp-card" style={{ padding: 20 }}>
+        <Card pad={false} className="p-5">
           <SectionLabel>{"// METADATA"}</SectionLabel>
           <Field label="REPOSITORY">
-            <input value={repo} onChange={(e) => setRepo(e.target.value)} className="cp-input" placeholder="markmorcos/my-app" />
+            <Input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="markmorcos/my-app" />
           </Field>
           <Field label="NAMESPACE">
-            <input value={namespace} onChange={(e) => setNamespace(e.target.value)} className="cp-input" placeholder="(not deployed)" />
+            <Input value={namespace} onChange={(e) => setNamespace(e.target.value)} placeholder="(not deployed)" />
           </Field>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: 10, background: "var(--md-sys-color-surface-container)", border: "1px solid var(--md-sys-color-outline-variant)" }}>
             <div>
@@ -213,12 +214,12 @@ export default function DetailPage() {
             </div>
             <Switch on={enabled} onClick={() => setEnabled((v) => !v)} />
           </div>
-          <button onClick={save} className="cp-btn-primary" style={{ width: "100%", height: 44, marginTop: 18, fontSize: 13 }}>save changes</button>
+          <Button onClick={save} variant="primary" className="w-full h-[44px] mt-[18px] text-[13px]">save changes</Button>
           {msg && <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--cp-ok)", marginTop: 10, textAlign: "center" }}>{msg}</div>}
-        </div>
+        </Card>
 
         {/* TOKEN */}
-        <div className="cp-card" style={{ padding: 20, display: "flex", flexDirection: "column" }}>
+        <Card pad={false} className="p-5" style={{ display: "flex", flexDirection: "column" }}>
           <SectionLabel>{"// DEPLOYMENT TOKEN"}</SectionLabel>
           <div style={{ border: "1px solid var(--md-sys-color-outline-variant)", borderRadius: 12, padding: 16, background: "var(--md-sys-color-surface-container-lowest)" }}>
             <div style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, color: "var(--md-sys-color-on-surface-variant)", marginBottom: 8 }}>decoded JWT payload</div>
@@ -235,19 +236,19 @@ export default function DetailPage() {
             </div>
           </div>
           <div style={{ flex: 1, minHeight: 14 }} />
-          <button onClick={rotate} className={valid ? "cp-btn-tonal" : "cp-btn-primary"} style={{ width: "100%", height: 46, fontSize: 13 }}>
+          <Button onClick={rotate} variant={valid ? "tonal" : "primary"} className="w-full h-[46px] text-[13px]">
             <span className="msym" style={{ fontSize: 18, animation: rotating ? "cpSpin 1s linear infinite" : "none" }}>autorenew</span>
             {rotating ? "rotating…" : "rotate token"}
-          </button>
+          </Button>
           <div style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, color: "var(--md-sys-color-outline)", marginTop: 10, textAlign: "center" }}>
             re-mints the token and pushes it to the repo&apos;s actions secrets
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* SECRETS */}
       <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 16, marginTop: 16 }}>
-        <div className="cp-card" style={{ padding: 20 }}>
+        <Card pad={false} className="p-5">
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <span className="msym" style={{ fontSize: 17, color: "var(--md-sys-color-on-surface-variant)" }}>key</span>
             <SectionLabel inline>GITHUB SECRETS · {project.repo || "no repo"}</SectionLabel>
@@ -273,9 +274,9 @@ export default function DetailPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 13, fontFamily: "var(--cp-mono)", fontSize: 10.5, color: "var(--md-sys-color-outline)" }}>
             <span className="msym" style={{ fontSize: 14 }}>lock</span>values are never exposed — names &amp; timestamps only
           </div>
-        </div>
+        </Card>
 
-        <div className="cp-card" style={{ padding: 20 }}>
+        <Card pad={false} className="p-5">
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <span className="msym" style={{ fontSize: 17, color: "var(--md-sys-color-on-surface-variant)" }}>deployed_code</span>
             <SectionLabel inline>KUBERNETES SECRETS</SectionLabel>
@@ -304,10 +305,10 @@ export default function DetailPage() {
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--md-sys-color-outline-variant)" }}>
                 <div style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, letterSpacing: ".06em", color: "var(--md-sys-color-on-surface-variant)", marginBottom: 10 }}>SET / ROTATE A KEY</div>
                 <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-                  <input value={secretName} onChange={(e) => setSecretName(e.target.value)} placeholder="secret-name" className="cp-input" style={{ height: 40, flex: "1 1 120px", minWidth: 0 }} />
-                  <input value={secretKey} onChange={(e) => setSecretKey(e.target.value)} placeholder="KEY" className="cp-input" style={{ height: 40, flex: "1 1 90px", minWidth: 0 }} />
-                  <input type="password" value={secretValue} onChange={(e) => setSecretValue(e.target.value)} placeholder="value" className="cp-input" style={{ height: 40, flex: "1 1 120px", minWidth: 0 }} />
-                  <button onClick={setK8s} className="cp-btn-tonal basis-full md:basis-auto" style={{ height: 40, padding: "0 16px", fontSize: 12, flexGrow: 0, flexShrink: 0 }}>set</button>
+                  <Input value={secretName} onChange={(e) => setSecretName(e.target.value)} placeholder="secret-name" style={{ height: 40, flex: "1 1 120px", minWidth: 0 }} />
+                  <Input value={secretKey} onChange={(e) => setSecretKey(e.target.value)} placeholder="KEY" style={{ height: 40, flex: "1 1 90px", minWidth: 0 }} />
+                  <Input type="password" value={secretValue} onChange={(e) => setSecretValue(e.target.value)} placeholder="value" style={{ height: 40, flex: "1 1 120px", minWidth: 0 }} />
+                  <Button onClick={setK8s} variant="tonal" className="basis-full md:basis-auto h-[40px] px-4 text-[12px] grow-0 shrink-0">set</Button>
                 </div>
                 {secretMsg && <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--cp-ok)", marginTop: 8 }}>{secretMsg}</div>}
               </div>
@@ -315,16 +316,16 @@ export default function DetailPage() {
           ) : (
             <Empty icon="cloud_off" text="no namespace — not deployed" big />
           )}
-        </div>
+        </Card>
       </div>
 
-      <div className="cp-card" style={{ padding: 20, marginTop: 16 }}>
+      <Card pad={false} className="p-5" style={{ marginTop: 16 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span className="msym" style={{ fontSize: 17, color: "var(--md-sys-color-on-surface-variant)" }}>manage_history</span>
             <SectionLabel inline>RECENT BUILDS</SectionLabel>
           </div>
-          <Link href="/builds" className="cp-btn-ghost" style={{ height: 28, padding: "0 12px", fontSize: 11 }}>
+          <Link href="/builds" className={buttonClass("ghost", "md", "h-[28px] px-3 text-[11px]")}>
             all builds<span className="msym" style={{ fontSize: 14 }}>arrow_forward</span>
           </Link>
         </div>
@@ -343,7 +344,7 @@ export default function DetailPage() {
             );
           })
         )}
-      </div>
+      </Card>
     </div>
   );
 }
@@ -359,7 +360,7 @@ function SectionLabel({ children, inline }: { children: React.ReactNode; inline?
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <label className="cp-label">{label}</label>
+      <Label>{label}</Label>
       <div style={{ marginTop: 7 }}>{children}</div>
     </div>
   );

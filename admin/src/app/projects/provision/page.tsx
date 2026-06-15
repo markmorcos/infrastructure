@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button, Card, Input, Label } from "@/components/ui";
 import { STACK_LIST } from "@/lib/templates";
 
 interface Step {
@@ -103,7 +104,7 @@ export default function ProvisionPage() {
   return (
     <div className="grid grid-cols-1 items-start gap-[14px] px-[14px] pb-12 pt-4 md:grid-cols-[380px_1fr] md:gap-[18px] md:px-7 md:pb-[60px] md:pt-6">
       {/* FORM */}
-      <div className="cp-card static p-4 md:sticky md:top-[90px] md:p-[22px]">
+      <Card pad={false} className="static p-4 md:sticky md:top-[90px] md:p-[22px]">
         <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, letterSpacing: ".08em", color: "var(--md-sys-color-on-surface-variant)", marginBottom: 18 }}>{"// NEW PROJECT"}</div>
         {[
           { label: "NAME", value: name, set: setName, ph: "my-new-app" },
@@ -111,13 +112,13 @@ export default function ProvisionPage() {
           { label: "NAMESPACE", value: namespace, set: setNamespace, ph: name || "my-new-app" },
         ].map((f) => (
           <div key={f.label} style={{ marginBottom: 16 }}>
-            <label className="cp-label">{f.label}</label>
-            <input value={f.value} onChange={(e) => f.set(e.target.value)} placeholder={f.ph} className="cp-input" style={{ marginTop: 7 }} />
+            <Label>{f.label}</Label>
+            <Input value={f.value} onChange={(e) => f.set(e.target.value)} placeholder={f.ph} style={{ marginTop: 7 }} />
           </div>
         ))}
 
         <div style={{ marginBottom: 16 }}>
-          <label className="cp-label">STACK</label>
+          <Label>STACK</Label>
           <div style={{ display: "flex", gap: 6, marginTop: 7, flexWrap: "wrap" }}>
             {STACK_LIST.map((s) => {
               const active = stack === s.id;
@@ -146,35 +147,35 @@ export default function ProvisionPage() {
 
         <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
           <div style={{ width: 110 }}>
-            <label className="cp-label">PORT</label>
-            <input value={port} onChange={(e) => setPort(e.target.value)} className="cp-input" style={{ marginTop: 7 }} />
+            <Label>PORT</Label>
+            <Input value={port} onChange={(e) => setPort(e.target.value)} style={{ marginTop: 7 }} />
           </div>
           <div style={{ flex: 1 }}>
-            <label className="cp-label">INGRESS HOST</label>
-            <input value={ingressHost} onChange={(e) => setIngressHost(e.target.value)} placeholder={name ? `${name}.morcos.tech` : "my-new-app.morcos.tech"} className="cp-input" style={{ marginTop: 7 }} />
+            <Label>INGRESS HOST</Label>
+            <Input value={ingressHost} onChange={(e) => setIngressHost(e.target.value)} placeholder={name ? `${name}.morcos.tech` : "my-new-app.morcos.tech"} style={{ marginTop: 7 }} />
           </div>
         </div>
 
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
-            <label className="cp-label">ENV</label>
-            <button onClick={() => setEnv((e) => [...e, { name: "", value: "" }])} className="cp-btn-ghost" style={{ height: 24, padding: "0 8px", fontSize: 10.5 }}>
+            <Label>ENV</Label>
+            <Button onClick={() => setEnv((e) => [...e, { name: "", value: "" }])} variant="ghost" className="h-[24px] px-2 text-[10.5px]">
               <span className="msym" style={{ fontSize: 13 }}>add</span>add
-            </button>
+            </Button>
           </div>
           {env.map((row, i) => (
             <div key={i} style={{ display: "flex", gap: 6, marginBottom: 6 }}>
-              <input value={row.name} onChange={(e) => setEnv((arr) => arr.map((r, j) => (j === i ? { ...r, name: e.target.value } : r)))} placeholder="KEY" className="cp-input" style={{ height: 38 }} />
-              <input value={row.value} onChange={(e) => setEnv((arr) => arr.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)))} placeholder="value" className="cp-input" style={{ height: 38 }} />
-              <button onClick={() => setEnv((arr) => arr.filter((_, j) => j !== i))} className="cp-btn-soft" style={{ width: 38, height: 38, padding: 0 }}>
+              <Input value={row.name} onChange={(e) => setEnv((arr) => arr.map((r, j) => (j === i ? { ...r, name: e.target.value } : r)))} placeholder="KEY" style={{ height: 38 }} />
+              <Input value={row.value} onChange={(e) => setEnv((arr) => arr.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)))} placeholder="value" style={{ height: 38 }} />
+              <Button onClick={() => setEnv((arr) => arr.filter((_, j) => j !== i))} variant="soft" className="w-[38px] h-[38px] p-0">
                 <span className="msym" style={{ fontSize: 16 }}>close</span>
-              </button>
+              </Button>
             </div>
           ))}
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <label className="cp-label">DATA SERVICES</label>
+          <Label>DATA SERVICES</Label>
           <div style={{ display: "flex", gap: 6, marginTop: 7, flexWrap: "wrap" }}>
             {DATA_SERVICES.map((s) => {
               const active = databases.includes(s.id);
@@ -221,14 +222,14 @@ export default function ProvisionPage() {
             <span style={{ width: 20, height: 20, borderRadius: "50%", background: isPrivate ? "var(--md-sys-color-on-primary)" : "var(--md-sys-color-outline)" }} />
           </button>
         </div>
-        <button onClick={provision} disabled={running || !name} className="cp-btn-primary" style={{ width: "100%", height: 46, marginTop: 18, fontSize: 13 }}>
+        <Button onClick={provision} disabled={running || !name} variant="primary" className="w-full h-[46px] mt-[18px] text-[13px]">
           <span className="msym" style={{ fontSize: 18, animation: running ? "cpSpin 1s linear infinite" : "none" }}>{running ? "progress_activity" : "rocket_launch"}</span>
           {running ? "provisioning…" : "provision"}
-        </button>
-      </div>
+        </Button>
+      </Card>
 
       {/* BUILD LOG */}
-      <div className="cp-card" style={{ background: "var(--md-sys-color-surface-container-lowest)", overflow: "hidden", minHeight: 440, display: "flex", flexDirection: "column" }}>
+      <Card pad={false} style={{ background: "var(--md-sys-color-surface-container-lowest)", overflow: "hidden", minHeight: 440, display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 18px", borderBottom: "1px solid var(--md-sys-color-outline-variant)", background: "var(--md-sys-color-surface-container-low)" }}>
           <span style={{ width: 10, height: 10, borderRadius: "50%", background: headerDot }} />
           <span style={{ fontFamily: "var(--cp-mono)", fontSize: 12, letterSpacing: ".06em", color: "var(--md-sys-color-on-surface-variant)" }}>
@@ -277,11 +278,11 @@ export default function ProvisionPage() {
                 <div style={{ fontFamily: "var(--cp-mono)", fontSize: 13, color: result.ok ? "var(--cp-ok)" : "var(--cp-err)", fontWeight: 600 }}>{result.projectName} {result.ok ? "provisioned" : "completed with errors"}</div>
                 <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-on-surface-variant)", marginTop: 2 }}>repo + secrets + CI scaffold</div>
               </div>
-              <button onClick={() => router.push("/projects")} className="cp-btn-primary" style={{ height: 36, padding: "0 16px", fontSize: 12 }}>view fleet</button>
+              <Button onClick={() => router.push("/projects")} variant="primary" className="h-[36px] px-4 text-[12px]">view fleet</Button>
             </div>
           )}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

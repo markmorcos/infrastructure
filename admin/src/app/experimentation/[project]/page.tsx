@@ -14,6 +14,16 @@ import {
   jsonStr,
   parseVariants,
 } from "../types";
+import {
+  Button,
+  Card,
+  Input,
+  Select,
+  Textarea,
+  Label,
+  Spinner,
+  Callout,
+} from "@/components/ui";
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -54,9 +64,9 @@ export default function ProjectDetailPage() {
         <span className="msym" style={{ fontSize: 40, opacity: 0.5, display: "block", marginBottom: 12 }}>folder_off</span>
         project not found
         <div style={{ marginTop: 16 }}>
-          <button onClick={() => router.push("/experimentation")} className="cp-btn-ghost" style={{ height: 34, padding: "0 14px" }}>
+          <Button variant="ghost" size="sm" onClick={() => router.push("/experimentation")}>
             back to projects
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -64,7 +74,7 @@ export default function ProjectDetailPage() {
   if (!data)
     return (
       <div style={loadingStyle}>
-        <span className="cp-spinner" />
+        <Spinner />
         loading…
       </div>
     );
@@ -99,18 +109,16 @@ export default function ProjectDetailPage() {
         <h2 className="text-[21px] md:text-[26px]" style={{ margin: 0, fontFamily: "var(--cp-mono)", fontWeight: 600 }}>{project.name}</h2>
         <span style={{ fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--md-sys-color-on-surface-variant)" }}>{project.key}</span>
         <div style={{ flex: 1 }} />
-        <button onClick={rename} className="cp-btn-ghost" style={{ height: 32, padding: "0 12px", fontSize: 11 }}>
+        <Button variant="ghost" onClick={rename} className="h-[32px] px-3 text-[11px]">
           <span className="msym" style={{ fontSize: 15 }}>edit</span>rename
-        </button>
-        <button onClick={remove} className="cp-btn-soft" style={{ height: 32, padding: "0 12px", fontSize: 11 }}>
+        </Button>
+        <Button variant="soft" onClick={remove} className="h-[32px] px-3 text-[11px]">
           <span className="msym" style={{ fontSize: 15 }}>delete</span>delete
-        </button>
+        </Button>
       </div>
 
       {error && (
-        <div style={{ ...calloutErr, marginTop: 16 }}>
-          <span className="msym" style={{ fontSize: 16 }}>error</span>{error}
-        </div>
+        <Callout icon="error" className="mt-4">{error}</Callout>
       )}
 
       <Environments base={base} environments={environments} sdkKeys={sdkKeys} onChange={reload} />
@@ -189,12 +197,12 @@ function Environments({
                 <span style={{ fontFamily: "var(--cp-mono)", fontSize: 13, fontWeight: 600 }}>{env.name}</span>
                 <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-on-surface-variant)" }}>{env.key}</span>
                 <div style={{ flex: 1 }} />
-                <button onClick={() => rename(env)} className="cp-btn-ghost" style={{ height: 28, width: 28, padding: 0 }} title="rename">
+                <Button variant="ghost" onClick={() => rename(env)} className="h-[28px] w-[28px] p-0" title="rename">
                   <span className="msym" style={{ fontSize: 15 }}>edit</span>
-                </button>
-                <button onClick={() => remove(env)} className="cp-btn-soft" style={{ height: 28, width: 28, padding: 0 }} title="delete">
+                </Button>
+                <Button variant="soft" onClick={() => remove(env)} className="h-[28px] w-[28px] p-0" title="delete">
                   <span className="msym" style={{ fontSize: 15 }}>delete</span>
-                </button>
+                </Button>
               </div>
               <div style={{ padding: "11px 13px", display: "flex", flexDirection: "column", gap: 8 }}>
                 <KeyRow label="SDK KEY" value={sk ?? "—"} />
@@ -207,11 +215,11 @@ function Environments({
       </div>
 
       <form onSubmit={create} style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-        <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="key (e.g. staging)" className="cp-input" style={{ height: 40, flex: "1 1 140px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="name" className="cp-input" style={{ height: 40, flex: "1 1 140px", minWidth: 0 }} />
-        <button type="submit" className="cp-btn-tonal" disabled={!key.trim()} style={{ height: 40, padding: "0 16px", fontSize: 12 }}>
+        <Input value={key} onChange={(e) => setKey(e.target.value)} placeholder="key (e.g. staging)" style={{ height: 40, flex: "1 1 140px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="name" style={{ height: 40, flex: "1 1 140px", minWidth: 0 }} />
+        <Button type="submit" variant="tonal" disabled={!key.trim()} className="h-[40px] px-4 text-[12px]">
           <span className="msym" style={{ fontSize: 16 }}>add</span>add env
-        </button>
+        </Button>
       </form>
       {err && <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--cp-err)", marginTop: 8 }}>{err}</div>}
     </Section>
@@ -233,9 +241,9 @@ function KeyRow({ label, value }: { label: string; value: string }) {
     <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
       <span style={{ fontFamily: "var(--cp-mono)", fontSize: 9.5, letterSpacing: ".06em", color: "var(--md-sys-color-outline)", width: 54, flexShrink: 0 }}>{label}</span>
       <code style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{value}</code>
-      <button onClick={copy} className="cp-btn-ghost" style={{ height: 24, width: 24, padding: 0 }} title="copy">
+      <Button variant="ghost" onClick={copy} className="h-[24px] w-[24px] p-0" title="copy">
         <span className="msym" style={{ fontSize: 13 }}>{copied ? "check" : "content_copy"}</span>
-      </button>
+      </Button>
     </div>
   );
 }
@@ -310,19 +318,19 @@ function Features({
       <form onSubmit={create} style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--md-sys-color-outline-variant)" }}>
         <div style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, letterSpacing: ".06em", color: "var(--md-sys-color-on-surface-variant)", marginBottom: 10 }}>NEW FLAG</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="key" className="cp-input" style={{ height: 40, flex: "1 1 120px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
-          <select value={type} onChange={(e) => setType(e.target.value)} className="cp-input" style={{ height: 40, flex: "0 1 120px" }}>
+          <Input value={key} onChange={(e) => setKey(e.target.value)} placeholder="key" style={{ height: 40, flex: "1 1 120px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
+          <Select value={type} onChange={(e) => setType(e.target.value)} style={{ height: 40, flex: "0 1 120px" }}>
             {FEATURE_TYPES.map((t) => (
               <option key={t} value={t}>{t}</option>
             ))}
-          </select>
-          <input value={def} onChange={(e) => setDef(e.target.value)} placeholder={defPlaceholder(type)} className="cp-input" style={{ height: 40, flex: "1 1 120px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
+          </Select>
+          <Input value={def} onChange={(e) => setDef(e.target.value)} placeholder={defPlaceholder(type)} style={{ height: 40, flex: "1 1 120px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-          <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="description" className="cp-input" style={{ height: 40, flex: "1 1 200px", minWidth: 0 }} />
-          <button type="submit" className="cp-btn-tonal" disabled={!key.trim()} style={{ height: 40, padding: "0 16px", fontSize: 12 }}>
+          <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="description" style={{ height: 40, flex: "1 1 200px", minWidth: 0 }} />
+          <Button type="submit" variant="tonal" disabled={!key.trim()} className="h-[40px] px-4 text-[12px]">
             <span className="msym" style={{ fontSize: 16 }}>add</span>add flag
-          </button>
+          </Button>
         </div>
         {err && <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--cp-err)", marginTop: 8 }}>{err}</div>}
       </form>
@@ -355,9 +363,9 @@ function FeatureCard({
         <span style={{ fontFamily: "var(--cp-mono)", fontSize: 9.5, letterSpacing: ".05em", padding: "2px 7px", borderRadius: 5, background: "var(--md-sys-color-surface-container-highest)", color: "var(--md-sys-color-on-surface-variant)" }}>{feature.type}</span>
         <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-on-surface-variant)" }}>default {jsonStr(feature.default)}</span>
         <div style={{ flex: 1 }} />
-        <button onClick={onDelete} className="cp-btn-soft" style={{ height: 28, width: 28, padding: 0 }} title="delete">
+        <Button variant="soft" onClick={onDelete} className="h-[28px] w-[28px] p-0" title="delete">
           <span className="msym" style={{ fontSize: 15 }}>delete</span>
-        </button>
+        </Button>
       </div>
       {feature.description && (
         <div style={{ padding: "8px 13px 0", fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-on-surface-variant)" }}>{feature.description}</div>
@@ -431,20 +439,20 @@ function FeatureValueRow({
       <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, width: 80, flexShrink: 0, color: set ? "var(--md-sys-color-on-surface)" : "var(--md-sys-color-outline)" }}>{env.key}</span>
       <Switch on={enabled} onClick={() => setEnabled((v) => !v)} />
       {feature.type === "boolean" ? (
-        <select value={val || "false"} onChange={(e) => setVal(e.target.value)} className="cp-input" style={{ height: 34, flex: "0 1 100px", fontFamily: "var(--cp-mono)", fontSize: 11.5 }}>
+        <Select value={val || "false"} onChange={(e) => setVal(e.target.value)} style={{ height: 34, flex: "0 1 100px", fontFamily: "var(--cp-mono)", fontSize: 11.5 }}>
           <option value="true">true</option>
           <option value="false">false</option>
-        </select>
+        </Select>
       ) : (
-        <input value={val} onChange={(e) => setVal(e.target.value)} placeholder={defPlaceholder(feature.type)} className="cp-input" style={{ height: 34, flex: "1 1 110px", minWidth: 0, fontFamily: "var(--cp-mono)", fontSize: 11.5 }} />
+        <Input value={val} onChange={(e) => setVal(e.target.value)} placeholder={defPlaceholder(feature.type)} style={{ height: 34, flex: "1 1 110px", minWidth: 0, fontFamily: "var(--cp-mono)", fontSize: 11.5 }} />
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-        <input type="number" min={0} max={100} value={rollout} onChange={(e) => setRollout(Number(e.target.value))} className="cp-input" style={{ height: 34, width: 64, fontFamily: "var(--cp-mono)", fontSize: 11.5 }} />
+        <Input type="number" min={0} max={100} value={rollout} onChange={(e) => setRollout(Number(e.target.value))} style={{ height: 34, width: 64, fontFamily: "var(--cp-mono)", fontSize: 11.5 }} />
         <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-on-surface-variant)" }}>%</span>
       </div>
-      <button onClick={save} className="cp-btn-tonal" style={{ height: 34, padding: "0 12px", fontSize: 11 }}>set</button>
+      <Button variant="tonal" onClick={save} className="h-[34px] px-3 text-[11px]">set</Button>
       {set && (
-        <button onClick={unset} className="cp-btn-ghost" style={{ height: 34, padding: "0 10px", fontSize: 11 }} title="revert to default">unset</button>
+        <Button variant="ghost" onClick={unset} className="h-[34px] px-[10px] text-[11px]" title="revert to default">unset</Button>
       )}
       {err && <div style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, color: "var(--cp-err)", flexBasis: "100%" }}>{err}</div>}
     </div>
@@ -524,25 +532,25 @@ function Experiments({
       <form onSubmit={create} style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--md-sys-color-outline-variant)" }}>
         <div style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, letterSpacing: ".06em", color: "var(--md-sys-color-on-surface-variant)", marginBottom: 10 }}>NEW EXPERIMENT</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="key" className="cp-input" style={{ height: 40, flex: "1 1 120px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="name" className="cp-input" style={{ height: 40, flex: "1 1 120px", minWidth: 0 }} />
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="cp-input" style={{ height: 40, flex: "0 1 120px" }}>
+          <Input value={key} onChange={(e) => setKey(e.target.value)} placeholder="key" style={{ height: 40, flex: "1 1 120px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="name" style={{ height: 40, flex: "1 1 120px", minWidth: 0 }} />
+          <Select value={status} onChange={(e) => setStatus(e.target.value)} style={{ height: 40, flex: "0 1 120px" }}>
             {STATUSES.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
-          </select>
+          </Select>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-          <input value={metric} onChange={(e) => setMetric(e.target.value)} placeholder="metric (e.g. purchase)" className="cp-input" style={{ height: 40, flex: "1 1 140px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
-          <input value={control} onChange={(e) => setControl(e.target.value)} placeholder="control variant key" className="cp-input" style={{ height: 40, flex: "1 1 140px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
+          <Input value={metric} onChange={(e) => setMetric(e.target.value)} placeholder="metric (e.g. purchase)" style={{ height: 40, flex: "1 1 140px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
+          <Input value={control} onChange={(e) => setControl(e.target.value)} placeholder="control variant key" style={{ height: 40, flex: "1 1 140px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
         </div>
         <div style={{ marginTop: 8 }}>
-          <label className="cp-label">VARIANTS (one per line, key:weight)</label>
-          <textarea value={variantsRaw} onChange={(e) => setVariantsRaw(e.target.value)} className="cp-input" rows={3} style={{ marginTop: 6, fontFamily: "var(--cp-mono)", fontSize: 12, resize: "vertical" }} />
+          <Label>VARIANTS (one per line, key:weight)</Label>
+          <Textarea value={variantsRaw} onChange={(e) => setVariantsRaw(e.target.value)} rows={3} style={{ marginTop: 6, fontFamily: "var(--cp-mono)", fontSize: 12, resize: "vertical" }} />
         </div>
-        <button type="submit" className="cp-btn-tonal" disabled={!key.trim()} style={{ height: 40, padding: "0 16px", fontSize: 12, marginTop: 10 }}>
+        <Button type="submit" variant="tonal" disabled={!key.trim()} className="h-[40px] px-4 text-[12px] mt-[10px]">
           <span className="msym" style={{ fontSize: 16 }}>add</span>create experiment
-        </button>
+        </Button>
         {err && <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--cp-err)", marginTop: 8 }}>{err}</div>}
       </form>
     </Section>
@@ -592,13 +600,13 @@ function defPlaceholder(type: string): string {
 
 function Section({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
   return (
-    <div className="cp-card" style={{ padding: 20, marginTop: 16 }}>
+    <Card pad={false} className="p-5 mt-4">
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
         <span className="msym" style={{ fontSize: 17, color: "var(--md-sys-color-on-surface-variant)" }}>{icon}</span>
         <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, letterSpacing: ".08em", color: "var(--md-sys-color-on-surface-variant)" }}>{title}</span>
       </div>
       {children}
-    </div>
+    </Card>
   );
 }
 
@@ -631,16 +639,4 @@ const loadingStyle: React.CSSProperties = {
   fontFamily: "var(--cp-mono)",
   fontSize: 13,
   color: "var(--md-sys-color-on-surface-variant)",
-};
-const calloutErr: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 9,
-  padding: "11px 14px",
-  borderRadius: 12,
-  background: "var(--cp-err-dim)",
-  border: "1px solid rgba(255,122,107,.22)",
-  color: "var(--cp-err)",
-  fontFamily: "var(--cp-mono)",
-  fontSize: 12.5,
 };

@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { localeAll, type Section, type Site } from "../types";
+import { Button, Card, Label, Spinner } from "@/components/ui";
 
 // Site dashboard (/cms/[site]). Sections grouped by page_group, per-locale edit
 // links with a dirty dot when draft != published, a Publish button + "last
@@ -109,7 +110,7 @@ export default function SiteDashboard() {
   if (loading)
     return (
       <div style={loadingStyle}>
-        <span className="cp-spinner" />
+        <Spinner />
         loading…
       </div>
     );
@@ -126,9 +127,9 @@ export default function SiteDashboard() {
 
   return (
     <div className="px-[14px] pb-12 pt-4 md:px-7 md:pb-[60px] md:pt-6" style={{ maxWidth: 1080 }}>
-      <button onClick={() => router.push("/cms")} className="cp-btn-ghost" style={{ height: 34, padding: "0 14px 0 10px", fontSize: 12, marginBottom: 20 }}>
+      <Button variant="ghost" size="sm" onClick={() => router.push("/cms")} className="pl-[10px]! pr-[14px]! mb-5">
         <span className="msym" style={{ fontSize: 17 }}>arrow_back</span>websites
-      </button>
+      </Button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
         <span className="msym fill" style={{ fontSize: 24, color: "var(--md-sys-color-primary)" }}>language</span>
@@ -137,19 +138,20 @@ export default function SiteDashboard() {
         </h2>
         <span style={{ fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--md-sys-color-on-surface-variant)" }}>{site.key}</span>
         <div className="hidden flex-1 md:block" />
-        <button
+        <Button
+          variant="soft"
+          size="md"
           onClick={() => router.push(`/cms/${encodeURIComponent(site.key)}/assets`)}
-          className="cp-btn-soft"
-          style={{ height: 38, padding: "0 14px", fontSize: 12 }}
+          className="px-[14px]! text-[12px]!"
         >
           <span className="msym" style={{ fontSize: 17 }}>image</span>images
-        </button>
-        <button onClick={publish} disabled={publishing} className="cp-btn-primary" style={{ height: 38, padding: "0 16px", fontSize: 12.5 }}>
+        </Button>
+        <Button variant="primary" size="md" onClick={publish} disabled={publishing} className="px-4!">
           <span className="msym" style={{ fontSize: 18, animation: publishing ? "cpSpin 1s linear infinite" : "none" }}>
             {publishing ? "autorenew" : "rocket_launch"}
           </span>
           {publishing ? "publishing…" : "Publish"}
-        </button>
+        </Button>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
@@ -177,8 +179,8 @@ export default function SiteDashboard() {
       <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 22 }}>
         {groups.map((g) => (
           <div key={g.name}>
-            <div className="cp-label" style={{ marginBottom: 10 }}>{`// ${g.name.toUpperCase()}`}</div>
-            <div className="cp-card" style={{ overflow: "hidden" }}>
+            <Label as="div" style={{ marginBottom: 10 }}>{`// ${g.name.toUpperCase()}`}</Label>
+            <Card pad={false} style={{ overflow: "hidden" }}>
               {g.sections.map((sec, i) => (
                 <div
                   key={sec.id}
@@ -219,7 +221,7 @@ export default function SiteDashboard() {
                   </div>
                 </div>
               ))}
-            </div>
+            </Card>
           </div>
         ))}
       </div>
@@ -242,19 +244,19 @@ function LocaleLink({
 }) {
   const router = useRouter();
   return (
-    <button
+    <Button
+      variant="ghost"
       onClick={() =>
         router.push(
           `/cms/${encodeURIComponent(site)}/sections/${encodeURIComponent(sectionKey)}?locale=${encodeURIComponent(locale)}`
         )
       }
-      className="cp-btn-ghost"
-      style={{ height: 30, padding: "0 11px", fontSize: 11.5 }}
+      className="h-[30px]! px-[11px]! text-[11.5px]!"
     >
       {dirty && <span style={dot("var(--cp-warn)")} />}
       {label}
       <span className="msym" style={{ fontSize: 15 }}>edit</span>
-    </button>
+    </Button>
   );
 }
 

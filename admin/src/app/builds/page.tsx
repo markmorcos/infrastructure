@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Button, buttonClass, Card, Spinner, Callout } from "@/components/ui";
 
 interface DeployRun {
   id: number;
@@ -131,7 +132,7 @@ export default function BuildsPage() {
   if (loading)
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "80px 28px", fontFamily: "var(--cp-mono)", color: "var(--md-sys-color-on-surface-variant)" }}>
-        <span className="cp-spinner" />
+        <Spinner />
         loading builds…
       </div>
     );
@@ -146,9 +147,7 @@ export default function BuildsPage() {
   return (
     <div className="px-[14px] pb-12 pt-4 md:px-7 md:pb-[60px] md:pt-6">
       {error && (
-        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "11px 14px", borderRadius: 12, background: "var(--cp-err-dim)", color: "var(--cp-err)", fontFamily: "var(--cp-mono)", fontSize: 12.5, marginBottom: 16 }}>
-          <span className="msym" style={{ fontSize: 16 }}>error</span>{error}
-        </div>
+        <Callout icon="error" className="mb-4 border-0">{error}</Callout>
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
@@ -192,7 +191,7 @@ export default function BuildsPage() {
           <div style={{ marginTop: 12, fontSize: 13 }}>no runs match this view</div>
         </div>
       ) : (
-        <div className="cp-card" style={{ overflow: "hidden" }}>
+        <Card pad={false} style={{ overflow: "hidden" }}>
           <div className="overflow-x-auto">
           <div className="min-w-[660px]">
           {view.map((r) => {
@@ -209,11 +208,11 @@ export default function BuildsPage() {
                   <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-outline)" }}>{r.status === "completed" ? dur(r.createdAt, r.updatedAt) : ago(r.createdAt)}</span>
                   <span style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                     {failed && (
-                      <button onClick={(e) => { e.stopPropagation(); rerun(r.id, "failed"); }} className="cp-btn-ghost" style={{ height: 28, padding: "0 10px", fontSize: 11 }}>
+                      <Button variant="ghost" onClick={(e) => { e.stopPropagation(); rerun(r.id, "failed"); }} className="h-[28px]! px-[10px]! text-[11px]!">
                         <span className="msym" style={{ fontSize: 14, animation: busy[r.id] ? "cpSpin 1s linear infinite" : "none" }}>replay</span>re-run
-                      </button>
+                      </Button>
                     )}
-                    <a href={r.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="cp-btn-soft" style={{ width: 28, height: 28, padding: 0 }} title="open on GitHub">
+                    <a href={r.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className={buttonClass("soft", "md", "w-[28px] h-[28px]! !px-0")} title="open on GitHub">
                       <span className="msym" style={{ fontSize: 15 }}>open_in_new</span>
                     </a>
                   </span>
@@ -222,7 +221,7 @@ export default function BuildsPage() {
                   <div style={{ padding: "4px 18px 16px 52px", background: "var(--md-sys-color-surface-container-lowest)" }}>
                     {!jobs[r.id] ? (
                       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0", fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--md-sys-color-on-surface-variant)" }}>
-                        <span className="cp-spinner" style={{ width: 14, height: 14 }} />loading jobs…
+                        <Spinner className="w-[14px] h-[14px]" />loading jobs…
                       </div>
                     ) : (
                       <>
@@ -240,12 +239,12 @@ export default function BuildsPage() {
                         })}
                         {r.status === "completed" && (
                           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                            <button onClick={() => rerun(r.id, "failed")} className="cp-btn-ghost" style={{ height: 30, padding: "0 12px", fontSize: 11 }}>
+                            <Button variant="ghost" onClick={() => rerun(r.id, "failed")} className="h-[30px]! !px-3 text-[11px]!">
                               <span className="msym" style={{ fontSize: 14 }}>replay</span>re-run failed
-                            </button>
-                            <button onClick={() => rerun(r.id, "all")} className="cp-btn-soft" style={{ height: 30, padding: "0 12px", fontSize: 11 }}>
+                            </Button>
+                            <Button variant="soft" onClick={() => rerun(r.id, "all")} className="h-[30px]! !px-3 text-[11px]!">
                               <span className="msym" style={{ fontSize: 14 }}>restart_alt</span>re-run all
-                            </button>
+                            </Button>
                           </div>
                         )}
                       </>
@@ -257,7 +256,7 @@ export default function BuildsPage() {
           })}
           </div>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );

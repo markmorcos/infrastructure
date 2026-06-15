@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../auth/AuthProvider";
+import { Button, Card, Input, Label, Spinner, Callout } from "@/components/ui";
 import type { Site } from "./types";
 
 // CMS sites list (/cms). Sections are code-owned, so there is no create-section
@@ -26,13 +27,14 @@ export default function CmsSitesPage() {
       return;
     }
     const data: Site[] = await res.json();
-    // Single site goes straight to its dashboard — Lea never needs the list.
-    if (data.length === 1) {
+    // Editors with a single site go straight to its dashboard; admins always see
+    // the list so they can create and manage other sites.
+    if (!isAdmin && data.length === 1) {
       router.replace(`/cms/${encodeURIComponent(data[0].key)}`);
       return;
     }
     setSites(data);
-  }, [router]);
+  }, [router, isAdmin]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));
@@ -59,8 +61,8 @@ export default function CmsSitesPage() {
 
   if (loading)
     return (
-      <div style={loadingStyle}>
-        <span className="cp-spinner" />
+      <div className="flex items-center gap-2.5 px-7 py-20 font-[var(--cp-mono)] text-[13px] text-[var(--md-sys-color-on-surface-variant)]">
+        <Spinner />
         loading sites…
       </div>
     );
@@ -74,39 +76,35 @@ export default function CmsSitesPage() {
         </h2>
         <div style={{ flex: 1 }} />
         {isAdmin && (
-          <button onClick={() => setCreating((v) => !v)} className="cp-btn-primary" style={{ height: 38, padding: "0 16px", fontSize: 12.5 }}>
-            <span className="msym" style={{ fontSize: 18 }}>{creating ? "close" : "add"}</span>
+          <Button onClick={() => setCreating((v) => !v)} icon={creating ? "close" : "add"}>
             {creating ? "cancel" : "new site"}
-          </button>
+          </Button>
         )}
       </div>
 
       {error && (
-        <div style={{ ...calloutErr, marginBottom: 16 }}>
-          <span className="msym" style={{ fontSize: 16 }}>error</span>
+        <Callout tone="err" icon="error" className="mb-4">
           {error}
-        </div>
+        </Callout>
       )}
 
       {creating && (
-        <div className="cp-card" style={{ padding: 20, marginBottom: 20 }}>
-          <div className="cp-label" style={{ marginBottom: 12 }}>{"// NEW SITE"}</div>
-          <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 12 }}>
+        <Card pad={false} className="mb-5 p-5">
+          <Label as="div" className="mb-3 block">{"// NEW SITE"}</Label>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
-              <label className="cp-label">KEY</label>
-              <input value={newKey} onChange={(e) => setNewKey(e.target.value)} className="cp-input" placeholder="lea" style={{ marginTop: 6 }} />
+              <Label>KEY</Label>
+              <Input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="lea" className="mt-1.5" />
             </div>
             <div>
-              <label className="cp-label">NAME</label>
-              <input value={newName} onChange={(e) => setNewName(e.target.value)} className="cp-input" placeholder="Lea Pfaffeneder" style={{ marginTop: 6 }} />
+              <Label>NAME</Label>
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Lea Pfaffeneder" className="mt-1.5" />
             </div>
           </div>
-          <div style={{ marginTop: 14 }}>
-            <button onClick={create} disabled={!newKey.trim()} className="cp-btn-primary" style={{ height: 38, padding: "0 18px", fontSize: 12.5 }}>
-              <span className="msym" style={{ fontSize: 18 }}>check</span>create
-            </button>
+          <div className="mt-3.5">
+            <Button onClick={create} disabled={!newKey.trim()} icon="check">create</Button>
           </div>
-        </div>
+        </Card>
       )}
 
       {sites.length === 0 ? (
@@ -160,25 +158,3 @@ function chip(primary: boolean): React.CSSProperties {
     border: "1px solid " + (primary ? "transparent" : "var(--md-sys-color-outline-variant)"),
   };
 }
-
-const loadingStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 10,
-  padding: "80px 28px",
-  fontFamily: "var(--cp-mono)",
-  fontSize: 13,
-  color: "var(--md-sys-color-on-surface-variant)",
-};
-const calloutErr: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 9,
-  padding: "11px 14px",
-  borderRadius: 12,
-  background: "var(--cp-err-dim)",
-  border: "1px solid rgba(255,122,107,.22)",
-  color: "var(--cp-err)",
-  fontFamily: "var(--cp-mono)",
-  fontSize: 12.5,
-};

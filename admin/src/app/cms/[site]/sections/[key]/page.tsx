@@ -15,6 +15,7 @@ import {
   toEditor,
   type EditorObject,
 } from "./editor";
+import { Button, Card, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
 
 // Schema-driven content editor (/cms/[site]/sections/[key]). Renders the 8 field
 // types from section.schema; locale tabs for localized sections; image fields
@@ -149,7 +150,7 @@ export default function SectionEditor() {
   if (loading)
     return (
       <div style={loadingStyle}>
-        <span className="cp-spinner" />
+        <Spinner />
         loading…
       </div>
     );
@@ -166,9 +167,9 @@ export default function SectionEditor() {
 
   return (
     <div className="px-[14px] pb-12 pt-4 md:px-7 md:pb-[60px] md:pt-6" style={{ maxWidth: 880 }}>
-      <button onClick={() => router.push(`/cms/${encodeURIComponent(siteKey)}`)} className="cp-btn-ghost" style={{ height: 34, padding: "0 14px 0 10px", fontSize: 12, marginBottom: 20 }}>
+      <Button variant="ghost" size="sm" onClick={() => router.push(`/cms/${encodeURIComponent(siteKey)}`)} className="pl-[10px]! pr-[14px]! mb-5">
         <span className="msym" style={{ fontSize: 17 }}>arrow_back</span>{site.name}
-      </button>
+      </Button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h2 className="text-[21px] md:text-[26px]" style={{ margin: 0, fontFamily: "var(--cp-mono)", fontWeight: 600 }}>{section.title}</h2>
@@ -221,12 +222,12 @@ export default function SectionEditor() {
       </div>
 
       <div style={{ marginTop: 24, display: "flex", gap: 10 }}>
-        <button onClick={save} disabled={saving} className="cp-btn-primary" style={{ height: 40, padding: "0 20px", fontSize: 13 }}>
+        <Button variant="primary" size="lg" onClick={save} disabled={saving} className="h-[40px]!">
           <span className="msym" style={{ fontSize: 18, animation: saving ? "cpSpin 1s linear infinite" : "none" }}>
             {saving ? "autorenew" : "save"}
           </span>
           {saving ? "saving…" : "Save draft"}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -283,12 +284,12 @@ function FieldEditor({
   onUploaded: () => void;
 }) {
   const label = (
-    <label className="cp-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <Label style={{ display: "flex", alignItems: "center", gap: 8 }}>
       {field.label}
       {field.readOnly && (
         <span style={{ fontSize: 10, color: "var(--md-sys-color-outline)" }}>(fixed)</span>
       )}
-    </label>
+    </Label>
   );
 
   switch (field.type) {
@@ -312,8 +313,7 @@ function FieldEditor({
       return (
         <div>
           {label}
-          <input
-            className="cp-input"
+          <Input
             style={{ marginTop: 6 }}
             value={typeof value === "string" ? value : ""}
             readOnly={field.readOnly}
@@ -328,8 +328,7 @@ function FieldEditor({
       return (
         <div>
           {label}
-          <textarea
-            className="cp-input"
+          <Textarea
             style={{ marginTop: 6, height: 110, padding: "10px 14px", resize: "vertical", lineHeight: 1.5 }}
             value={typeof value === "string" ? value : ""}
             readOnly={field.readOnly}
@@ -348,7 +347,7 @@ function FieldEditor({
         ? (value as EditorObject)
         : {}) as EditorObject;
       return (
-        <div className="cp-card" style={{ padding: 16 }}>
+        <Card pad={false} className="p-4">
           {label}
           <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 14 }}>
             <FieldList
@@ -360,7 +359,7 @@ function FieldEditor({
               onUploaded={onUploaded}
             />
           </div>
-        </div>
+        </Card>
       );
     }
     case "list":
@@ -420,21 +419,21 @@ function ListField({
 
   return (
     <div>
-      <label className="cp-label">{field.label}</label>
+      <Label>{field.label}</Label>
       <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 12 }}>
         {value.map((item, i) => (
-          <div key={i} className="cp-card" style={{ padding: 14 }}>
+          <Card key={i} pad={false} className="p-[14px]">
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-outline)", flex: 1 }}>#{i + 1}</span>
-              <button onClick={() => move(i, -1)} disabled={i === 0} className="cp-btn-soft" style={iconBtn} title="up">
+              <Button variant="soft" onClick={() => move(i, -1)} disabled={i === 0} className={iconBtn} title="up">
                 <span className="msym" style={{ fontSize: 16 }}>arrow_upward</span>
-              </button>
-              <button onClick={() => move(i, 1)} disabled={i === value.length - 1} className="cp-btn-soft" style={iconBtn} title="down">
+              </Button>
+              <Button variant="soft" onClick={() => move(i, 1)} disabled={i === value.length - 1} className={iconBtn} title="down">
                 <span className="msym" style={{ fontSize: 16 }}>arrow_downward</span>
-              </button>
-              <button onClick={() => del(i)} className="cp-btn-soft" style={iconBtn} title="delete">
+              </Button>
+              <Button variant="soft" onClick={() => del(i)} className={iconBtn} title="delete">
                 <span className="msym" style={{ fontSize: 16 }}>delete</span>
-              </button>
+              </Button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <FieldList
@@ -446,11 +445,11 @@ function ListField({
                 onUploaded={onUploaded}
               />
             </div>
-          </div>
+          </Card>
         ))}
-        <button onClick={add} className="cp-btn-ghost" style={{ height: 34, padding: "0 14px", fontSize: 12, alignSelf: "flex-start" }}>
+        <Button variant="ghost" size="sm" onClick={add} className="px-[14px]! self-start">
           <span className="msym" style={{ fontSize: 17 }}>add</span>add
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -482,26 +481,26 @@ function PairsField({
 
   return (
     <div>
-      <label className="cp-label">{field.label}</label>
+      <Label>{field.label}</Label>
       <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 10 }}>
         {value.map((pair, i) => (
           <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <input className="cp-input" style={{ flex: "1 1 160px" }} placeholder="Label" value={pair[0]} onChange={(e) => setPair(i, 0, e.target.value)} />
-            <input className="cp-input" style={{ flex: "1 1 160px" }} placeholder="Value" value={pair[1]} onChange={(e) => setPair(i, 1, e.target.value)} />
-            <button onClick={() => move(i, -1)} disabled={i === 0} className="cp-btn-soft" style={iconBtn} title="up">
+            <Input style={{ flex: "1 1 160px" }} placeholder="Label" value={pair[0]} onChange={(e) => setPair(i, 0, e.target.value)} />
+            <Input style={{ flex: "1 1 160px" }} placeholder="Value" value={pair[1]} onChange={(e) => setPair(i, 1, e.target.value)} />
+            <Button variant="soft" onClick={() => move(i, -1)} disabled={i === 0} className={iconBtn} title="up">
               <span className="msym" style={{ fontSize: 16 }}>arrow_upward</span>
-            </button>
-            <button onClick={() => move(i, 1)} disabled={i === value.length - 1} className="cp-btn-soft" style={iconBtn} title="down">
+            </Button>
+            <Button variant="soft" onClick={() => move(i, 1)} disabled={i === value.length - 1} className={iconBtn} title="down">
               <span className="msym" style={{ fontSize: 16 }}>arrow_downward</span>
-            </button>
-            <button onClick={() => del(i)} className="cp-btn-soft" style={iconBtn} title="delete">
+            </Button>
+            <Button variant="soft" onClick={() => del(i)} className={iconBtn} title="delete">
               <span className="msym" style={{ fontSize: 16 }}>delete</span>
-            </button>
+            </Button>
           </div>
         ))}
-        <button onClick={add} className="cp-btn-ghost" style={{ height: 34, padding: "0 14px", fontSize: 12, alignSelf: "flex-start" }}>
+        <Button variant="ghost" size="sm" onClick={add} className="px-[14px]! self-start">
           <span className="msym" style={{ fontSize: 17 }}>add</span>add
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -557,8 +556,7 @@ function ImageField({
           )}
         </div>
         <div style={{ flex: "1 1 220px", display: "flex", flexDirection: "column", gap: 8 }}>
-          <select
-            className="cp-input"
+          <Select
             value={value}
             disabled={readOnly}
             onChange={(e) => onChange(e.target.value)}
@@ -571,7 +569,7 @@ function ImageField({
             {value && !assets.some((a) => a.url === value) && (
               <option value={value}>{value}</option>
             )}
-          </select>
+          </Select>
           {!readOnly && (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <input
@@ -584,7 +582,7 @@ function ImageField({
                 }}
                 style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-on-surface-variant)" }}
               />
-              {uploading && <span className="cp-spinner" />}
+              {uploading && <Spinner />}
             </div>
           )}
           {err && <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--cp-err)" }}>{err}</span>}
@@ -594,7 +592,7 @@ function ImageField({
   );
 }
 
-const iconBtn: React.CSSProperties = { width: 30, height: 30, padding: 0 };
+const iconBtn = "w-[30px]! h-[30px]! p-0!";
 const hint: React.CSSProperties = {
   fontFamily: "var(--cp-mono)",
   fontSize: 10.5,

@@ -25,7 +25,7 @@ data:
     TS=$(date -u +%Y%m%d-%H%M%S)
     echo "[backup] start $TS"
 
-    apk add --no-cache --quiet ca-certificates wget mongodb-tools >/dev/null 2>&1 || true
+    apk add --no-cache --quiet ca-certificates wget mongodb-tools redis >/dev/null 2>&1 || true
 
     # MinIO client (static binary) — talks to both R2 and MinIO (both S3).
     wget -qO /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc
@@ -40,9 +40,9 @@ data:
     /tmp/mc cp /tmp/db.sql.gz "r2/$R2_BUCKET/postgres/infrastructure-$TS.sql.gz"
     echo "[backup] postgres -> r2/$R2_BUCKET/postgres/infrastructure-$TS.sql.gz ($(wc -c </tmp/db.sql.gz) bytes)"
 
-    # 2) MinIO assets: mirror the cms bucket (no --remove, so deletions are kept).
-    echo "[backup] minio mirror $MINIO_BUCKET…"
-    /tmp/mc mirror --overwrite "src/$MINIO_BUCKET" "r2/$R2_BUCKET/minio/$MINIO_BUCKET"
+    # 2) MinIO: mirror ALL buckets (no --remove, so deletions are kept).
+    echo "[backup] minio mirror (all buckets)…"
+    /tmp/mc mirror --overwrite "src" "r2/$R2_BUCKET/minio"
 
     # 3) Mongo: one gzipped archive per MONGO_URI_* env var.
     for v in $(env | sed -n 's/^\(MONGO_URI_[A-Z0-9_]*\)=.*/\1/p'); do
@@ -52,6 +52,20 @@ data:
       mongodump --uri="$uri" --archive --gzip > "/tmp/mongo-$name.gz"
       /tmp/mc cp "/tmp/mongo-$name.gz" "r2/$R2_BUCKET/mongo/$name-$TS.archive.gz"
       echo "[backup] mongo -> r2/$R2_BUCKET/mongo/$name-$TS.archive.gz ($(wc -c < /tmp/mongo-$name.gz) bytes)"
+    done
+
+    # 4) Redis (best-effort — it's cache): RDB snapshot per REDIS_URL_* env.
+    for v in $(env | sed -n 's/^\(REDIS_URL_[A-Z0-9_]*\)=.*/\1/p'); do
+      name=$(printf '%s' "$v" | sed 's/^REDIS_URL_//' | tr '[:upper:]' '[:lower:]')
+      url=$(printenv "$v")
+      echo "[backup] redis $name…"
+      if redis-cli -u "$url" --rdb "/tmp/redis-$name.rdb" >/dev/null 2>&1 && [ -s "/tmp/redis-$name.rdb" ]; then
+        gzip -9 "/tmp/redis-$name.rdb"
+        /tmp/mc cp "/tmp/redis-$name.rdb.gz" "r2/$R2_BUCKET/redis/$name-$TS.rdb.gz"
+        echo "[backup] redis -> r2/$R2_BUCKET/redis/$name-$TS.rdb.gz"
+      else
+        echo "[backup] redis $name skipped (non-fatal; it's cache)"
+      fi
     done
 
     echo "[backup] done $TS"
@@ -95,6 +109,9 @@ spec:
                   valueFrom: { secretKeyRef: { name: database-secret, key: MONGO_URI } }
                 - name: MONGO_URI_GAMESMEMORY
                   valueFrom: { secretKeyRef: { name: memory-database-secret, key: MONGO_URI } }
+                # Redis (cache, best-effort) — the admin instance has the broadest view.
+                - name: REDIS_URL_ADMIN
+                  valueFrom: { secretKeyRef: { name: redis-admin, key: REDIS_ADMIN_URL } }
                 - name: R2_ENDPOINT
                   valueFrom: { secretKeyRef: { name: backup-r2, key: R2_ENDPOINT } }
                 - name: R2_BUCKET

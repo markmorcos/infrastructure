@@ -17,8 +17,8 @@ export async function POST(
     }
     // The run is now restarting — drop the cached list + this run's jobs so the
     // next poll shows it immediately rather than waiting out the TTL.
-    invalidate("builds");
-    invalidate(`jobs:${runId}`);
+    await invalidate("builds");
+    await invalidate(`jobs:${runId}`);
     return NextResponse.json({ ok: true, mode: body.mode === "all" ? "all" : "failed" });
   } catch (error) {
     console.error(error);

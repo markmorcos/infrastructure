@@ -3,6 +3,7 @@ name: deploy-app
 on:
   repository_dispatch:
     types:
+      - deploy-onetrick nextjs
       - deploy-mcpforge node
       - deploy-onetrick
       - deploy-mcpforge

@@ -28,6 +28,8 @@ interface RunJob {
 type Filter = "all" | "running" | "failed" | "success";
 
 function runUi(status: string, conclusion: string | null) {
+  if (status === "pending" || status === "waiting")
+    return { label: "pending", color: "var(--cp-idle)", icon: "schedule", spin: false };
   if (status !== "completed")
     return { label: status === "queued" ? "queued" : "running", color: "var(--cp-warn)", icon: "progress_activity", spin: true };
   switch (conclusion) {
@@ -256,12 +258,16 @@ export default function BuildsPage() {
                         {jobs[r.id].map((j) => {
                           const jui = runUi(j.status, j.conclusion);
                           return (
-                            <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", fontFamily: "var(--cp-mono)", fontSize: 12 }}>
+                            <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", fontFamily: "var(--cp-mono)", fontSize: 12, opacity: j.status === "pending" ? 0.5 : 1 }}>
                               <span className="msym" style={{ fontSize: 15, color: jui.color, animation: jui.spin ? "cpSpin 1s linear infinite" : "none" }}>{jui.icon}</span>
                               <span style={{ flex: 1 }}>{j.name}</span>
                               <span style={{ color: jui.color, fontSize: 11 }}>{jui.label}</span>
                               <span style={{ color: "var(--md-sys-color-outline)", fontSize: 10.5 }}>{j.startedAt && j.completedAt ? dur(j.startedAt, j.completedAt) : ""}</span>
-                              <a href={j.url} target="_blank" rel="noreferrer" style={{ color: "var(--md-sys-color-on-surface-variant)", display: "inline-flex" }}><span className="msym" style={{ fontSize: 14 }}>open_in_new</span></a>
+                              {j.url ? (
+                                <a href={j.url} target="_blank" rel="noreferrer" style={{ color: "var(--md-sys-color-on-surface-variant)", display: "inline-flex" }}><span className="msym" style={{ fontSize: 14 }}>open_in_new</span></a>
+                              ) : (
+                                <span style={{ width: 14 }} />
+                              )}
                             </div>
                           );
                         })}

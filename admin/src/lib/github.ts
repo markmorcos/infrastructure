@@ -192,6 +192,53 @@ export async function listDeployRuns(perPage = 50): Promise<DeployRun[]> {
   });
 }
 
+// Static job plan for deploy-app.yaml, in execution order. GitHub's jobs API
+// only returns a job once its `needs:` are satisfied, so gated jobs (merge,
+// deploy) are absent from a running run until they're queued. We reconcile the
+// live jobs against this plan and synthesize "pending" placeholders for the
+// ones not created yet, so the timeline shows the whole pipeline up front.
+// Mirror any change to .github/workflows/deploy-app.yaml here.
+const JOB_PLAN: { key: string; matrix?: boolean }[] = [
+  { key: "build", matrix: true }, // matrix → "build (amd64, …)" / "build (arm64, …)"
+  { key: "merge" },
+  { key: "migrate" }, // conditional (skipped when the run carries no migrations)
+  { key: "deploy" },
+];
+
+function reconcileJobs(live: RunJob[]): RunJob[] {
+  // A run is "settled" once every created job is completed — then whatever
+  // exists is final and we must NOT invent pending rows (e.g. a cancelled run
+  // shouldn't show a phantom "deploy: pending"). Empty live list = just started.
+  const settled = live.length > 0 && live.every((j) => j.status === "completed");
+
+  const out: RunJob[] = [];
+  const used = new Set<number>();
+  JOB_PLAN.forEach((p, i) => {
+    const matches = live.filter((j) =>
+      p.matrix ? j.name === p.key || j.name.startsWith(`${p.key} (`) : j.name === p.key,
+    );
+    if (matches.length) {
+      for (const m of matches) {
+        out.push(m);
+        used.add(m.id);
+      }
+    } else if (!settled) {
+      out.push({
+        id: -(i + 1), // negative, stable, never collides with real job ids
+        name: p.key,
+        status: "pending",
+        conclusion: null,
+        url: "",
+        startedAt: null,
+        completedAt: null,
+      });
+    }
+  });
+  // Defensive: surface any live job not covered by the plan.
+  for (const j of live) if (!used.has(j.id)) out.push(j);
+  return out;
+}
+
 export async function listRunJobs(runId: number): Promise<RunJob[]> {
   const res = await octokit().rest.actions.listJobsForWorkflowRun({
     owner: GITHUB_OWNER,
@@ -199,7 +246,7 @@ export async function listRunJobs(runId: number): Promise<RunJob[]> {
     run_id: runId,
     per_page: 50,
   });
-  return res.data.jobs.map((j) => ({
+  const live: RunJob[] = res.data.jobs.map((j) => ({
     id: j.id,
     name: j.name,
     status: j.status,
@@ -208,6 +255,7 @@ export async function listRunJobs(runId: number): Promise<RunJob[]> {
     startedAt: j.started_at ?? null,
     completedAt: j.completed_at ?? null,
   }));
+  return reconcileJobs(live);
 }
 
 export async function reRunFailedJobs(runId: number): Promise<void> {

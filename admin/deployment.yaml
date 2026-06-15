@@ -1,14 +1,14 @@
 version: 0.8.0
 
-namespace: infrastructure-admin
-project: infrastructure-admin
+namespace: admin
+project: admin
 
 services:
-  - name: infrastructure-admin
-    image: ghcr.io/markmorcos/infrastructure-admin
+  - name: admin
+    image: ghcr.io/markmorcos/admin
     context: admin
     port: 3000
-    serviceAccountName: infrastructure-admin
+    serviceAccountName: admin
     env:
       - name: DATABASE_URL
         valueFrom:

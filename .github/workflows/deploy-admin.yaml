@@ -1,13 +1,14 @@
 name: deploy-admin
 
-# Phase-1 scaffold for the infrastructure-admin -> admin rename. Dispatch-only
-# for now so it can't double-fire alongside deploy-infrastructure-admin (which
-# still owns the push:admin/** trigger). At cutover: move the push trigger here,
-# point admin/deployment.yaml at the `admin` namespace, and retire
-# deploy-infrastructure-admin. Token is still the existing DEPLOYMENT_TOKEN until
-# the sub=admin token is minted at cutover.
+# Deploys the admin control plane (admin.morcos.tech) to the `admin` namespace.
+# Owns the push:admin/** trigger. Token is still the existing DEPLOYMENT_TOKEN
+# (sub=infrastructure-admin) — valid while the infrastructure-admin projects row
+# exists; swap to a sub=admin token + row during teardown.
 on:
   workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths: ["admin/**"]
 
 jobs:
   deploy:

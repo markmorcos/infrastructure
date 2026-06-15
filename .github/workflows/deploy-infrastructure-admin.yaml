@@ -1,10 +1,10 @@
 name: deploy-infrastructure-admin
 
+# DEPRECATED: superseded by deploy-admin.yaml (infrastructure-admin -> admin
+# rename). Push trigger removed so it no longer fires; kept dispatch-only as a
+# rollback escape hatch until teardown deletes it.
 on:
   workflow_dispatch: {}
-  push:
-    branches: [main]
-    paths: ["admin/**"]
 
 jobs:
   deploy:

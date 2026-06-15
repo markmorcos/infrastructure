@@ -1,7 +1,14 @@
 # Stable in-cluster aliases for the out-of-cluster data backends. Apps reference
-# these by FQDN (e.g. postgres.data.svc.cluster.local) in their secrets instead
-# of hard-coding the physical host, so swapping a backend = editing one Service
+# these by FQDN (e.g. mongo.data.svc.cluster.local) in their secrets instead of
+# hard-coding the physical host, so swapping a backend = editing one Service
 # here rather than rotating every app secret.
+#
+# NOTE: deliberately NO `postgres` alias. The deploy pipeline's `migrate` job
+# reads each app's DATABASE_URL secret and runs psql from the GitHub Actions
+# runner (on the tailnet, OUTSIDE the cluster), where *.svc.cluster.local does
+# not resolve. Postgres secrets therefore keep an externally-resolvable host
+# (postgres.morcos.lan / m720q), which already resolves in-cluster too. Only
+# backends with purely in-cluster consumers get an alias here.
 #
 # ExternalName is a pure DNS CNAME: no port remap, no LB, no health checks — the
 # app must still use the real port. CoreDNS (forward . /etc/resolv.conf) resolves
@@ -15,18 +22,6 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: data
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: postgres
-  namespace: data
-spec:
-  type: ExternalName
-  externalName: postgres.morcos.lan
-  ports:
-    - port: 5432
-      targetPort: 5432
 ---
 apiVersion: v1
 kind: Service

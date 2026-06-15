@@ -198,10 +198,13 @@ export async function listDeployRuns(perPage = 50): Promise<DeployRun[]> {
 // live jobs against this plan and synthesize "pending" placeholders for the
 // ones not created yet, so the timeline shows the whole pipeline up front.
 // Mirror any change to .github/workflows/deploy-app.yaml here.
+// Order is topological: build + migrate start together (migrate has no needs),
+// then merge (needs build), then deploy (needs merge + migrate). Listing migrate
+// before merge keeps the dependent pair merge→deploy adjacent.
 const JOB_PLAN: { key: string; matrix?: boolean }[] = [
   { key: "build", matrix: true }, // matrix → "build (amd64, …)" / "build (arm64, …)"
-  { key: "merge" },
   { key: "migrate" }, // conditional (skipped when the run carries no migrations)
+  { key: "merge" },
   { key: "deploy" },
 ];
 

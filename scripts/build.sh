@@ -84,12 +84,28 @@ for i in $(seq 0 $((SERVICE_COUNT - 1))); do
 
   echo "🔨 Building ${TAG_VER}${TAG_SUFFIX} for ${PLATFORMS}"
 
+  # In CI (per-arch build, TAG_SUFFIX set) reuse layers across runs via the
+  # GitHub Actions cache. mode=max also carries BuildKit cache mounts, so an
+  # unchanged package-lock skips `npm ci` and Next's .next/cache is restored —
+  # turning a cold build into an incremental one. Scoped per image+arch so the
+  # two matrix legs don't clobber each other. Local builds have no GHA token, so
+  # the cache is disabled there.
+  cache_flags=()
+  if [ -n "${TAG_SUFFIX}" ]; then
+    cache_scope="${IMAGE_NAME##*/}${TAG_SUFFIX}"
+    cache_flags=(
+      --cache-from "type=gha,scope=${cache_scope}"
+      --cache-to   "type=gha,mode=max,scope=${cache_scope}"
+    )
+  fi
+
   docker buildx build \
     --platform "${PLATFORMS}" \
     -t "${TAG_VER}${TAG_SUFFIX}" \
     -t "${TAG_LATEST}${TAG_SUFFIX}" \
     -f ${DOCKERFILE_PATH} \
     "${build_arg_flags[@]}" \
+    "${cache_flags[@]}" \
     --push \
     ${SERVICE_CONTEXT}
 

@@ -4,8 +4,10 @@ import Redis from "ioredis";
 // publishes; each open SSE stream subscribes and pushes to its browser. Redis
 // (not an in-process emitter) so it works even if admin scales to >1 replica.
 //
-// Requires the admin Redis user to have channel access: `ACL SETUSER admin
-// &events:*` (granted + persisted via ACL SAVE).
+// Requires the admin Redis user to have channel access. In Redis 7, channels
+// are a separate ACL axis from commands/keys and default to deny, so even a
+// full `+@all ~*` user needs an explicit grant. The admin user is provisioned
+// with `allcommands allkeys allchannels` (&*), persisted via ACL SAVE.
 
 const CHANNEL = "events:builds";
 

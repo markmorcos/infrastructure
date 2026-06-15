@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteByKey, publishSite } from "@/lib/cms/admin";
+import { requireSiteAccess } from "@/lib/cms/authz";
 
 // Admin publish, ported from cms/adminapi.go apiPublish. Copies drafts to
 // published in a txn + snapshots, then best-effort fires the GitHub rebuild.
 // Content publishes even when dispatch fails; `dispatched` reports the outcome.
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ site: string }> }
 ) {
   const { site: siteKey } = await params;
+  const access = await requireSiteAccess(req, siteKey);
+  if ("error" in access) return access.error;
   try {
     const site = await getSiteByKey(siteKey);
     if (!site) {

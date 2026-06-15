@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Brand } from "./AppShell";
 import { useAuth } from "./auth/AuthProvider";
 
@@ -18,6 +19,7 @@ const APPS: App[] = [
   { label: "Provision", icon: "rocket_launch", href: "/projects/provision" },
   { label: "CMS", icon: "article", href: "/cms" },
   { label: "Experimentation", icon: "science", href: "/experimentation" },
+  { label: "Users", icon: "group", href: "/users" },
 ];
 
 function Tile({ app }: { app: App }) {
@@ -44,8 +46,14 @@ function Tile({ app }: { app: App }) {
 }
 
 export default function HomePage() {
-  const { logout } = useAuth();
+  const { logout, isAdmin, user } = useAuth();
+  const router = useRouter();
   const [clock, setClock] = useState("");
+
+  // The OS launcher is admin-only; editors go straight to their CMS.
+  useEffect(() => {
+    if (user && !isAdmin) router.replace("/cms");
+  }, [user, isAdmin, router]);
 
   useEffect(() => {
     const tick = () =>
@@ -54,6 +62,8 @@ export default function HomePage() {
     const t = setInterval(tick, 20000);
     return () => clearInterval(t);
   }, []);
+
+  if (user && !isAdmin) return null;
 
   return (
     <div

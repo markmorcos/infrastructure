@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AuthProvider, useAuth } from "./auth/AuthProvider";
 
 const BARE_ROUTES = ["/", "/login"];
@@ -23,6 +23,8 @@ function pageMeta(pathname: string): { title: string; sub: string } {
     return { title: "CMS", sub: "sites, content, assets" };
   if (pathname.startsWith("/experimentation"))
     return { title: "Experimentation", sub: "flags, experiments, results" };
+  if (pathname.startsWith("/users"))
+    return { title: "Users & Access", sub: "people and site access" };
   return { title: "Control Plane", sub: "" };
 }
 
@@ -53,10 +55,17 @@ export function Brand({ size = 32 }: { size?: number }) {
 
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const router = useRouter();
+  const { logout, isAdmin, user } = useAuth();
   const meta = pageMeta(pathname);
   const onProvision = pathname.startsWith("/projects/provision");
   const [drawer, setDrawer] = useState(false);
+
+  // Editors are confined to the CMS; bounce them off any control-plane route.
+  const editorAllowed = pathname.startsWith("/cms");
+  useEffect(() => {
+    if (user && !isAdmin && !editorAllowed) router.replace("/cms");
+  }, [user, isAdmin, editorAllowed, router]);
 
   // close the drawer whenever the route changes
   useEffect(() => {
@@ -73,7 +82,7 @@ function Shell({ children }: { children: React.ReactNode }) {
     }
   }, [drawer]);
 
-  const navItems = [
+  const adminNav = [
     {
       href: "/projects",
       icon: "grid_view",
@@ -99,12 +108,27 @@ function Shell({ children }: { children: React.ReactNode }) {
       active: pathname.startsWith("/experimentation"),
     },
     {
+      href: "/users",
+      icon: "group",
+      label: "users",
+      active: pathname.startsWith("/users"),
+    },
+    {
       href: "/projects/provision",
       icon: "add_circle",
       label: "provision",
       active: onProvision,
     },
   ];
+  const editorNav = [
+    {
+      href: "/cms",
+      icon: "article",
+      label: "cms",
+      active: pathname.startsWith("/cms"),
+    },
+  ];
+  const navItems = isAdmin ? adminNav : editorNav;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -221,7 +245,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             )}
           </div>
           <div style={{ flex: 1 }} />
-          {!onProvision && (
+          {isAdmin && !onProvision && (
             <Link
               href="/projects/provision"
               className="cp-btn-primary w-[42px] px-0 md:w-auto md:px-[18px]"

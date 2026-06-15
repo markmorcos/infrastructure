@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteByKey, listAssets } from "@/lib/cms/admin";
 import { maxUploadBytes, uploadFile } from "@/lib/cms/storage";
+import { requireSiteAccess } from "@/lib/cms/authz";
 
 // Admin assets list + upload, ported from cms/adminapi.go apiListAssets /
 // apiUploadAsset. Multipart upload needs the Node runtime (Buffer + minio SDK).
@@ -8,10 +9,12 @@ import { maxUploadBytes, uploadFile } from "@/lib/cms/storage";
 export const runtime = "nodejs";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ site: string }> }
 ) {
   const { site: siteKey } = await params;
+  const access = await requireSiteAccess(req, siteKey);
+  if ("error" in access) return access.error;
   try {
     const site = await getSiteByKey(siteKey);
     if (!site) {
@@ -29,6 +32,8 @@ export async function POST(
   { params }: { params: Promise<{ site: string }> }
 ) {
   const { site: siteKey } = await params;
+  const access = await requireSiteAccess(req, siteKey);
+  if ("error" in access) return access.error;
   try {
     const site = await getSiteByKey(siteKey);
     if (!site) {

@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSite, listSites, validKey } from "@/lib/cms/admin";
+import { createSite, listSitesForUser, validKey } from "@/lib/cms/admin";
+import { getSessionUser, requireAdmin } from "@/lib/cms/authz";
 
 // Admin sites collection, ported from cms/adminapi.go apiListSites /
-// apiCreateSite. Gated admin-only by src/middleware.ts (under /api/cms, not v1).
+// apiCreateSite. The list is scoped to the caller (admins see all, editors see
+// only the sites they own); creating a site is admin-only.
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const user = getSessionUser(req);
+  if (!user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
   try {
-    return NextResponse.json(await listSites(), { status: 200 });
+    return NextResponse.json(
+      await listSitesForUser(user.role, user.userId),
+      { status: 200 }
+    );
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "internal error" }, { status: 500 });
@@ -14,6 +23,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const admin = requireAdmin(req);
+  if ("error" in admin) return admin.error;
   let body: {
     key?: string;
     name?: string;

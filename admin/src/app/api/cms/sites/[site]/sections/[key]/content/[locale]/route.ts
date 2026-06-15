@@ -8,6 +8,7 @@ import {
   type Section,
   type Site,
 } from "@/lib/cms/admin";
+import { requireSiteAccess } from "@/lib/cms/authz";
 
 // Admin draft get/save for one (section, locale), ported from cms/adminapi.go
 // apiGetDraft / apiPutDraft. The PUT body is a clean JSON object (we drop the Go
@@ -66,10 +67,12 @@ async function resolve(
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ site: string; key: string; locale: string }> }
 ) {
   const { site: siteKey, key, locale: rawLocale } = await params;
+  const access = await requireSiteAccess(req, siteKey);
+  if ("error" in access) return access.error;
   try {
     const r = await resolve(siteKey, key, decodeURIComponent(rawLocale));
     if ("error" in r) return r.error;
@@ -89,6 +92,8 @@ export async function PUT(
   { params }: { params: Promise<{ site: string; key: string; locale: string }> }
 ) {
   const { site: siteKey, key, locale: rawLocale } = await params;
+  const access = await requireSiteAccess(req, siteKey);
+  if ("error" in access) return access.error;
   try {
     const r = await resolve(siteKey, key, decodeURIComponent(rawLocale));
     if ("error" in r) return r.error;

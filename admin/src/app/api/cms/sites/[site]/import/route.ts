@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteByKey, importDict, ImportError } from "@/lib/cms/admin";
+import { requireSiteAccess } from "@/lib/cms/authz";
 
 // Admin content import, ported from cms/adminapi.go apiImport. Accepts a full
 // {locale: dict} payload, explodes it into per-section objects (erroring on
@@ -10,6 +11,8 @@ export async function POST(
   { params }: { params: Promise<{ site: string }> }
 ) {
   const { site: siteKey } = await params;
+  const access = await requireSiteAccess(req, siteKey);
+  if ("error" in access) return access.error;
   try {
     const site = await getSiteByKey(siteKey);
     if (!site) {

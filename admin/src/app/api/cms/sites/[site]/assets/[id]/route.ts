@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAsset, getSiteByKey } from "@/lib/cms/admin";
 import { deleteAsset } from "@/lib/cms/storage";
+import { requireSiteAccess } from "@/lib/cms/authz";
 
 // Admin asset delete, ported from cms/adminapi.go apiDeleteAsset. Removes the
 // MinIO object (best-effort) then the DB row. Node runtime for the minio SDK.
@@ -8,10 +9,12 @@ import { deleteAsset } from "@/lib/cms/storage";
 export const runtime = "nodejs";
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ site: string; id: string }> }
 ) {
   const { site: siteKey, id } = await params;
+  const access = await requireSiteAccess(req, siteKey);
+  if ("error" in access) return access.error;
   try {
     const site = await getSiteByKey(siteKey);
     if (!site) {

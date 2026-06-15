@@ -35,10 +35,11 @@ function mapSite(r: Record<string, unknown>): Site {
     githubRepo: r.github_repo as string,
     dispatchEvent: r.dispatch_event as string,
     createdAt: r.created_at as Date,
+    ownerUserId: (r.owner_user_id as number | null) ?? null,
   };
 }
 
-const SITE_COLS = `id, key, name, locales, default_locale, github_repo, dispatch_event, created_at`;
+const SITE_COLS = `id, key, name, locales, default_locale, github_repo, dispatch_event, created_at, owner_user_id`;
 
 // ---- Sites ----
 
@@ -48,6 +49,31 @@ export async function listSites(): Promise<Site[]> {
     `SELECT ${SITE_COLS} FROM sites ORDER BY created_at`
   );
   return rows.map(mapSite);
+}
+
+// listSitesForUser returns every site for admins, or only the sites a non-admin
+// (editor) owns.
+export async function listSitesForUser(
+  role: string,
+  userId: number
+): Promise<Site[]> {
+  if (role === "admin") return listSites();
+  const { rows } = await pool.query(
+    `SELECT ${SITE_COLS} FROM sites WHERE owner_user_id = $1 ORDER BY created_at`,
+    [userId]
+  );
+  return rows.map(mapSite);
+}
+
+// assignSiteOwner sets (or clears, with null) a site's owner by site id.
+export async function assignSiteOwner(
+  siteId: string,
+  ownerUserId: number | null
+): Promise<void> {
+  await pool.query(`UPDATE sites SET owner_user_id = $2 WHERE id = $1`, [
+    siteId,
+    ownerUserId,
+  ]);
 }
 
 // getSiteByKey returns the site with the given key or null (cms/store.go

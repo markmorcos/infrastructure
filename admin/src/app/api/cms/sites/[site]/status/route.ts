@@ -5,17 +5,20 @@ import {
   lastPublishedAt,
   listSections,
 } from "@/lib/cms/admin";
+import { requireSiteAccess } from "@/lib/cms/authz";
 
 // Dashboard status, supporting the /cms/[site] view (cms/ui.go uiSite computes
 // the same dirty map + last-published label server-side). Returns the site, its
 // sections, the dirty (draft != published) flags keyed sectionID -> locale, and
-// the last publish time. Admin-only via middleware (under /api/cms, not v1).
+// the last publish time. Owner-or-admin via requireSiteAccess.
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ site: string }> }
 ) {
   const { site: siteKey } = await params;
+  const access = await requireSiteAccess(req, siteKey);
+  if ("error" in access) return access.error;
   try {
     const site = await getSiteByKey(siteKey);
     if (!site) {

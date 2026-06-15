@@ -82,7 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   if (!loading && value.isAuthenticated && isPublicRoute(pathname)) {
-    router.replace("/");
+    // Admins land on the OS launcher; editors go straight to their CMS.
+    router.replace(value.isAdmin ? "/" : "/cms");
   }
 
   return (

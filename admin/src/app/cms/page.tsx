@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../auth/AuthProvider";
 import type { Site } from "./types";
 
 // CMS sites list (/cms). Sections are code-owned, so there is no create-section
@@ -10,6 +11,7 @@ import type { Site } from "./types";
 
 export default function CmsSitesPage() {
   const router = useRouter();
+  const { isAdmin } = useAuth();
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,10 +73,12 @@ export default function CmsSitesPage() {
           Websites
         </h2>
         <div style={{ flex: 1 }} />
-        <button onClick={() => setCreating((v) => !v)} className="cp-btn-primary" style={{ height: 38, padding: "0 16px", fontSize: 12.5 }}>
-          <span className="msym" style={{ fontSize: 18 }}>{creating ? "close" : "add"}</span>
-          {creating ? "cancel" : "new site"}
-        </button>
+        {isAdmin && (
+          <button onClick={() => setCreating((v) => !v)} className="cp-btn-primary" style={{ height: 38, padding: "0 16px", fontSize: 12.5 }}>
+            <span className="msym" style={{ fontSize: 18 }}>{creating ? "close" : "add"}</span>
+            {creating ? "cancel" : "new site"}
+          </button>
+        )}
       </div>
 
       {error && (

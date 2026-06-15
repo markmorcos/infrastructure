@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteSite, getSiteByKey, updateSite } from "@/lib/cms/admin";
+import { requireSiteAccess, requireAdmin } from "@/lib/cms/authz";
 
 // Admin single-site routes, ported from cms/adminapi.go apiGetSite /
 // apiUpdateSite / apiDeleteSite. PATCH edits name/githubRepo/dispatchEvent ONLY
 // (key/locales/defaultLocale are immutable), matching cms/store.go UpdateSite.
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ site: string }> }
 ) {
   const { site: siteKey } = await params;
+  const access = await requireSiteAccess(req, siteKey);
+  if ("error" in access) return access.error;
   try {
     const site = await getSiteByKey(siteKey);
     if (!site) {
@@ -27,6 +30,8 @@ export async function PATCH(
   { params }: { params: Promise<{ site: string }> }
 ) {
   const { site: siteKey } = await params;
+  const access = await requireSiteAccess(req, siteKey);
+  if ("error" in access) return access.error;
   try {
     const site = await getSiteByKey(siteKey);
     if (!site) {
@@ -51,10 +56,13 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ site: string }> }
 ) {
   const { site: siteKey } = await params;
+  // Deleting a site is admin-only, even for the owner.
+  const admin = requireAdmin(req);
+  if ("error" in admin) return admin.error;
   try {
     const site = await getSiteByKey(siteKey);
     if (!site) {

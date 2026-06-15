@@ -53,6 +53,20 @@ export async function listNamespaceSecrets(namespace: string): Promise<K8sSecret
     }));
 }
 
+// Create the namespace if it does not already exist (needed when provisioning
+// data/secrets before the app's first Helm deploy creates the namespace).
+export async function ensureNamespace(name: string): Promise<"created" | "exists"> {
+  const api = core();
+  try {
+    await api.readNamespace({ name });
+    return "exists";
+  } catch (e) {
+    if (!isNotFound(e)) throw e;
+    await api.createNamespace({ body: { metadata: { name } } });
+    return "created";
+  }
+}
+
 function b64(v: string): string {
   return Buffer.from(v, "utf-8").toString("base64");
 }

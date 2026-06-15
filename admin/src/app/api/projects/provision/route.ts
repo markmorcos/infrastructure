@@ -10,7 +10,16 @@ import {
   registerDispatchType,
 } from "@/lib/github";
 import { deployWorkflow } from "@/lib/scaffold";
-import { getStack, deploymentYaml, StackOpts } from "@/lib/templates";
+import { getStack, deploymentYaml, StackOpts, EnvVar } from "@/lib/templates";
+import { ensureNamespace, upsertNamespaceSecret } from "@/lib/k8s";
+import { provisionPostgres } from "@/lib/postgres-provision";
+
+// Data stores that the provisioner can stand up (db-per-app). Each maps to the
+// secret-ref env injected into the scaffolded deployment.yaml.
+const SUPPORTED_DB = new Set(["postgres"]);
+const DATA_ENV: Record<string, EnvVar> = {
+  postgres: { name: "DATABASE_URL", secret: { name: "database-secrets", key: "DATABASE_URL" } },
+};
 
 type StepStatus = "created" | "exists" | "set" | "registered" | "updated" | "error";
 interface Step {
@@ -51,6 +60,16 @@ export async function POST(req: NextRequest) {
       : [],
   };
 
+  // Requested data stores (e.g. ["postgres"]). Inject their secret-ref env into
+  // the scaffolded deployment.yaml up front — the secret values are created in a
+  // later step, but the deployment.yaml only needs the deterministic ref.
+  const databases: string[] = Array.isArray(body.databases)
+    ? body.databases.filter((d: unknown): d is string => typeof d === "string")
+    : [];
+  for (const d of databases) {
+    if (SUPPORTED_DB.has(d) && DATA_ENV[d]) opts.env.push(DATA_ENV[d]);
+  }
+
   const steps: Step[] = [];
   const run = async (label: string, fn: () => Promise<StepStatus>) => {
     try {
@@ -89,6 +108,31 @@ export async function POST(req: NextRequest) {
     await run(`scaffold:${path}`, () =>
       createFileIfAbsent(repo, path, content, `chore: scaffold ${path}`)
     );
+  }
+
+  // 3b. Provision requested data stores (db-per-app) + their secrets BEFORE the
+  //     workflow commit triggers the first deploy, so the pod finds them.
+  for (const service of databases) {
+    if (!SUPPORTED_DB.has(service)) {
+      steps.push({ step: `data:${service}`, status: "error", detail: "unsupported" });
+      continue;
+    }
+    if (service === "postgres") {
+      await run("data:postgres:namespace", () => ensureNamespace(namespace));
+      let conn: string | null = null;
+      await run("data:postgres:database", async () => {
+        const r = await provisionPostgres(projectName);
+        conn = r.connectionString;
+        return r.status;
+      });
+      // The connection string is sensitive — only written to the secret, never
+      // returned in a step detail.
+      await run("data:postgres:secret", async () => {
+        if (!conn) throw new Error("database step did not yield a connection string");
+        await upsertNamespaceSecret(namespace, "database-secrets", { DATABASE_URL: conn });
+        return "set";
+      });
+    }
   }
 
   // 4. Register dispatch type in infrastructure (before the workflow fires)

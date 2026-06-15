@@ -1,6 +1,8 @@
 export interface EnvVar {
   name: string;
-  value: string;
+  value?: string;
+  // When set, the env var is sourced from a Kubernetes secret instead of a literal.
+  secret?: { name: string; key: string };
 }
 
 export interface StackOpts {
@@ -28,7 +30,11 @@ export function deploymentYaml(o: StackOpts, withIngress: boolean): string {
   const envBlock = env.length
     ? "    env:\n" +
       env
-        .map((e) => `      - name: ${e.name}\n        value: ${JSON.stringify(e.value)}`)
+        .map((e) =>
+          e.secret
+            ? `      - name: ${e.name}\n        valueFrom:\n          secretKeyRef:\n            name: ${e.secret.name}\n            key: ${e.secret.key}`
+            : `      - name: ${e.name}\n        value: ${JSON.stringify(e.value ?? "")}`
+        )
         .join("\n") +
       "\n"
     : "";

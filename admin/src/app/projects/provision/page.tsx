@@ -18,6 +18,13 @@ interface Result {
 
 const OK = ["created", "exists", "set", "registered", "updated"];
 
+const DATA_SERVICES: { id: string; label: string; enabled: boolean }[] = [
+  { id: "postgres", label: "Postgres", enabled: true },
+  { id: "redis", label: "Redis", enabled: false },
+  { id: "mongo", label: "Mongo", enabled: false },
+  { id: "minio", label: "MinIO", enabled: false },
+];
+
 export default function ProvisionPage() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -27,7 +34,11 @@ export default function ProvisionPage() {
   const [port, setPort] = useState(String(STACK_LIST[0].defaultPort));
   const [ingressHost, setIngressHost] = useState("");
   const [env, setEnv] = useState<{ name: string; value: string }[]>([]);
+  const [databases, setDatabases] = useState<string[]>([]);
   const [isPrivate, setIsPrivate] = useState(true);
+
+  const toggleDb = (id: string) =>
+    setDatabases((arr) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]));
   const [running, setRunning] = useState(false);
   const [shown, setShown] = useState<Step[]>([]);
   const [result, setResult] = useState<Result | null>(null);
@@ -58,6 +69,7 @@ export default function ProvisionPage() {
           port: Number(port) || undefined,
           ingressHost: ingressHost || undefined,
           env: env.filter((e) => e.name),
+          databases,
           private: isPrivate,
         }),
       });
@@ -159,6 +171,45 @@ export default function ProvisionPage() {
               </button>
             </div>
           ))}
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label className="cp-label">DATA SERVICES</label>
+          <div style={{ display: "flex", gap: 6, marginTop: 7, flexWrap: "wrap" }}>
+            {DATA_SERVICES.map((s) => {
+              const active = databases.includes(s.id);
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => s.enabled && toggleDb(s.id)}
+                  disabled={!s.enabled}
+                  title={s.enabled ? "" : "coming soon"}
+                  style={{
+                    flex: "1 1 45%",
+                    height: 38,
+                    borderRadius: 9,
+                    cursor: s.enabled ? "pointer" : "not-allowed",
+                    opacity: s.enabled ? 1 : 0.45,
+                    fontFamily: "var(--cp-mono)",
+                    fontSize: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    border: "1px solid " + (active ? "var(--md-sys-color-primary)" : "var(--md-sys-color-outline-variant)"),
+                    background: active ? "var(--md-sys-color-primary-container)" : "var(--md-sys-color-surface-container)",
+                    color: active ? "var(--md-sys-color-on-primary-container)" : "var(--md-sys-color-on-surface-variant)",
+                  }}
+                >
+                  <span className="msym" style={{ fontSize: 15 }}>{active ? "check_box" : "check_box_outline_blank"}</span>
+                  {s.label}{s.enabled ? "" : " · soon"}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, color: "var(--md-sys-color-outline)", marginTop: 7 }}>
+            creates a db-per-app + least-privilege user, writes the connection string to a namespace secret, and wires the env ref.
+          </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: 10, background: "var(--md-sys-color-surface-container)", border: "1px solid var(--md-sys-color-outline-variant)" }}>

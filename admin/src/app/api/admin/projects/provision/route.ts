@@ -13,12 +13,14 @@ import { deployWorkflow } from "@/lib/scaffold";
 import { getStack, deploymentYaml, StackOpts, EnvVar } from "@/lib/templates";
 import { ensureNamespace, upsertNamespaceSecret } from "@/lib/k8s";
 import { provisionPostgres } from "@/lib/postgres-provision";
+import { provisionRedis } from "@/lib/redis-provision";
 
 // Data stores that the provisioner can stand up (db-per-app). Each maps to the
 // secret-ref env injected into the scaffolded deployment.yaml.
-const SUPPORTED_DB = new Set(["postgres"]);
+const SUPPORTED_DB = new Set(["postgres", "redis"]);
 const DATA_ENV: Record<string, EnvVar> = {
   postgres: { name: "DATABASE_URL", secret: { name: "database-secrets", key: "DATABASE_URL" } },
+  redis: { name: "REDIS_URL", secret: { name: "database-secrets", key: "REDIS_URL" } },
 };
 
 type StepStatus = "created" | "exists" | "set" | "registered" | "updated" | "error";
@@ -138,6 +140,20 @@ export async function POST(req: NextRequest) {
       await run("data:postgres:secret", async () => {
         if (!conn) throw new Error("database step did not yield a connection string");
         await upsertNamespaceSecret(namespace, "database-secrets", { DATABASE_URL: conn });
+        return "set";
+      });
+    }
+    if (service === "redis") {
+      await run("data:redis:namespace", () => ensureNamespace(namespace));
+      let conn: string | null = null;
+      await run("data:redis:user", async () => {
+        const r = await provisionRedis(projectName);
+        conn = r.connectionString;
+        return r.status;
+      });
+      await run("data:redis:secret", async () => {
+        if (!conn) throw new Error("redis step did not yield a connection string");
+        await upsertNamespaceSecret(namespace, "database-secrets", { REDIS_URL: conn });
         return "set";
       });
     }

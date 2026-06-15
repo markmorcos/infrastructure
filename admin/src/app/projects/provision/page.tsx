@@ -20,7 +20,7 @@ const OK = ["created", "exists", "set", "registered", "updated"];
 
 const DATA_SERVICES: { id: string; label: string; enabled: boolean }[] = [
   { id: "postgres", label: "Postgres", enabled: true },
-  { id: "redis", label: "Redis", enabled: false },
+  { id: "redis", label: "Redis", enabled: true },
   { id: "mongo", label: "Mongo", enabled: false },
   { id: "minio", label: "MinIO", enabled: false },
 ];

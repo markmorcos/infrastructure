@@ -25,6 +25,13 @@ services:
           secretKeyRef:
             name: github-credentials
             key: GITHUB_PAT
+      # Admin Redis connection used by the provisioner to create per-app ACL users.
+      - name: REDIS_ADMIN_URL
+        valueFrom:
+          secretKeyRef:
+            name: redis-admin
+            key: REDIS_ADMIN_URL
+
       # CMS asset storage (MinIO). Endpoint/bucket/CDN are literals; keys come
       # from cms-secrets (copied into this namespace).
       - name: S3_ENDPOINT

@@ -1,9 +1,8 @@
 name: deploy-admin
 
 # Deploys the admin control plane (admin.morcos.tech) to the `admin` namespace.
-# Owns the push:admin/** trigger. Token is still the existing DEPLOYMENT_TOKEN
-# (sub=infrastructure-admin) — valid while the infrastructure-admin projects row
-# exists; swap to a sub=admin token + row during teardown.
+# Owns the push:admin/** trigger. DEPLOYMENT_TOKEN carries sub=admin, matching
+# the `admin` projects row.
 on:
   workflow_dispatch: {}
   push:

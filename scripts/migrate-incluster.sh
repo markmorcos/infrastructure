@@ -80,6 +80,15 @@ spec:
             name: ${CM_NAME}
 YAML
 
+# Tie the ConfigMap to the Job so k8s garbage-collects it when the Job's TTL
+# removes the Job — a backstop to the EXIT trap, which is skipped if the runner
+# cancels/kills the step (that orphaned a CM once).
+JOB_UID=$(kubectl -n "$NAMESPACE" get job "$JOB_NAME" -o jsonpath='{.metadata.uid}' 2>/dev/null || true)
+if [ -n "$JOB_UID" ]; then
+  kubectl -n "$NAMESPACE" patch configmap "$CM_NAME" --type merge \
+    -p "{\"metadata\":{\"ownerReferences\":[{\"apiVersion\":\"batch/v1\",\"kind\":\"Job\",\"name\":\"$JOB_NAME\",\"uid\":\"$JOB_UID\",\"blockOwnerDeletion\":false}]}}" >/dev/null 2>&1 || true
+fi
+
 echo "waiting for job/${JOB_NAME} in ${NAMESPACE} (timeout ${TIMEOUT}s) ..."
 status=""
 end=$((SECONDS + TIMEOUT))

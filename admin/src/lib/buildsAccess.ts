@@ -5,26 +5,27 @@ import { cached } from "@/lib/cache";
 import { getRunProject, listDeployRuns, type DeployRun } from "@/lib/github";
 
 // Builds access control. Admins see every deploy-app run; an editor is scoped
-// to the apps whose CMS site they own — resolved from cms.sites.dispatch_event
-// (e.g. "deploy-lea" → project "lea"), the same field that triggers the run.
-// Read fresh from the DB each request so granting/revoking a site takes effect
-// without re-login.
+// to the apps whose CMS site they own — keyed by the site `key`, which matches
+// the deploy project (site "lea" → deploy-lea runs → project "lea"). We use the
+// key, not dispatch_event, because that field is the CMS content-publish event
+// and varies per site (e.g. "cms-publish"). Read fresh from the DB each request
+// so granting/revoking a site takes effect without re-login. Compared
+// case-insensitively since deploy project names are lowercase.
 
-// null = unrestricted (admin). A Set = the exact project keys an editor may see
-// (possibly empty → they see nothing).
+// null = unrestricted (admin). A Set of lowercased project keys = the exact
+// apps an editor may see (possibly empty → they see nothing).
 export async function allowedProjects(user: SessionUser): Promise<Set<string> | null> {
   if (user.role === "admin") return null;
-  const { rows } = await cmsPool.query<{ dispatch_event: string }>(
-    `SELECT dispatch_event FROM sites
-      WHERE owner_user_id = $1 AND dispatch_event <> ''`,
+  const { rows } = await cmsPool.query<{ key: string }>(
+    `SELECT key FROM sites WHERE owner_user_id = $1`,
     [user.userId],
   );
-  return new Set(rows.map((r) => r.dispatch_event.replace(/^deploy-/, "")));
+  return new Set(rows.map((r) => r.key.toLowerCase()));
 }
 
 export function scopeRuns(runs: DeployRun[], allowed: Set<string> | null): DeployRun[] {
   if (allowed === null) return runs;
-  return runs.filter((r) => allowed.has(r.project));
+  return runs.filter((r) => allowed.has(r.project.toLowerCase()));
 }
 
 type Guard = { user: SessionUser } | { error: NextResponse };
@@ -45,6 +46,6 @@ export async function requireRunAccess(req: NextRequest, runId: number): Promise
   const known = runs.find((r) => r.id === runId);
   const project = known ? known.project : await getRunProject(runId);
 
-  if (allowed.has(project)) return { user };
+  if (allowed.has(project.toLowerCase())) return { user };
   return { error: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
 }

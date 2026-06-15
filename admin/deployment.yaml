@@ -33,9 +33,10 @@ services:
             key: REDIS_ADMIN_URL
 
       # CMS asset storage (MinIO). Endpoint/bucket/CDN are literals; keys come
-      # from cms-secrets (copied into this namespace).
+      # from cms-secrets (copied into this namespace). Endpoint goes through the
+      # in-cluster ExternalName alias (k8s/04-data-services.yaml).
       - name: S3_ENDPOINT
-        value: m720q:9000
+        value: minio.data.svc.cluster.local:9000
       - name: S3_BUCKET
         value: cms
       - name: S3_PUBLIC_BASE_URL

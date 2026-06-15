@@ -1,0 +1,631 @@
+"use client";
+
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import {
+  localeAll,
+  type Asset,
+  type Field,
+  type Section,
+  type Site,
+} from "../../../types";
+import {
+  emptyListItem,
+  fromEditor,
+  toEditor,
+  type EditorObject,
+} from "./editor";
+
+// Schema-driven content editor (/cms/[site]/sections/[key]). Renders the 8 field
+// types from section.schema; locale tabs for localized sections; image fields
+// pick from existing assets + inline upload. Saves a clean JSON PUT to the
+// content endpoint. Ports cms/ui.go uiSection + cms/web/templates/section.html.
+
+export default function SectionEditor() {
+  const params = useParams();
+  const router = useRouter();
+  const search = useSearchParams();
+  const siteKey = decodeURIComponent(params.site as string);
+  const sectionKey = decodeURIComponent(params.key as string);
+
+  const [site, setSite] = useState<Site | null>(null);
+  const [section, setSection] = useState<Section | null>(null);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+  // Editing state, plus the original stored draft (for readOnly round-trip).
+  const [editor, setEditor] = useState<EditorObject>({});
+  const [original, setOriginal] = useState<EditorObject>({});
+
+  const locale = useMemo(() => {
+    if (section && !section.localized) return localeAll;
+    const q = search.get("locale");
+    if (q) return q;
+    return site?.defaultLocale ?? "";
+  }, [section, search, site]);
+
+  const loadMeta = useCallback(async () => {
+    const [siteRes, secRes, assetsRes] = await Promise.all([
+      fetch(`/api/cms/sites/${encodeURIComponent(siteKey)}`),
+      fetch(`/api/cms/sites/${encodeURIComponent(siteKey)}/sections`),
+      fetch(`/api/cms/sites/${encodeURIComponent(siteKey)}/assets`),
+    ]);
+    if (!siteRes.ok) {
+      setError("Site not found");
+      return null;
+    }
+    const s: Site = await siteRes.json();
+    setSite(s);
+    if (assetsRes.ok) setAssets(await assetsRes.json());
+    if (secRes.ok) {
+      const sections: Section[] = await secRes.json();
+      const sec = sections.find((x) => x.key === sectionKey) ?? null;
+      setSection(sec);
+      if (!sec) setError("Section not found");
+      return { site: s, section: sec };
+    }
+    return { site: s, section: null };
+  }, [siteKey, sectionKey]);
+
+  const loadDraft = useCallback(
+    async (sec: Section, loc: string) => {
+      const res = await fetch(
+        `/api/cms/sites/${encodeURIComponent(siteKey)}/sections/${encodeURIComponent(sec.key)}/content/${encodeURIComponent(loc)}`
+      );
+      if (!res.ok) {
+        setError("Could not load content");
+        return;
+      }
+      const d = await res.json();
+      const draft = (d.draft ?? {}) as EditorObject;
+      setOriginal(draft);
+      setEditor(toEditor(sec.schema, draft));
+    },
+    [siteKey]
+  );
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const meta = await loadMeta();
+      if (!active || !meta || !meta.section) {
+        setLoading(false);
+        return;
+      }
+      const loc = meta.section.localized
+        ? search.get("locale") || meta.site.defaultLocale
+        : localeAll;
+      await loadDraft(meta.section, loc);
+      setLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+    // Reload when the locale query changes.
+  }, [loadMeta, loadDraft, search]);
+
+  const reloadAssets = useCallback(async () => {
+    const res = await fetch(`/api/cms/sites/${encodeURIComponent(siteKey)}/assets`);
+    if (res.ok) setAssets(await res.json());
+  }, [siteKey]);
+
+  const save = async () => {
+    if (!section) return;
+    setSaving(true);
+    setMsg(null);
+    const payload = fromEditor(section.schema, editor, original);
+    const res = await fetch(
+      `/api/cms/sites/${encodeURIComponent(siteKey)}/sections/${encodeURIComponent(section.key)}/content/${encodeURIComponent(locale)}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
+    setSaving(false);
+    if (!res.ok) {
+      setMsg({ kind: "err", text: "Saving failed — please try again" });
+      return;
+    }
+    const d = await res.json();
+    const draft = (d.draft ?? {}) as EditorObject;
+    setOriginal(draft);
+    setEditor(toEditor(section.schema, draft));
+    setMsg({
+      kind: "ok",
+      text: "Saved. Changes only appear on the website after you click Publish.",
+    });
+  };
+
+  const switchLocale = (loc: string) => {
+    router.replace(
+      `/cms/${encodeURIComponent(siteKey)}/sections/${encodeURIComponent(sectionKey)}?locale=${encodeURIComponent(loc)}`
+    );
+  };
+
+  if (loading)
+    return (
+      <div style={loadingStyle}>
+        <span className="cp-spinner" />
+        loading…
+      </div>
+    );
+
+  if (error || !site || !section)
+    return (
+      <div className="px-[14px] pt-6 md:px-7">
+        <div style={callout("err")}>
+          <span className="msym" style={{ fontSize: 16 }}>error</span>
+          {error || "Not found"}
+        </div>
+      </div>
+    );
+
+  return (
+    <div className="px-[14px] pb-12 pt-4 md:px-7 md:pb-[60px] md:pt-6" style={{ maxWidth: 880 }}>
+      <button onClick={() => router.push(`/cms/${encodeURIComponent(siteKey)}`)} className="cp-btn-ghost" style={{ height: 34, padding: "0 14px 0 10px", fontSize: 12, marginBottom: 20 }}>
+        <span className="msym" style={{ fontSize: 17 }}>arrow_back</span>{site.name}
+      </button>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <h2 className="text-[21px] md:text-[26px]" style={{ margin: 0, fontFamily: "var(--cp-mono)", fontWeight: 600 }}>{section.title}</h2>
+        <span style={{ fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--md-sys-color-outline)" }}>{section.key}</span>
+      </div>
+
+      {section.localized && (
+        <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+          {site.locales.map((l) => {
+            const active = l === locale;
+            return (
+              <button
+                key={l}
+                onClick={() => switchLocale(l)}
+                style={{
+                  height: 34,
+                  padding: "0 14px",
+                  borderRadius: 9999,
+                  cursor: "pointer",
+                  fontFamily: "var(--cp-mono)",
+                  fontSize: 12,
+                  border: "1px solid " + (active ? "var(--md-sys-color-primary)" : "var(--md-sys-color-outline-variant)"),
+                  background: active ? "var(--md-sys-color-primary-container)" : "var(--md-sys-color-surface-container-low)",
+                  color: active ? "var(--md-sys-color-on-primary-container)" : "var(--md-sys-color-on-surface-variant)",
+                }}
+              >
+                {l.toUpperCase()}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {msg && (
+        <div style={{ ...callout(msg.kind), marginTop: 16 }}>
+          <span className="msym" style={{ fontSize: 16 }}>{msg.kind === "ok" ? "check_circle" : "error"}</span>
+          {msg.text}
+        </div>
+      )}
+
+      <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 18 }}>
+        <FieldList
+          fields={section.schema}
+          value={editor}
+          onChange={setEditor}
+          assets={assets}
+          site={site}
+          onUploaded={reloadAssets}
+        />
+      </div>
+
+      <div style={{ marginTop: 24, display: "flex", gap: 10 }}>
+        <button onClick={save} disabled={saving} className="cp-btn-primary" style={{ height: 40, padding: "0 20px", fontSize: 13 }}>
+          <span className="msym" style={{ fontSize: 18, animation: saving ? "cpSpin 1s linear infinite" : "none" }}>
+            {saving ? "autorenew" : "save"}
+          </span>
+          {saving ? "saving…" : "Save draft"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---- field rendering ----
+
+function FieldList({
+  fields,
+  value,
+  onChange,
+  assets,
+  site,
+  onUploaded,
+}: {
+  fields: Field[];
+  value: EditorObject;
+  onChange: (v: EditorObject) => void;
+  assets: Asset[];
+  site: Site;
+  onUploaded: () => void;
+}) {
+  const set = (key: string, v: unknown) => onChange({ ...value, [key]: v });
+  return (
+    <>
+      {fields.map((f) => (
+        <FieldEditor
+          key={f.key}
+          field={f}
+          value={value[f.key]}
+          onChange={(v) => set(f.key, v)}
+          assets={assets}
+          site={site}
+          onUploaded={onUploaded}
+        />
+      ))}
+    </>
+  );
+}
+
+function FieldEditor({
+  field,
+  value,
+  onChange,
+  assets,
+  site,
+  onUploaded,
+}: {
+  field: Field;
+  value: unknown;
+  onChange: (v: unknown) => void;
+  assets: Asset[];
+  site: Site;
+  onUploaded: () => void;
+}) {
+  const label = (
+    <label className="cp-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      {field.label}
+      {field.readOnly && (
+        <span style={{ fontSize: 10, color: "var(--md-sys-color-outline)" }}>(fixed)</span>
+      )}
+    </label>
+  );
+
+  switch (field.type) {
+    case "text":
+    case "image": {
+      if (field.type === "image") {
+        return (
+          <div>
+            {label}
+            <ImageField
+              value={typeof value === "string" ? value : ""}
+              onChange={onChange}
+              assets={assets}
+              site={site}
+              onUploaded={onUploaded}
+              readOnly={field.readOnly}
+            />
+          </div>
+        );
+      }
+      return (
+        <div>
+          {label}
+          <input
+            className="cp-input"
+            style={{ marginTop: 6 }}
+            value={typeof value === "string" ? value : ""}
+            readOnly={field.readOnly}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </div>
+      );
+    }
+    case "textarea":
+    case "stringlist":
+    case "paragraphs":
+      return (
+        <div>
+          {label}
+          <textarea
+            className="cp-input"
+            style={{ marginTop: 6, height: 110, padding: "10px 14px", resize: "vertical", lineHeight: 1.5 }}
+            value={typeof value === "string" ? value : ""}
+            readOnly={field.readOnly}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          {field.type === "stringlist" && (
+            <div style={hint}>one entry per line</div>
+          )}
+          {field.type === "paragraphs" && (
+            <div style={hint}>separate paragraphs with a blank line</div>
+          )}
+        </div>
+      );
+    case "object": {
+      const obj = (typeof value === "object" && value !== null && !Array.isArray(value)
+        ? (value as EditorObject)
+        : {}) as EditorObject;
+      return (
+        <div className="cp-card" style={{ padding: 16 }}>
+          {label}
+          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 14 }}>
+            <FieldList
+              fields={field.fields ?? []}
+              value={obj}
+              onChange={onChange}
+              assets={assets}
+              site={site}
+              onUploaded={onUploaded}
+            />
+          </div>
+        </div>
+      );
+    }
+    case "list":
+      return (
+        <ListField
+          field={field}
+          value={Array.isArray(value) ? (value as EditorObject[]) : []}
+          onChange={onChange}
+          assets={assets}
+          site={site}
+          onUploaded={onUploaded}
+        />
+      );
+    case "pairs":
+      return (
+        <PairsField
+          field={field}
+          value={Array.isArray(value) ? (value as [string, string][]) : []}
+          onChange={onChange}
+        />
+      );
+    default:
+      return null;
+  }
+}
+
+function ListField({
+  field,
+  value,
+  onChange,
+  assets,
+  site,
+  onUploaded,
+}: {
+  field: Field;
+  value: EditorObject[];
+  onChange: (v: unknown) => void;
+  assets: Asset[];
+  site: Site;
+  onUploaded: () => void;
+}) {
+  const subs = field.fields ?? [];
+  const setItem = (i: number, item: EditorObject) => {
+    const next = value.slice();
+    next[i] = item;
+    onChange(next);
+  };
+  const add = () => onChange([...value, emptyListItem(subs)]);
+  const del = (i: number) => onChange(value.filter((_, j) => j !== i));
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= value.length) return;
+    const next = value.slice();
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  };
+
+  return (
+    <div>
+      <label className="cp-label">{field.label}</label>
+      <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 12 }}>
+        {value.map((item, i) => (
+          <div key={i} className="cp-card" style={{ padding: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-outline)", flex: 1 }}>#{i + 1}</span>
+              <button onClick={() => move(i, -1)} disabled={i === 0} className="cp-btn-soft" style={iconBtn} title="up">
+                <span className="msym" style={{ fontSize: 16 }}>arrow_upward</span>
+              </button>
+              <button onClick={() => move(i, 1)} disabled={i === value.length - 1} className="cp-btn-soft" style={iconBtn} title="down">
+                <span className="msym" style={{ fontSize: 16 }}>arrow_downward</span>
+              </button>
+              <button onClick={() => del(i)} className="cp-btn-soft" style={iconBtn} title="delete">
+                <span className="msym" style={{ fontSize: 16 }}>delete</span>
+              </button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <FieldList
+                fields={subs}
+                value={item}
+                onChange={(v) => setItem(i, v)}
+                assets={assets}
+                site={site}
+                onUploaded={onUploaded}
+              />
+            </div>
+          </div>
+        ))}
+        <button onClick={add} className="cp-btn-ghost" style={{ height: 34, padding: "0 14px", fontSize: 12, alignSelf: "flex-start" }}>
+          <span className="msym" style={{ fontSize: 17 }}>add</span>add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PairsField({
+  field,
+  value,
+  onChange,
+}: {
+  field: Field;
+  value: [string, string][];
+  onChange: (v: unknown) => void;
+}) {
+  const setPair = (i: number, idx: 0 | 1, v: string) => {
+    const next = value.map((p) => [p[0], p[1]] as [string, string]);
+    next[i][idx] = v;
+    onChange(next);
+  };
+  const add = () => onChange([...value, ["", ""] as [string, string]]);
+  const del = (i: number) => onChange(value.filter((_, j) => j !== i));
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= value.length) return;
+    const next = value.slice();
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  };
+
+  return (
+    <div>
+      <label className="cp-label">{field.label}</label>
+      <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 10 }}>
+        {value.map((pair, i) => (
+          <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <input className="cp-input" style={{ flex: "1 1 160px" }} placeholder="Label" value={pair[0]} onChange={(e) => setPair(i, 0, e.target.value)} />
+            <input className="cp-input" style={{ flex: "1 1 160px" }} placeholder="Value" value={pair[1]} onChange={(e) => setPair(i, 1, e.target.value)} />
+            <button onClick={() => move(i, -1)} disabled={i === 0} className="cp-btn-soft" style={iconBtn} title="up">
+              <span className="msym" style={{ fontSize: 16 }}>arrow_upward</span>
+            </button>
+            <button onClick={() => move(i, 1)} disabled={i === value.length - 1} className="cp-btn-soft" style={iconBtn} title="down">
+              <span className="msym" style={{ fontSize: 16 }}>arrow_downward</span>
+            </button>
+            <button onClick={() => del(i)} className="cp-btn-soft" style={iconBtn} title="delete">
+              <span className="msym" style={{ fontSize: 16 }}>delete</span>
+            </button>
+          </div>
+        ))}
+        <button onClick={add} className="cp-btn-ghost" style={{ height: 34, padding: "0 14px", fontSize: 12, alignSelf: "flex-start" }}>
+          <span className="msym" style={{ fontSize: 17 }}>add</span>add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ImageField({
+  value,
+  onChange,
+  assets,
+  site,
+  onUploaded,
+  readOnly,
+}: {
+  value: string;
+  onChange: (v: unknown) => void;
+  assets: Asset[];
+  site: Site;
+  onUploaded: () => void;
+  readOnly?: boolean;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const upload = async (file: File) => {
+    setErr(null);
+    setUploading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(
+      `/api/cms/sites/${encodeURIComponent(site.key)}/assets`,
+      { method: "POST", body: fd }
+    );
+    setUploading(false);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setErr(d.error || "upload failed");
+      return;
+    }
+    const asset: Asset = await res.json();
+    onUploaded();
+    onChange(asset.url); // assign the new image straight into the field
+  };
+
+  return (
+    <div style={{ marginTop: 6 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div style={{ width: 96, height: 96, borderRadius: 10, background: "var(--md-sys-color-surface-container)", border: "1px solid var(--md-sys-color-outline-variant)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+          {value ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={value} alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+          ) : (
+            <span className="msym" style={{ fontSize: 28, color: "var(--md-sys-color-outline)" }}>image</span>
+          )}
+        </div>
+        <div style={{ flex: "1 1 220px", display: "flex", flexDirection: "column", gap: 8 }}>
+          <select
+            className="cp-input"
+            value={value}
+            disabled={readOnly}
+            onChange={(e) => onChange(e.target.value)}
+            style={{ appearance: "auto" }}
+          >
+            <option value="">— Default image —</option>
+            {assets.map((a) => (
+              <option key={a.id} value={a.url}>{a.filename}</option>
+            ))}
+            {value && !assets.some((a) => a.url === value) && (
+              <option value={value}>{value}</option>
+            )}
+          </select>
+          {!readOnly && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                disabled={uploading}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) upload(f);
+                }}
+                style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-on-surface-variant)" }}
+              />
+              {uploading && <span className="cp-spinner" />}
+            </div>
+          )}
+          {err && <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--cp-err)" }}>{err}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const iconBtn: React.CSSProperties = { width: 30, height: 30, padding: 0 };
+const hint: React.CSSProperties = {
+  fontFamily: "var(--cp-mono)",
+  fontSize: 10.5,
+  color: "var(--md-sys-color-outline)",
+  marginTop: 5,
+};
+const loadingStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  padding: "80px 28px",
+  fontFamily: "var(--cp-mono)",
+  fontSize: 13,
+  color: "var(--md-sys-color-on-surface-variant)",
+};
+
+function callout(kind: "ok" | "err"): React.CSSProperties {
+  const map = {
+    ok: { bg: "var(--cp-ok-dim)", fg: "var(--cp-ok)", bd: "rgba(70,224,160,.22)" },
+    err: { bg: "var(--cp-err-dim)", fg: "var(--cp-err)", bd: "rgba(255,122,107,.22)" },
+  }[kind];
+  return {
+    display: "flex",
+    alignItems: "center",
+    gap: 9,
+    padding: "11px 14px",
+    borderRadius: 12,
+    background: map.bg,
+    border: "1px solid " + map.bd,
+    color: map.fg,
+    fontFamily: "var(--cp-mono)",
+    fontSize: 12.5,
+  };
+}

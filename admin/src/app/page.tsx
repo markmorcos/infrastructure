@@ -16,8 +16,8 @@ const APPS: App[] = [
   { label: "Projects", icon: "grid_view", href: "/projects" },
   { label: "Builds", icon: "manage_history", href: "/builds" },
   { label: "Provision", icon: "rocket_launch", href: "/projects/provision" },
-  { label: "CMS", icon: "article", href: "/cms", soon: true },
-  { label: "Experimentation", icon: "science", href: "/experimentation", soon: true },
+  { label: "CMS", icon: "article", href: "/cms" },
+  { label: "Experimentation", icon: "science", href: "/experimentation" },
 ];
 
 function Tile({ app }: { app: App }) {

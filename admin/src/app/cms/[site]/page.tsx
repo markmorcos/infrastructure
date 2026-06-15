@@ -1,0 +1,293 @@
+"use client";
+
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { localeAll, type Section, type Site } from "../types";
+
+// Site dashboard (/cms/[site]). Sections grouped by page_group, per-locale edit
+// links with a dirty dot when draft != published, a Publish button + "last
+// published" status, and a link to assets. Ports cms/ui.go uiSite.
+
+interface SectionsResponse {
+  site: Site;
+  sections: Section[];
+  dirty: Record<string, Record<string, boolean>>;
+  lastPublished: string | null;
+}
+
+export default function SiteDashboard() {
+  const params = useParams();
+  const router = useRouter();
+  const siteKey = decodeURIComponent(params.site as string);
+
+  const [site, setSite] = useState<Site | null>(null);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [dirty, setDirty] = useState<Record<string, Record<string, boolean>>>({});
+  const [lastPublished, setLastPublished] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [msg, setMsg] = useState<{ kind: "ok" | "warn" | "err"; text: string } | null>(null);
+
+  const load = useCallback(async () => {
+    const [siteRes, secRes] = await Promise.all([
+      fetch(`/api/cms/sites/${encodeURIComponent(siteKey)}`),
+      fetch(`/api/cms/sites/${encodeURIComponent(siteKey)}/sections`),
+    ]);
+    if (!siteRes.ok) {
+      setError("Site not found");
+      return;
+    }
+    const s: Site = await siteRes.json();
+    setSite(s);
+    if (secRes.ok) setSections(await secRes.json());
+    // Dirty flags + last-published come from per-section publish state; we
+    // compute them client-side by reading each section's draft vs published
+    // through the content endpoint would be costly, so instead the API exposes
+    // them via the sections payload. Fall back to publish status endpoint.
+    const statusRes = await fetch(
+      `/api/cms/sites/${encodeURIComponent(siteKey)}/status`
+    ).catch(() => null);
+    if (statusRes && statusRes.ok) {
+      const st: SectionsResponse = await statusRes.json();
+      setDirty(st.dirty ?? {});
+      setLastPublished(st.lastPublished ?? null);
+    }
+  }, [siteKey]);
+
+  useEffect(() => {
+    load().finally(() => setLoading(false));
+  }, [load]);
+
+  const groups = useMemo(() => {
+    const byName = new Map<string, Section[]>();
+    const order: string[] = [];
+    for (const sec of sections) {
+      if (!byName.has(sec.pageGroup)) {
+        byName.set(sec.pageGroup, []);
+        order.push(sec.pageGroup);
+      }
+      byName.get(sec.pageGroup)!.push(sec);
+    }
+    return order.map((name) => ({ name, sections: byName.get(name)! }));
+  }, [sections]);
+
+  const anyDirty = useMemo(
+    () =>
+      Object.values(dirty).some((locs) => Object.values(locs).some(Boolean)),
+    [dirty]
+  );
+
+  const publish = async () => {
+    setPublishing(true);
+    setMsg(null);
+    const res = await fetch(
+      `/api/cms/sites/${encodeURIComponent(siteKey)}/publish`,
+      { method: "POST" }
+    );
+    setPublishing(false);
+    if (!res.ok) {
+      setMsg({ kind: "err", text: "Publishing failed — please try again" });
+      return;
+    }
+    const d = await res.json();
+    if (!d.dispatched) {
+      setMsg({
+        kind: "warn",
+        text: "Content published, but the website rebuild could not be triggered — please let Mark know.",
+      });
+    } else {
+      setMsg({
+        kind: "ok",
+        text: "Published! The website is rebuilding and will be up to date in about 3 minutes.",
+      });
+    }
+    setLoading(true);
+    load().finally(() => setLoading(false));
+  };
+
+  if (loading)
+    return (
+      <div style={loadingStyle}>
+        <span className="cp-spinner" />
+        loading…
+      </div>
+    );
+
+  if (error || !site)
+    return (
+      <div className="px-[14px] pt-6 md:px-7">
+        <div style={callout("err")}>
+          <span className="msym" style={{ fontSize: 16 }}>error</span>
+          {error || "Site not found"}
+        </div>
+      </div>
+    );
+
+  return (
+    <div className="px-[14px] pb-12 pt-4 md:px-7 md:pb-[60px] md:pt-6" style={{ maxWidth: 1080 }}>
+      <button onClick={() => router.push("/cms")} className="cp-btn-ghost" style={{ height: 34, padding: "0 14px 0 10px", fontSize: 12, marginBottom: 20 }}>
+        <span className="msym" style={{ fontSize: 17 }}>arrow_back</span>websites
+      </button>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        <span className="msym fill" style={{ fontSize: 24, color: "var(--md-sys-color-primary)" }}>language</span>
+        <h2 className="text-[21px] md:text-[26px]" style={{ margin: 0, fontFamily: "var(--cp-mono)", fontWeight: 600 }}>
+          {site.name}
+        </h2>
+        <span style={{ fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--md-sys-color-on-surface-variant)" }}>{site.key}</span>
+        <div className="hidden flex-1 md:block" />
+        <button
+          onClick={() => router.push(`/cms/${encodeURIComponent(site.key)}/assets`)}
+          className="cp-btn-soft"
+          style={{ height: 38, padding: "0 14px", fontSize: 12 }}
+        >
+          <span className="msym" style={{ fontSize: 17 }}>image</span>images
+        </button>
+        <button onClick={publish} disabled={publishing} className="cp-btn-primary" style={{ height: 38, padding: "0 16px", fontSize: 12.5 }}>
+          <span className="msym" style={{ fontSize: 18, animation: publishing ? "cpSpin 1s linear infinite" : "none" }}>
+            {publishing ? "autorenew" : "rocket_launch"}
+          </span>
+          {publishing ? "publishing…" : "Publish"}
+        </button>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+        <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11.5, color: "var(--md-sys-color-on-surface-variant)" }}>
+          {lastPublished
+            ? `last published ${new Date(lastPublished).toLocaleString()}`
+            : "never published"}
+        </span>
+        {anyDirty && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: "var(--cp-mono)", fontSize: 11.5, color: "var(--cp-warn)" }}>
+            <span style={dot("var(--cp-warn)")} />unpublished changes
+          </span>
+        )}
+      </div>
+
+      {msg && (
+        <div style={{ ...callout(msg.kind), marginTop: 16 }}>
+          <span className="msym" style={{ fontSize: 16 }}>
+            {msg.kind === "ok" ? "check_circle" : msg.kind === "warn" ? "warning" : "error"}
+          </span>
+          {msg.text}
+        </div>
+      )}
+
+      <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 22 }}>
+        {groups.map((g) => (
+          <div key={g.name}>
+            <div className="cp-label" style={{ marginBottom: 10 }}>{`// ${g.name.toUpperCase()}`}</div>
+            <div className="cp-card" style={{ overflow: "hidden" }}>
+              {g.sections.map((sec, i) => (
+                <div
+                  key={sec.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "13px 18px",
+                    borderTop: i === 0 ? "none" : "1px solid var(--md-sys-color-outline-variant)",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span style={{ fontFamily: "var(--cp-mono)", fontSize: 14, fontWeight: 600, minWidth: 0, flex: "1 1 180px" }}>
+                    {sec.title}
+                  </span>
+                  <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-outline)" }}>{sec.key}</span>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {sec.localized
+                      ? site.locales.map((l) => (
+                          <LocaleLink
+                            key={l}
+                            site={site.key}
+                            sectionKey={sec.key}
+                            locale={l}
+                            label={l.toUpperCase()}
+                            dirty={!!dirty[sec.id]?.[l]}
+                          />
+                        ))
+                      : (
+                          <LocaleLink
+                            site={site.key}
+                            sectionKey={sec.key}
+                            locale={localeAll}
+                            label="Edit"
+                            dirty={!!dirty[sec.id]?.[localeAll]}
+                          />
+                        )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LocaleLink({
+  site,
+  sectionKey,
+  locale,
+  label,
+  dirty,
+}: {
+  site: string;
+  sectionKey: string;
+  locale: string;
+  label: string;
+  dirty: boolean;
+}) {
+  const router = useRouter();
+  return (
+    <button
+      onClick={() =>
+        router.push(
+          `/cms/${encodeURIComponent(site)}/sections/${encodeURIComponent(sectionKey)}?locale=${encodeURIComponent(locale)}`
+        )
+      }
+      className="cp-btn-ghost"
+      style={{ height: 30, padding: "0 11px", fontSize: 11.5 }}
+    >
+      {dirty && <span style={dot("var(--cp-warn)")} />}
+      {label}
+      <span className="msym" style={{ fontSize: 15 }}>edit</span>
+    </button>
+  );
+}
+
+function dot(color: string): React.CSSProperties {
+  return { width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 };
+}
+
+const loadingStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 10,
+  padding: "80px 28px",
+  fontFamily: "var(--cp-mono)",
+  fontSize: 13,
+  color: "var(--md-sys-color-on-surface-variant)",
+};
+
+function callout(kind: "ok" | "warn" | "err"): React.CSSProperties {
+  const map = {
+    ok: { bg: "var(--cp-ok-dim)", fg: "var(--cp-ok)", bd: "rgba(70,224,160,.22)" },
+    warn: { bg: "var(--cp-warn-dim)", fg: "var(--cp-warn)", bd: "rgba(245,183,61,.22)" },
+    err: { bg: "var(--cp-err-dim)", fg: "var(--cp-err)", bd: "rgba(255,122,107,.22)" },
+  }[kind];
+  return {
+    display: "flex",
+    alignItems: "center",
+    gap: 9,
+    padding: "11px 14px",
+    borderRadius: 12,
+    background: map.bg,
+    border: "1px solid " + map.bd,
+    color: map.fg,
+    fontFamily: "var(--cp-mono)",
+    fontSize: 12.5,
+  };
+}

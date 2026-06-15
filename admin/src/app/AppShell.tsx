@@ -19,6 +19,10 @@ function pageMeta(pathname: string): { title: string; sub: string } {
     };
   if (pathname.startsWith("/builds"))
     return { title: "Builds", sub: "deploy pipeline runs" };
+  if (pathname.startsWith("/cms"))
+    return { title: "CMS", sub: "sites, content, assets" };
+  if (pathname.startsWith("/experimentation"))
+    return { title: "Experimentation", sub: "flags, experiments, results" };
   return { title: "Control Plane", sub: "" };
 }
 
@@ -81,6 +85,18 @@ function Shell({ children }: { children: React.ReactNode }) {
       icon: "manage_history",
       label: "builds",
       active: pathname.startsWith("/builds"),
+    },
+    {
+      href: "/cms",
+      icon: "article",
+      label: "cms",
+      active: pathname.startsWith("/cms"),
+    },
+    {
+      href: "/experimentation",
+      icon: "science",
+      label: "experimentation",
+      active: pathname.startsWith("/experimentation"),
     },
     {
       href: "/projects/provision",

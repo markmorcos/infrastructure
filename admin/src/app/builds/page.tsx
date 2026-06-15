@@ -67,7 +67,7 @@ export default function BuildsPage() {
 
   const fetchRuns = useCallback(async () => {
     try {
-      const res = await fetch("/api/builds");
+      const res = await fetch("/api/admin/builds");
       if (!res.ok) throw new Error("Failed to load builds");
       const d = await res.json();
       setRuns(d.runs);
@@ -107,7 +107,7 @@ export default function BuildsPage() {
     }
     setOpen(id);
     if (!jobs[id]) {
-      const res = await fetch(`/api/builds/${id}`);
+      const res = await fetch(`/api/admin/builds/${id}`);
       if (res.ok) {
         const d = await res.json();
         setJobs((j) => ({ ...j, [id]: d.jobs }));
@@ -117,7 +117,7 @@ export default function BuildsPage() {
 
   const rerun = async (id: number, mode: "failed" | "all") => {
     setBusy((b) => ({ ...b, [id]: true }));
-    await fetch(`/api/builds/${id}/rerun`, {
+    await fetch(`/api/admin/builds/${id}/rerun`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode }),

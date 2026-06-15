@@ -58,7 +58,7 @@ export default function ProvisionPage() {
     setResult(null);
     setShown([]);
     try {
-      const res = await fetch("/api/projects/provision", {
+      const res = await fetch("/api/admin/projects/provision", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

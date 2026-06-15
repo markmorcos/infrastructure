@@ -31,7 +31,7 @@ export default function FleetPage() {
   const [rotating, setRotating] = useState<Record<string, boolean>>({});
 
   const fetchProjects = useCallback(async () => {
-    const res = await fetch("/api/projects");
+    const res = await fetch("/api/admin/projects");
     if (!res.ok) {
       setError("Failed to load projects");
       return;
@@ -40,7 +40,7 @@ export default function FleetPage() {
   }, []);
 
   const fetchRuntime = useCallback(async () => {
-    const res = await fetch("/api/runtime");
+    const res = await fetch("/api/admin/runtime");
     if (res.ok) setRuntime(await res.json());
   }, []);
 
@@ -99,7 +99,7 @@ export default function FleetPage() {
 
   const rotate = async (name: string) => {
     setRotating((r) => ({ ...r, [name]: true }));
-    const res = await fetch(`/api/projects/${encodeURIComponent(name)}/rotate`, {
+    const res = await fetch(`/api/admin/projects/${encodeURIComponent(name)}/rotate`, {
       method: "POST",
     });
     if (res.ok) await fetchProjects();
@@ -107,7 +107,7 @@ export default function FleetPage() {
   };
 
   const toggle = async (p: Project) => {
-    await fetch(`/api/projects/${encodeURIComponent(p.projectName)}`, {
+    await fetch(`/api/admin/projects/${encodeURIComponent(p.projectName)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled: !p.enabled }),
@@ -117,7 +117,7 @@ export default function FleetPage() {
 
   const remove = async (name: string) => {
     if (!confirm(`Delete project ${name}?`)) return;
-    await fetch(`/api/projects/${encodeURIComponent(name)}`, { method: "DELETE" });
+    await fetch(`/api/admin/projects/${encodeURIComponent(name)}`, { method: "DELETE" });
     fetchProjects();
   };
 

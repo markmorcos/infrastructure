@@ -59,10 +59,10 @@ export default function DetailPage() {
 
   const load = useCallback(async () => {
     const [listRes, oneRes, buildsRes, rtRes] = await Promise.all([
-      fetch("/api/projects"),
-      fetch(`/api/projects/${encodeURIComponent(name)}`),
-      fetch("/api/builds"),
-      fetch("/api/runtime"),
+      fetch("/api/admin/projects"),
+      fetch(`/api/admin/projects/${encodeURIComponent(name)}`),
+      fetch("/api/admin/builds"),
+      fetch("/api/admin/runtime"),
     ]);
     const list: Project[] = await listRes.json();
     const p = list.find((x) => x.projectName === name) || null;
@@ -89,7 +89,7 @@ export default function DetailPage() {
   const rollback = async () => {
     if (!confirm(`Roll back ${name} to the previous Helm revision?`)) return;
     setRollMsg(null);
-    const res = await fetch(`/api/projects/${encodeURIComponent(name)}/rollback`, { method: "POST" });
+    const res = await fetch(`/api/admin/projects/${encodeURIComponent(name)}/rollback`, { method: "POST" });
     const d = await res.json();
     setRollMsg(res.ok ? "rollback dispatched — watch it in Builds/Actions" : d.error || "rollback failed");
   };
@@ -100,7 +100,7 @@ export default function DetailPage() {
 
   const save = async () => {
     setMsg(null);
-    const res = await fetch(`/api/projects/${encodeURIComponent(name)}`, {
+    const res = await fetch(`/api/admin/projects/${encodeURIComponent(name)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ repo, namespace, enabled, token }),
@@ -112,7 +112,7 @@ export default function DetailPage() {
   const rotate = async () => {
     setRotating(true);
     setMsg(null);
-    const res = await fetch(`/api/projects/${encodeURIComponent(name)}/rotate`, { method: "POST" });
+    const res = await fetch(`/api/admin/projects/${encodeURIComponent(name)}/rotate`, { method: "POST" });
     const d = await res.json();
     setRotating(false);
     setMsg(res.ok ? (d.pushedToRepo ? "rotated + pushed to repo" : "rotated (db only)") : d.error || "rotate failed");
@@ -121,7 +121,7 @@ export default function DetailPage() {
 
   const setK8s = async () => {
     setSecretMsg(null);
-    const res = await fetch(`/api/projects/${encodeURIComponent(name)}/k8s-secrets`, {
+    const res = await fetch(`/api/admin/projects/${encodeURIComponent(name)}/k8s-secrets`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ secretName, data: { [secretKey]: secretValue } }),

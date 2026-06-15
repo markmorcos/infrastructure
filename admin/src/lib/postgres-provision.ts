@@ -61,8 +61,10 @@ export async function provisionPostgres(project: string): Promise<PostgresProvis
     const existingDb = await admin.query("SELECT 1 FROM pg_database WHERE datname = $1", [db]);
     if (!existingDb.rowCount) {
       // CREATE DATABASE cannot run inside a transaction; node-postgres sends
-      // simple queries unwrapped, so this is fine.
-      await admin.query(`CREATE DATABASE ${quoteIdent(db)} OWNER ${quoteIdent(role)}`);
+      // simple queries unwrapped, so this is fine. The provisioning role owns
+      // the db (setting OWNER to the app role would require SET ROLE membership
+      // we don't always have); the app role gets full privileges via GRANT.
+      await admin.query(`CREATE DATABASE ${quoteIdent(db)}`);
       created = true;
     }
     await admin.query(`GRANT ALL PRIVILEGES ON DATABASE ${quoteIdent(db)} TO ${quoteIdent(role)}`);

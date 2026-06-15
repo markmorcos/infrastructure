@@ -118,10 +118,7 @@ jobs:
           bash scripts/build.sh
 
   # Apply database migrations before rollout. Opt-in: only runs when the client
-  # payload carries a `migrations` object. Runs the migrations from a one-shot
-  # Job INSIDE the cluster (scripts/migrate-incluster.sh), so the DB connection
-  # uses in-cluster names (the `data` ExternalName aliases resolve) and no DB
-  # creds / psql ever touch the runner — it only needs kubectl.
+  # payload carries a `migrations` object.
   migrate:
     if: ${{ github.event.client_payload.migrations }}
     runs-on: ubuntu-latest
@@ -136,8 +133,6 @@ jobs:
           token: ${{ secrets.INFRASTRUCTURE_PAT }}
           path: client
 
-      # Only needed to reach the k8s API; the Job itself does the DB work, so no
-      # --accept-dns (we never resolve the DB host from the runner anymore).
       - name: Configure VPN
         uses: tailscale/github-action@v3
         with:
@@ -151,7 +146,7 @@ jobs:
           echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      - name: Run migrations (in-cluster Job)
+      - name: Run migrations
         env:
           KUBECONFIG: /home/runner/.kube/config
           MIGRATIONS: ${{ toJson(github.event.client_payload.migrations) }}
@@ -161,7 +156,7 @@ jobs:
           export KEY=$(echo "$MIGRATIONS" | jq -r '.key')
           export MIGRATIONS_DIR="client/$(echo "$MIGRATIONS" | jq -r '.dir')"
           export JOB_NAME="db-migrate-${GITHUB_RUN_ID}"
-          bash scripts/migrate-incluster.sh
+          bash scripts/migrate.sh
 
   deploy:
     needs: [merge, migrate]

@@ -3,11 +3,10 @@
 # hard-coding the physical host, so swapping a backend = editing one Service
 # here rather than rotating every app secret.
 #
-# postgres is aliasable everywhere: the deploy pipeline's `migrate` job runs
-# inside the cluster (scripts/migrate-incluster.sh applies migrations from a Job
-# in the app's namespace), so the DB connection resolves cluster names. There is
-# no longer an out-of-cluster consumer of DATABASE_URL, so any app may point at
-# `postgres.data.svc.cluster.local`.
+# postgres is aliasable everywhere: the deploy pipeline's `migrate` job applies
+# migrations from a Job in the app's namespace (scripts/migrate.sh), so the DB
+# connection resolves cluster names. There is no out-of-cluster consumer of
+# DATABASE_URL, so any app may point at `postgres.data.svc.cluster.local`.
 #
 # ExternalName is a pure DNS CNAME: no port remap, no LB, no health checks — the
 # app must still use the real port. CoreDNS (forward . /etc/resolv.conf) resolves

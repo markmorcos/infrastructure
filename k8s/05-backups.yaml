@@ -25,7 +25,7 @@ data:
     TS=$(date -u +%Y%m%d-%H%M%S)
     echo "[backup] start $TS"
 
-    apk add --no-cache --quiet ca-certificates wget >/dev/null 2>&1 || true
+    apk add --no-cache --quiet ca-certificates wget mongodb-tools >/dev/null 2>&1 || true
 
     # MinIO client (static binary) — talks to both R2 and MinIO (both S3).
     wget -qO /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc
@@ -43,6 +43,16 @@ data:
     # 2) MinIO assets: mirror the cms bucket (no --remove, so deletions are kept).
     echo "[backup] minio mirror $MINIO_BUCKET…"
     /tmp/mc mirror --overwrite "src/$MINIO_BUCKET" "r2/$R2_BUCKET/minio/$MINIO_BUCKET"
+
+    # 3) Mongo: one gzipped archive per MONGO_URI_* env var.
+    for v in $(env | sed -n 's/^\(MONGO_URI_[A-Z0-9_]*\)=.*/\1/p'); do
+      name=$(printf '%s' "$v" | sed 's/^MONGO_URI_//' | tr '[:upper:]' '[:lower:]')
+      uri=$(printenv "$v")
+      echo "[backup] mongodump $name…"
+      mongodump --uri="$uri" --archive --gzip > "/tmp/mongo-$name.gz"
+      /tmp/mc cp "/tmp/mongo-$name.gz" "r2/$R2_BUCKET/mongo/$name-$TS.archive.gz"
+      echo "[backup] mongo -> r2/$R2_BUCKET/mongo/$name-$TS.archive.gz ($(wc -c < /tmp/mongo-$name.gz) bytes)"
+    done
 
     echo "[backup] done $TS"
 ---
@@ -78,6 +88,13 @@ spec:
                   valueFrom: { secretKeyRef: { name: cms-secrets, key: S3_ACCESS_KEY } }
                 - name: MINIO_SECRET_KEY
                   valueFrom: { secretKeyRef: { name: cms-secrets, key: S3_SECRET_KEY } }
+                # Mongo databases (one archive each); copied from their app namespaces.
+                - name: MONGO_URI_EVENTLANE
+                  valueFrom: { secretKeyRef: { name: mongodb-credentials, key: MONGODB_URI } }
+                - name: MONGO_URI_GAMES
+                  valueFrom: { secretKeyRef: { name: database-secret, key: MONGO_URI } }
+                - name: MONGO_URI_GAMESMEMORY
+                  valueFrom: { secretKeyRef: { name: memory-database-secret, key: MONGO_URI } }
                 - name: R2_ENDPOINT
                   valueFrom: { secretKeyRef: { name: backup-r2, key: R2_ENDPOINT } }
                 - name: R2_BUCKET

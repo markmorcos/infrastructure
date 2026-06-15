@@ -20,7 +20,11 @@ export async function GET(req: NextRequest) {
         }
       };
       send("connected");
-      const unsub = subscribeBuildsChanged(() => send("changed"));
+      // "changed" or "changed:<runId>" so the client can refetch the affected
+      // run's jobs specifically.
+      const unsub = subscribeBuildsChanged((runId) =>
+        send(runId ? `changed:${runId}` : "changed"),
+      );
       const ping = setInterval(() => send("ping"), 25_000);
       cleanup = () => {
         clearInterval(ping);

@@ -25,17 +25,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "bad signature" }, { status: 401 });
   }
 
+  // Only fan out on real state transitions, not every webhook GitHub sends:
+  //   workflow_run  → requested (scheduled) / completed
+  //   workflow_job  → queued / in_progress (running) / completed
+  // This skips noise (e.g. run in_progress, job waiting) so open builds pages
+  // refresh once per meaningful change instead of on incidental deliveries.
+  const RUN_ACTIONS = new Set(["requested", "completed"]);
+  const JOB_ACTIONS = new Set(["queued", "in_progress", "completed"]);
+
   if (event === "workflow_run" || event === "workflow_job") {
     let runId: number | undefined;
+    let action = "";
     try {
       const body = JSON.parse(raw);
+      action = body?.action ?? "";
       runId = body?.workflow_run?.id ?? body?.workflow_job?.run_id;
     } catch {
       // ignore parse errors
     }
-    await invalidate("builds");
-    if (runId) await invalidate(`jobs:${runId}`);
-    await publishBuildsChanged();
+
+    const relevant =
+      event === "workflow_run" ? RUN_ACTIONS.has(action) : JOB_ACTIONS.has(action);
+    if (relevant) {
+      await invalidate("builds");
+      if (runId) await invalidate(`jobs:${runId}`);
+      await publishBuildsChanged(runId);
+    }
   }
 
   return NextResponse.json({ ok: true }, { status: 200 });

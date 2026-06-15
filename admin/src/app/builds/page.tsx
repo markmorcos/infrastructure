@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, buttonClass, Card, Spinner, Callout } from "@/components/ui";
 
 interface DeployRun {
@@ -77,20 +77,45 @@ export default function BuildsPage() {
     }
   }, []);
 
+  const fetchJobs = useCallback(async (id: number) => {
+    const res = await fetch(`/api/admin/builds/${id}`);
+    if (res.ok) {
+      const d = await res.json();
+      setJobs((j) => ({ ...j, [id]: d.jobs }));
+    }
+  }, []);
+
+  // Latest open run id, read inside the SSE handler without re-subscribing.
+  const openRef = useRef<number | null>(null);
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+
   useEffect(() => {
     fetchRuns().finally(() => setLoading(false));
-    // Live updates via SSE (GitHub webhooks). Refetch on each "changed" event;
-    // a slow 60s poll is the backstop in case a webhook is dropped.
+    // Live updates via SSE (GitHub webhooks). Each event refreshes the runs
+    // list and, if a run is expanded, its jobs too (so an in-flight job like
+    // "merge" updates without re-opening). A slow 60s poll backstops dropped
+    // webhooks. Event data is "changed" or "changed:<runId>".
     const es = new EventSource("/api/admin/builds/stream");
     es.onmessage = (e) => {
-      if (e.data === "changed") fetchRuns();
+      if (!e.data.startsWith("changed")) return;
+      fetchRuns();
+      const openId = openRef.current;
+      if (openId != null) {
+        const changedId = Number(e.data.split(":")[1]);
+        if (!changedId || changedId === openId) fetchJobs(openId);
+      }
     };
-    const backstop = setInterval(fetchRuns, 60000);
+    const backstop = setInterval(() => {
+      fetchRuns();
+      if (openRef.current != null) fetchJobs(openRef.current);
+    }, 60000);
     return () => {
       es.close();
       clearInterval(backstop);
     };
-  }, [fetchRuns]);
+  }, [fetchRuns, fetchJobs]);
 
   const summary = useMemo(() => {
     const running = runs.filter((r) => r.status !== "completed").length;
@@ -116,13 +141,7 @@ export default function BuildsPage() {
       return;
     }
     setOpen(id);
-    if (!jobs[id]) {
-      const res = await fetch(`/api/admin/builds/${id}`);
-      if (res.ok) {
-        const d = await res.json();
-        setJobs((j) => ({ ...j, [id]: d.jobs }));
-      }
-    }
+    if (!jobs[id]) await fetchJobs(id);
   };
 
   const rerun = async (id: number, mode: "failed" | "all") => {

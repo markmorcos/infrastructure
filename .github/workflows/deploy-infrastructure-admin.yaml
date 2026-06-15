@@ -23,7 +23,7 @@ jobs:
               "version": "${{ github.sha }}",
               "config_file": "admin/deployment.yaml",
               "migrations": {
-                "dir": "sql/migrations",
+                "dir": "admin/sql/migrations",
                 "secret": "database-secrets",
                 "namespace": "infrastructure-admin",
                 "key": "DATABASE_URL"

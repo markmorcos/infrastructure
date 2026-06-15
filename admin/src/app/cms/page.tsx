@@ -21,6 +21,8 @@ export default function CmsSitesPage() {
   const [newName, setNewName] = useState("");
   // New sites are English-only by default; de/ar are opt-in.
   const [newLocales, setNewLocales] = useState<string[]>(["en"]);
+  const [newRepo, setNewRepo] = useState("");
+  const [newDispatch, setNewDispatch] = useState("");
 
   const load = useCallback(async () => {
     const res = await fetch("/api/cms/sites");
@@ -54,6 +56,8 @@ export default function CmsSitesPage() {
         name: newName.trim(),
         locales: locales.length ? locales : ["en"],
         defaultLocale: "en",
+        githubRepo: newRepo.trim(),
+        dispatchEvent: newDispatch.trim(),
       }),
     });
     if (!res.ok) {
@@ -64,6 +68,8 @@ export default function CmsSitesPage() {
     setNewKey("");
     setNewName("");
     setNewLocales(["en"]);
+    setNewRepo("");
+    setNewDispatch("");
     setCreating(false);
     setLoading(true);
     load().finally(() => setLoading(false));
@@ -131,6 +137,19 @@ export default function CmsSitesPage() {
                 </Button>
               ))}
             </div>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div>
+              <Label>GITHUB REPO</Label>
+              <Input value={newRepo} onChange={(e) => setNewRepo(e.target.value)} placeholder="owner/repo" className="mt-1.5" />
+            </div>
+            <div>
+              <Label>DISPATCH EVENT</Label>
+              <Input value={newDispatch} onChange={(e) => setNewDispatch(e.target.value)} placeholder="deploy-my-site" className="mt-1.5" />
+            </div>
+          </div>
+          <div className="mt-1.5 font-[var(--cp-mono)] text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+            optional — wires Publish to trigger the site&apos;s rebuild (can be set later in Settings)
           </div>
           <div className="mt-3.5">
             <Button onClick={create} disabled={!newKey.trim()} icon="check">create</Button>

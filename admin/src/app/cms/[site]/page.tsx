@@ -3,7 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { localeAll, type Section, type Site } from "../types";
-import { Button, Card, Label, Spinner } from "@/components/ui";
+import { Button, Card, Input, Label, Spinner } from "@/components/ui";
+import { useAuth } from "../../auth/AuthProvider";
 
 // Site dashboard (/cms/[site]). Sections grouped by page_group, per-locale edit
 // links with a dirty dot when draft != published, a Publish button + "last
@@ -19,6 +20,8 @@ interface SectionsResponse {
 export default function SiteDashboard() {
   const params = useParams();
   const router = useRouter();
+  const { isAdmin } = useAuth();
+  const [showSettings, setShowSettings] = useState(false);
   const siteKey = decodeURIComponent(params.site as string);
 
   const [site, setSite] = useState<Site | null>(null);
@@ -138,6 +141,17 @@ export default function SiteDashboard() {
         </h2>
         <span style={{ fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--md-sys-color-on-surface-variant)" }}>{site.key}</span>
         <div className="hidden flex-1 md:block" />
+        {isAdmin && (
+          <Button
+            variant="soft"
+            size="md"
+            onClick={() => setShowSettings((v) => !v)}
+            className="px-[14px]! text-[12px]!"
+            title="site settings"
+          >
+            <span className="msym" style={{ fontSize: 17 }}>settings</span>settings
+          </Button>
+        )}
         <Button
           variant="soft"
           size="md"
@@ -174,6 +188,17 @@ export default function SiteDashboard() {
           </span>
           {msg.text}
         </div>
+      )}
+
+      {isAdmin && showSettings && (
+        <SiteSettings
+          site={site}
+          onSaved={() => {
+            setShowSettings(false);
+            setLoading(true);
+            load().finally(() => setLoading(false));
+          }}
+        />
       )}
 
       <div style={{ marginTop: 28, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -257,6 +282,58 @@ export default function SiteDashboard() {
       </div>
       )}
     </div>
+  );
+}
+
+function SiteSettings({ site, onSaved }: { site: Site; onSaved: () => void }) {
+  const [name, setName] = useState(site.name);
+  const [repo, setRepo] = useState(site.githubRepo);
+  const [dispatch, setDispatch] = useState(site.dispatchEvent);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function save() {
+    setBusy(true);
+    setErr("");
+    const res = await fetch(`/api/cms/sites/${encodeURIComponent(site.key)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, githubRepo: repo, dispatchEvent: dispatch }),
+    });
+    setBusy(false);
+    if (!res.ok) {
+      setErr((await res.json().catch(() => ({}))).error || "could not save settings");
+      return;
+    }
+    onSaved();
+  }
+
+  return (
+    <Card className="mt-4">
+      <Label as="div" className="mb-3 block">{"// SETTINGS"}</Label>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div>
+          <Label>NAME</Label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5" />
+        </div>
+        <div className="hidden md:block" />
+        <div>
+          <Label>GITHUB REPO</Label>
+          <Input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="owner/repo" className="mt-1.5" />
+        </div>
+        <div>
+          <Label>DISPATCH EVENT</Label>
+          <Input value={dispatch} onChange={(e) => setDispatch(e.target.value)} placeholder="deploy-my-site" className="mt-1.5" />
+        </div>
+      </div>
+      <div className="mt-1.5 font-[var(--cp-mono)] text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+        Publish fires a GitHub repository_dispatch (event = dispatch event) at this repo to rebuild the site.
+      </div>
+      {err && <div className="mt-2 text-[12px] text-[var(--cp-err)]">{err}</div>}
+      <div className="mt-3.5">
+        <Button size="md" onClick={save} disabled={busy} icon="check">save settings</Button>
+      </div>
+    </Card>
   );
 }
 

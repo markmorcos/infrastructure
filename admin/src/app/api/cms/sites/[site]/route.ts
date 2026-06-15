@@ -30,8 +30,9 @@ export async function PATCH(
   { params }: { params: Promise<{ site: string }> }
 ) {
   const { site: siteKey } = await params;
-  const access = await requireSiteAccess(req, siteKey);
-  if ("error" in access) return access.error;
+  // Site settings (name, github repo, dispatch event) are admin-only.
+  const admin = requireAdmin(req);
+  if ("error" in admin) return admin.error;
   try {
     const site = await getSiteByKey(siteKey);
     if (!site) {

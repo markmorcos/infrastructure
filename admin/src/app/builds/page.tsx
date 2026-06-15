@@ -79,8 +79,17 @@ export default function BuildsPage() {
 
   useEffect(() => {
     fetchRuns().finally(() => setLoading(false));
-    const t = setInterval(fetchRuns, 8000);
-    return () => clearInterval(t);
+    // Live updates via SSE (GitHub webhooks). Refetch on each "changed" event;
+    // a slow 60s poll is the backstop in case a webhook is dropped.
+    const es = new EventSource("/api/admin/builds/stream");
+    es.onmessage = (e) => {
+      if (e.data === "changed") fetchRuns();
+    };
+    const backstop = setInterval(fetchRuns, 60000);
+    return () => {
+      es.close();
+      clearInterval(backstop);
+    };
   }, [fetchRuns]);
 
   const summary = useMemo(() => {

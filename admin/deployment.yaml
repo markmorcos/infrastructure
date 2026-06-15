@@ -25,6 +25,10 @@ services:
           secretKeyRef:
             name: github-credentials
             key: GITHUB_PAT
+      # Verifies inbound GitHub webhooks (builds live updates). Optional so admin
+      # boots without it; webhooks are rejected until the secret is set.
+      - name: GITHUB_WEBHOOK_SECRET
+        valueFrom: { secretKeyRef: { name: github-webhook, key: GITHUB_WEBHOOK_SECRET, optional: true } }
       # Admin Redis connection used by the provisioner to create per-app ACL users.
       - name: REDIS_ADMIN_URL
         valueFrom:

@@ -22,6 +22,7 @@ export async function middleware(req: NextRequest) {
   if (
     pathname.startsWith("/api/auth") ||
     pathname === "/api/verify" ||
+    pathname.startsWith("/api/webhooks") ||
     pathname.startsWith("/api/cms/v1") ||
     pathname.startsWith("/api/experimentation/v1")
   ) {

@@ -68,9 +68,12 @@ export default function BuildsPage() {
   const [jobs, setJobs] = useState<Record<number, RunJob[]>>({});
   const [busy, setBusy] = useState<Record<number, boolean>>({});
 
-  const fetchRuns = useCallback(async () => {
+  // fresh=true appends ?fresh=1 to bypass the server's Redis cache. Used by the
+  // live (SSE) and backstop refetches so a transition is always reflected even
+  // if the changed run isn't the one whose cache the webhook invalidated.
+  const fetchRuns = useCallback(async (fresh = false) => {
     try {
-      const res = await fetch("/api/admin/builds");
+      const res = await fetch(`/api/admin/builds${fresh ? "?fresh=1" : ""}`);
       if (!res.ok) throw new Error("Failed to load builds");
       const d = await res.json();
       setRuns(d.runs);
@@ -79,8 +82,8 @@ export default function BuildsPage() {
     }
   }, []);
 
-  const fetchJobs = useCallback(async (id: number) => {
-    const res = await fetch(`/api/admin/builds/${id}`);
+  const fetchJobs = useCallback(async (id: number, fresh = false) => {
+    const res = await fetch(`/api/admin/builds/${id}${fresh ? "?fresh=1" : ""}`);
     if (res.ok) {
       const d = await res.json();
       setJobs((j) => ({ ...j, [id]: d.jobs }));
@@ -102,16 +105,16 @@ export default function BuildsPage() {
     const es = new EventSource("/api/admin/builds/stream");
     es.onmessage = (e) => {
       if (!e.data.startsWith("changed")) return;
-      fetchRuns();
+      fetchRuns(true);
       const openId = openRef.current;
       if (openId != null) {
         const changedId = Number(e.data.split(":")[1]);
-        if (!changedId || changedId === openId) fetchJobs(openId);
+        if (!changedId || changedId === openId) fetchJobs(openId, true);
       }
     };
     const backstop = setInterval(() => {
-      fetchRuns();
-      if (openRef.current != null) fetchJobs(openRef.current);
+      fetchRuns(true);
+      if (openRef.current != null) fetchJobs(openRef.current, true);
     }, 60000);
     return () => {
       es.close();

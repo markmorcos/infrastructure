@@ -15,7 +15,6 @@ on:
       - deploy-essenteil
       - deploy-eventlane
       - deploy-games
-      - deploy-infrastructure-admin
       - deploy-admin
       - deploy-lea
       - deploy-ma3ady

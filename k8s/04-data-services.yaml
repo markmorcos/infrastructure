@@ -3,12 +3,14 @@
 # hard-coding the physical host, so swapping a backend = editing one Service
 # here rather than rotating every app secret.
 #
-# NOTE: deliberately NO `postgres` alias. The deploy pipeline's `migrate` job
-# reads each app's DATABASE_URL secret and runs psql from the GitHub Actions
-# runner (on the tailnet, OUTSIDE the cluster), where *.svc.cluster.local does
-# not resolve. Postgres secrets therefore keep an externally-resolvable host
-# (postgres.morcos.lan / m720q), which already resolves in-cluster too. Only
-# backends with purely in-cluster consumers get an alias here.
+# ⚠️ postgres alias caveat: the deploy pipeline's `migrate` job reads an app's
+# DATABASE_URL secret and runs psql from the GitHub Actions runner (on the
+# tailnet, OUTSIDE the cluster), where *.svc.cluster.local does NOT resolve.
+# So only point a DATABASE_URL secret at `postgres.data...` if that app does NOT
+# run CI migrations. Apps that DO (today: infrastructure-admin, which passes a
+# `migrations:` payload) must keep an externally-resolvable host
+# (postgres.morcos.lan / m720q). If you ever add `migrations:` to an app's deploy
+# workflow, flip its DATABASE_URL back to postgres.morcos.lan first.
 #
 # ExternalName is a pure DNS CNAME: no port remap, no LB, no health checks — the
 # app must still use the real port. CoreDNS (forward . /etc/resolv.conf) resolves
@@ -22,6 +24,20 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: data
+---
+# Pod-only consumers only — see the postgres caveat above. NOT for apps that run
+# CI migrations (those keep postgres.morcos.lan).
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: data
+spec:
+  type: ExternalName
+  externalName: postgres.morcos.lan
+  ports:
+    - port: 5432
+      targetPort: 5432
 ---
 apiVersion: v1
 kind: Service

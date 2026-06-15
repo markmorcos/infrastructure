@@ -38,6 +38,14 @@ export async function POST(req: NextRequest) {
   if (!projectName) {
     return NextResponse.json({ error: "projectName is required" }, { status: 400 });
   }
+  // projectName becomes the namespace, repo, db, and role — enforce a strict
+  // RFC1123 label so an invalid value can't create junk repos/rows/namespaces.
+  if (!/^[a-z][a-z0-9-]{0,62}$/.test(projectName)) {
+    return NextResponse.json(
+      { error: "projectName must be a lowercase RFC1123 label: ^[a-z][a-z0-9-]{0,62}$" },
+      { status: 400 }
+    );
+  }
 
   const stack = getStack(body.stack || "nextjs");
   if (!stack) {

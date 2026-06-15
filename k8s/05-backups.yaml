@@ -1,0 +1,95 @@
+# Off-box backups to Cloudflare R2. A nightly CronJob logical-dumps the
+# infrastructure Postgres DB (all schemas) and mirrors the MinIO cms bucket to
+# R2 (S3-compatible), so the m720q box dying isn't a data-loss event.
+#
+# Secrets it needs in this namespace:
+#   database-secrets/DATABASE_URL  — copied from the admin namespace (pg source)
+#   cms-secrets/{S3_ACCESS_KEY,S3_SECRET_KEY} — copied from admin (minio source)
+#   backup-r2/{R2_ENDPOINT,R2_BUCKET,R2_ACCESS_KEY,R2_SECRET_KEY} — YOU create
+#     it from a Cloudflare R2 bucket + S3 API token (see runbook).
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backups
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-script
+  namespace: backups
+data:
+  backup.sh: |
+    #!/bin/sh
+    set -eu
+    TS=$(date -u +%Y%m%d-%H%M%S)
+    echo "[backup] start $TS"
+
+    apk add --no-cache --quiet ca-certificates wget >/dev/null 2>&1 || true
+
+    # MinIO client (static binary) — talks to both R2 and MinIO (both S3).
+    wget -qO /tmp/mc https://dl.min.io/client/mc/release/linux-amd64/mc
+    chmod +x /tmp/mc
+    /tmp/mc alias set r2  "$R2_ENDPOINT"    "$R2_ACCESS_KEY"    "$R2_SECRET_KEY"  >/dev/null
+    /tmp/mc alias set src "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY" >/dev/null
+
+    # 1) Postgres: logical dump of the whole infrastructure DB (all schemas),
+    #    portable (no owner/privs), gzipped, uploaded timestamped.
+    echo "[backup] pg_dump…"
+    pg_dump --no-owner --no-privileges "$DATABASE_URL" | gzip -9 > /tmp/db.sql.gz
+    /tmp/mc cp /tmp/db.sql.gz "r2/$R2_BUCKET/postgres/infrastructure-$TS.sql.gz"
+    echo "[backup] postgres -> r2/$R2_BUCKET/postgres/infrastructure-$TS.sql.gz ($(wc -c </tmp/db.sql.gz) bytes)"
+
+    # 2) MinIO assets: mirror the cms bucket (no --remove, so deletions are kept).
+    echo "[backup] minio mirror $MINIO_BUCKET…"
+    /tmp/mc mirror --overwrite "src/$MINIO_BUCKET" "r2/$R2_BUCKET/minio/$MINIO_BUCKET"
+
+    echo "[backup] done $TS"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: offsite-backup
+  namespace: backups
+spec:
+  schedule: "17 3 * * *" # 03:17 UTC nightly
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: postgres:16-alpine
+              command: ["sh", "/scripts/backup.sh"]
+              env:
+                - name: DATABASE_URL
+                  valueFrom: { secretKeyRef: { name: database-secrets, key: DATABASE_URL } }
+                - name: MINIO_ENDPOINT
+                  value: http://minio.data.svc.cluster.local:9000
+                - name: MINIO_BUCKET
+                  value: cms
+                - name: MINIO_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: cms-secrets, key: S3_ACCESS_KEY } }
+                - name: MINIO_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: cms-secrets, key: S3_SECRET_KEY } }
+                - name: R2_ENDPOINT
+                  valueFrom: { secretKeyRef: { name: backup-r2, key: R2_ENDPOINT } }
+                - name: R2_BUCKET
+                  valueFrom: { secretKeyRef: { name: backup-r2, key: R2_BUCKET } }
+                - name: R2_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: backup-r2, key: R2_ACCESS_KEY } }
+                - name: R2_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: backup-r2, key: R2_SECRET_KEY } }
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+          volumes:
+            - name: script
+              configMap:
+                name: backup-script

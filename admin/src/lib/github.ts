@@ -1,4 +1,4 @@
-import { Octokit } from "@octokit/rest";
+import { Octokit, type RestEndpointMethodTypes } from "@octokit/rest";
 import _sodium from "libsodium-wrappers";
 
 export const GITHUB_OWNER = "markmorcos";
@@ -168,6 +168,25 @@ export interface RunJob {
   completedAt: string | null;
 }
 
+type GhRun =
+  RestEndpointMethodTypes["actions"]["listWorkflowRuns"]["response"]["data"]["workflow_runs"][number];
+
+function toDeployRun(r: GhRun): DeployRun {
+  const title = (r as { display_title?: string }).display_title || r.name || "";
+  return {
+    id: r.id,
+    project: title.replace(/^deploy-/, ""),
+    title,
+    event: r.event,
+    status: r.status || "",
+    conclusion: r.conclusion ?? null,
+    runNumber: r.run_number,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+    url: r.html_url,
+  };
+}
+
 export async function listDeployRuns(perPage = 50): Promise<DeployRun[]> {
   const res = await octokit().rest.actions.listWorkflowRuns({
     owner: GITHUB_OWNER,
@@ -175,21 +194,36 @@ export async function listDeployRuns(perPage = 50): Promise<DeployRun[]> {
     workflow_id: DEPLOY_WORKFLOW,
     per_page: perPage,
   });
-  return res.data.workflow_runs.map((r) => {
-    const title = (r as { display_title?: string }).display_title || r.name || "";
-    return {
-      id: r.id,
-      project: title.replace(/^deploy-/, ""),
-      title,
-      event: r.event,
-      status: r.status || "",
-      conclusion: r.conclusion ?? null,
-      runNumber: r.run_number,
-      createdAt: r.created_at,
-      updatedAt: r.updated_at,
-      url: r.html_url,
-    };
-  });
+  return res.data.workflow_runs.map(toDeployRun);
+}
+
+// The GitHub runs API can't filter by display_title / dispatch type, so to get
+// one app's history we over-fetch and filter client-side. Used for editor
+// sessions (scoped to their owned apps) so a busy app like `admin` doesn't
+// crowd their runs out of the global top page. Pages until `target` matches are
+// collected or `maxPages` is hit. `allowed` holds lowercased project keys.
+export async function listDeployRunsForProjects(
+  allowed: Set<string>,
+  { target = 50, maxPages = 5, perPage = 100 }: { target?: number; maxPages?: number; perPage?: number } = {}
+): Promise<DeployRun[]> {
+  if (allowed.size === 0) return [];
+  const out: DeployRun[] = [];
+  for (let page = 1; page <= maxPages; page++) {
+    const res = await octokit().rest.actions.listWorkflowRuns({
+      owner: GITHUB_OWNER,
+      repo: INFRA_REPO,
+      workflow_id: DEPLOY_WORKFLOW,
+      per_page: perPage,
+      page,
+    });
+    const runs = res.data.workflow_runs;
+    for (const r of runs) {
+      const dr = toDeployRun(r);
+      if (allowed.has(dr.project.toLowerCase())) out.push(dr);
+    }
+    if (out.length >= target || runs.length < perPage) break;
+  }
+  return out.slice(0, target);
 }
 
 // Static job plan for deploy-app.yaml, in execution order. GitHub's jobs API

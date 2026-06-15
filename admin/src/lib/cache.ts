@@ -64,3 +64,22 @@ export async function invalidate(key: string): Promise<void> {
     // ignore
   }
 }
+
+// invalidatePrefix drops every key under a prefix (e.g. "builds" clears the
+// global list plus every per-editor "builds:proj:*" variant). Uses SCAN so it
+// never blocks Redis. Best-effort like the rest of the cache.
+export async function invalidatePrefix(prefix: string): Promise<void> {
+  const r = redis();
+  if (!r) return;
+  const match = `${PREFIX}${prefix}*`;
+  try {
+    let cursor = "0";
+    do {
+      const [next, keys] = await r.scan(cursor, "MATCH", match, "COUNT", 100);
+      cursor = next;
+      if (keys.length) await r.del(...keys);
+    } while (cursor !== "0");
+  } catch {
+    // ignore
+  }
+}

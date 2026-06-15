@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { reRunFailedJobs, reRunRun } from "@/lib/github";
-import { invalidate } from "@/lib/cache";
+import { invalidate, invalidatePrefix } from "@/lib/cache";
 import { requireAdmin } from "@/lib/cms/authz";
 
 export async function POST(
@@ -22,7 +22,7 @@ export async function POST(
     }
     // The run is now restarting — drop the cached list + this run's jobs so the
     // next poll shows it immediately rather than waiting out the TTL.
-    await invalidate("builds");
+    await invalidatePrefix("builds");
     await invalidate(`jobs:${runId}`);
     return NextResponse.json({ ok: true, mode: body.mode === "all" ? "all" : "failed" });
   } catch (error) {

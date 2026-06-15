@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cmsPool } from "@/lib/db";
 import { getSessionUser, type SessionUser } from "@/lib/cms/authz";
 import { cached } from "@/lib/cache";
-import { getRunProject, listDeployRuns, type DeployRun } from "@/lib/github";
+import { getRunProject, listDeployRuns } from "@/lib/github";
 
 // Builds access control. Admins see every deploy-app run; an editor is scoped
 // to the apps whose CMS site they own — keyed by the site `key`, which matches
@@ -21,11 +21,6 @@ export async function allowedProjects(user: SessionUser): Promise<Set<string> | 
     [user.userId],
   );
   return new Set(rows.map((r) => r.key.toLowerCase()));
-}
-
-export function scopeRuns(runs: DeployRun[], allowed: Set<string> | null): DeployRun[] {
-  if (allowed === null) return runs;
-  return runs.filter((r) => allowed.has(r.project.toLowerCase()));
 }
 
 type Guard = { user: SessionUser } | { error: NextResponse };

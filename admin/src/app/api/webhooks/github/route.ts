@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { invalidate } from "@/lib/cache";
+import { invalidate, invalidatePrefix } from "@/lib/cache";
 import { publishBuildsChanged } from "@/lib/events";
 
 // GitHub webhook receiver (middleware-exempt — authed by the HMAC signature).
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     const relevant =
       event === "workflow_run" ? RUN_ACTIONS.has(action) : JOB_ACTIONS.has(action);
     if (relevant) {
-      await invalidate("builds");
+      await invalidatePrefix("builds"); // global list + every editor variant
       if (runId) await invalidate(`jobs:${runId}`);
       await publishBuildsChanged(runId);
     }

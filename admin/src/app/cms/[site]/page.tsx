@@ -176,7 +176,28 @@ export default function SiteDashboard() {
         </div>
       )}
 
-      <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 22 }}>
+      <div style={{ marginTop: 28, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <Label as="div">{"// SECTIONS"}</Label>
+        <div style={{ flex: 1 }} />
+        <Button variant="soft" size="sm" onClick={() => router.push(`/cms/${encodeURIComponent(site.key)}/sections/new`)}>
+          <span className="msym text-[16px]">add</span>new section
+        </Button>
+      </div>
+
+      {sections.length === 0 ? (
+        <Card className="mt-3 text-center" style={{ padding: "44px 20px" }}>
+          <span className="msym" style={{ fontSize: 38, opacity: 0.5, color: "var(--md-sys-color-on-surface-variant)" }}>dashboard_customize</span>
+          <div style={{ marginTop: 12, fontFamily: "var(--cp-mono)", fontSize: 13, color: "var(--md-sys-color-on-surface-variant)" }}>
+            No content yet — add a section to define what you can edit.
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <Button onClick={() => router.push(`/cms/${encodeURIComponent(site.key)}/sections/new`)}>
+              <span className="msym text-[18px]">add</span>add your first section
+            </Button>
+          </div>
+        </Card>
+      ) : (
+      <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 22 }}>
         {groups.map((g) => (
           <div key={g.name}>
             <Label as="div" style={{ marginBottom: 10 }}>{`// ${g.name.toUpperCase()}`}</Label>
@@ -219,12 +240,22 @@ export default function SiteDashboard() {
                           />
                         )}
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => router.push(`/cms/${encodeURIComponent(site.key)}/sections/${encodeURIComponent(sec.key)}/schema`)}
+                    className="px-2.5!"
+                    title="edit fields"
+                  >
+                    <span className="msym text-[16px]">tune</span>
+                  </Button>
                 </div>
               ))}
             </Card>
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

@@ -19,6 +19,8 @@ export default function CmsSitesPage() {
   const [creating, setCreating] = useState(false);
   const [newKey, setNewKey] = useState("");
   const [newName, setNewName] = useState("");
+  // New sites are English-only by default; de/ar are opt-in.
+  const [newLocales, setNewLocales] = useState<string[]>(["en"]);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/cms/sites");
@@ -42,10 +44,17 @@ export default function CmsSitesPage() {
 
   const create = async () => {
     setError(null);
+    // English first (the default locale), then any opted-in extras in a stable order.
+    const locales = ["en", "de", "ar"].filter((l) => newLocales.includes(l));
     const res = await fetch("/api/cms/sites", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: newKey.trim(), name: newName.trim() }),
+      body: JSON.stringify({
+        key: newKey.trim(),
+        name: newName.trim(),
+        locales: locales.length ? locales : ["en"],
+        defaultLocale: "en",
+      }),
     });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
@@ -54,6 +63,7 @@ export default function CmsSitesPage() {
     }
     setNewKey("");
     setNewName("");
+    setNewLocales(["en"]);
     setCreating(false);
     setLoading(true);
     load().finally(() => setLoading(false));
@@ -94,11 +104,32 @@ export default function CmsSitesPage() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
               <Label>KEY</Label>
-              <Input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="lea" className="mt-1.5" />
+              <Input value={newKey} onChange={(e) => setNewKey(e.target.value)} placeholder="my-site" className="mt-1.5" />
             </div>
             <div>
               <Label>NAME</Label>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Lea Pfaffeneder" className="mt-1.5" />
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="My Site" className="mt-1.5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <Label as="div" className="mb-2 block">LANGUAGES</Label>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="sm" variant="tonal">EN · default</Button>
+              {["de", "ar"].map((l) => (
+                <Button
+                  key={l}
+                  type="button"
+                  size="sm"
+                  variant={newLocales.includes(l) ? "tonal" : "soft"}
+                  onClick={() =>
+                    setNewLocales((p) =>
+                      p.includes(l) ? p.filter((x) => x !== l) : [...p, l]
+                    )
+                  }
+                >
+                  {l.toUpperCase()}
+                </Button>
+              ))}
             </div>
           </div>
           <div className="mt-3.5">

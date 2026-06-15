@@ -100,7 +100,8 @@ export interface CreateSiteInput {
 // the route).
 export async function createSite(input: CreateSiteInput): Promise<Site> {
   const id = newId();
-  const locales = input.locales && input.locales.length ? input.locales : ["de", "en"];
+  // New sites default to English only; other locales (de/ar/…) are opt-in.
+  const locales = input.locales && input.locales.length ? input.locales : ["en"];
   const defaultLocale = input.defaultLocale || locales[0];
   const name = input.name || input.key;
   const { rows } = await pool.query(
@@ -172,6 +173,118 @@ export async function getSection(
 // schemaFields narrows a section's stored JSONB schema to a Field[].
 export function schemaFields(section: Section): Field[] {
   return (section.schema as Field[]) ?? [];
+}
+
+function mapSection(r: Record<string, unknown>): Section {
+  return {
+    id: r.id as string,
+    siteId: r.site_id as string,
+    key: r.key as string,
+    title: r.title as string,
+    pageGroup: r.page_group as string,
+    position: r.position as number,
+    localized: r.localized as boolean,
+    flatten: r.flatten as boolean,
+    schema: r.schema as unknown,
+  } as Section;
+}
+
+const FIELD_TYPES = new Set([
+  "text", "textarea", "stringlist", "paragraphs", "object", "list", "pairs", "image",
+]);
+const keyOk = (s: unknown): s is string =>
+  typeof s === "string" && /^[a-zA-Z][a-zA-Z0-9_]*$/.test(s);
+
+export class SectionError extends Error {}
+
+// sanitizeFields validates a section's field schema (recursively for object/list
+// subfields) and returns a clean Field[]. Throws SectionError on bad input.
+export function sanitizeFields(input: unknown, depth = 0): Field[] {
+  if (!Array.isArray(input)) throw new SectionError("fields must be an array");
+  if (depth > 2) throw new SectionError("fields nested too deep");
+  return input.map((raw) => {
+    const f = raw as Record<string, unknown>;
+    if (!keyOk(f.key)) throw new SectionError(`invalid field key: ${String(f.key)}`);
+    if (typeof f.type !== "string" || !FIELD_TYPES.has(f.type))
+      throw new SectionError(`invalid field type for "${f.key}"`);
+    const out: Field = {
+      key: f.key,
+      type: f.type as Field["type"],
+      label: typeof f.label === "string" && f.label ? f.label : f.key,
+    };
+    if (f.type === "object" || f.type === "list") {
+      out.fields = sanitizeFields(f.fields ?? [], depth + 1);
+      if (out.fields.length === 0)
+        throw new SectionError(`"${f.key}" (${f.type}) needs at least one subfield`);
+    }
+    return out;
+  });
+}
+
+export interface SectionInput {
+  key: string;
+  title: string;
+  pageGroup?: string;
+  localized?: boolean;
+  flatten?: boolean;
+  fields: Field[];
+}
+
+// createSection appends a new section to a site (position after the last one).
+export async function createSection(
+  siteId: string,
+  input: SectionInput
+): Promise<Section> {
+  if (!keyOk(input.key)) throw new SectionError("invalid section key");
+  const fields = sanitizeFields(input.fields);
+  const { rows: pos } = await pool.query(
+    `SELECT COALESCE(MAX(position), -1) + 1 AS p FROM sections WHERE site_id = $1`,
+    [siteId]
+  );
+  const { rows } = await pool.query(
+    `INSERT INTO sections (id, site_id, key, title, page_group, position, localized, flatten, schema)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+     RETURNING id, site_id, key, title, page_group, position, localized, flatten, schema`,
+    [
+      newId(),
+      siteId,
+      input.key,
+      input.title || input.key,
+      input.pageGroup || "content",
+      pos[0].p as number,
+      input.localized ?? true,
+      input.flatten ?? false,
+      JSON.stringify(fields),
+    ]
+  );
+  return mapSection(rows[0]);
+}
+
+// updateSection edits a section's title/group/flags and field schema (key is
+// immutable, matching the content-storage keying).
+export async function updateSection(
+  sectionId: string,
+  input: Omit<SectionInput, "key">
+): Promise<Section> {
+  const fields = sanitizeFields(input.fields);
+  const { rows } = await pool.query(
+    `UPDATE sections SET title=$2, page_group=$3, localized=$4, flatten=$5, schema=$6
+     WHERE id=$1
+     RETURNING id, site_id, key, title, page_group, position, localized, flatten, schema`,
+    [
+      sectionId,
+      input.title,
+      input.pageGroup || "content",
+      input.localized ?? true,
+      input.flatten ?? false,
+      JSON.stringify(fields),
+    ]
+  );
+  return mapSection(rows[0]);
+}
+
+export async function deleteSection(sectionId: string): Promise<void> {
+  await pool.query(`DELETE FROM sections WHERE id = $1`, [sectionId]);
 }
 
 // ---- Contents (drafts) ----

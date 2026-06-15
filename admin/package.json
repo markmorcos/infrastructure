@@ -22,7 +22,7 @@
     "jsonwebtoken": "^9.0.2",
     "libsodium-wrappers": "^0.8.4",
     "minio": "^8.0.7",
-    "next": "15.3.1",
+    "next": "15.3.9",
     "pg": "^8.15.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

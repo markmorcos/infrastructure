@@ -67,7 +67,7 @@ const STACKS: Record<string, Stack> = {
           name: o.project,
           private: true,
           scripts: { build: "next build", start: `next start -p ${o.port}` },
-          dependencies: { next: "15.3.1", react: "^19.0.0", "react-dom": "^19.0.0" },
+          dependencies: { next: "15.3.9", react: "^19.0.0", "react-dom": "^19.0.0" },
           devDependencies: {
             typescript: "^5.7.3",
             "@types/node": "^22.10.5",

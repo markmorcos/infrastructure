@@ -14,9 +14,11 @@ export async function dispatch(site: Site): Promise<boolean> {
     );
     return false;
   }
-  const token = process.env.GITHUB_TOKEN;
+  // The global PAT (GITHUB_PAT, repo+workflow scope) covers repository_dispatch;
+  // fall back to GITHUB_TOKEN for parity with the old Go service.
+  const token = process.env.GITHUB_PAT || process.env.GITHUB_TOKEN;
   if (!token) {
-    console.error(`publish ${site.key}: dispatch: GITHUB_TOKEN is not configured`);
+    console.error(`publish ${site.key}: dispatch: no GITHUB_PAT/GITHUB_TOKEN configured`);
     return false;
   }
 

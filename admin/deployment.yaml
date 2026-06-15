@@ -51,6 +51,17 @@ services:
           secretKeyRef:
             name: cms-secrets
             key: S3_SECRET_KEY
+
+      # Cloudflare R2 (off-box backups) — the Backups console lists objects here
+      # and spawns restore Jobs. Copied from the backups namespace's backup-r2.
+      - name: R2_ENDPOINT
+        valueFrom: { secretKeyRef: { name: backup-r2, key: R2_ENDPOINT, optional: true } }
+      - name: R2_BUCKET
+        valueFrom: { secretKeyRef: { name: backup-r2, key: R2_BUCKET, optional: true } }
+      - name: R2_ACCESS_KEY
+        valueFrom: { secretKeyRef: { name: backup-r2, key: R2_ACCESS_KEY, optional: true } }
+      - name: R2_SECRET_KEY
+        valueFrom: { secretKeyRef: { name: backup-r2, key: R2_SECRET_KEY, optional: true } }
     ingress:
       host: admin.morcos.tech
       path: /

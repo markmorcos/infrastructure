@@ -36,7 +36,8 @@ data:
     # 1) Postgres: logical dump of the whole infrastructure DB (all schemas),
     #    portable (no owner/privs), gzipped, uploaded timestamped.
     echo "[backup] pg_dump…"
-    pg_dump --no-owner --no-privileges "$DATABASE_URL" | gzip -9 > /tmp/db.sql.gz
+    # --clean --if-exists so the dump can be replayed over the live DB on restore.
+    pg_dump --clean --if-exists --no-owner --no-privileges "$DATABASE_URL" | gzip -9 > /tmp/db.sql.gz
     /tmp/mc cp /tmp/db.sql.gz "r2/$R2_BUCKET/postgres/infrastructure-$TS.sql.gz"
     echo "[backup] postgres -> r2/$R2_BUCKET/postgres/infrastructure-$TS.sql.gz ($(wc -c </tmp/db.sql.gz) bytes)"
 

@@ -25,6 +25,8 @@ function pageMeta(pathname: string): { title: string; sub: string } {
     return { title: "Experimentation", sub: "flags, experiments, results" };
   if (pathname.startsWith("/users"))
     return { title: "Users & Access", sub: "people and site access" };
+  if (pathname.startsWith("/backups"))
+    return { title: "Backups", sub: "off-box snapshots & restore" };
   return { title: "Control Plane", sub: "" };
 }
 
@@ -112,6 +114,12 @@ function Shell({ children }: { children: React.ReactNode }) {
       icon: "group",
       label: "users",
       active: pathname.startsWith("/users"),
+    },
+    {
+      href: "/backups",
+      icon: "cloud_sync",
+      label: "backups",
+      active: pathname.startsWith("/backups"),
     },
     {
       href: "/projects/provision",

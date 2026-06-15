@@ -3,6 +3,7 @@ name: deploy-app
 on:
   repository_dispatch:
     types:
+      - deploy-onetrick
       - deploy-mcpforge
       - deploy-booking
       - deploy-cms

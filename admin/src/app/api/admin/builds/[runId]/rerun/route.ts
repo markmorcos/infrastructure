@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { reRunFailedJobs, reRunRun } from "@/lib/github";
 import { invalidate } from "@/lib/cache";
+import { requireAdmin } from "@/lib/cms/authz";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ runId: string }> }
 ) {
+  // Re-running a deploy is a write action — admin-only, even though editors can
+  // reach the builds subtree (middleware SCOPED_PREFIXES) to view their app.
+  const guard = requireAdmin(req);
+  if ("error" in guard) return guard.error;
   const { runId } = await params;
   try {
     const body = await req.json().catch(() => ({}));

@@ -63,8 +63,9 @@ function Shell({ children }: { children: React.ReactNode }) {
   const onProvision = pathname.startsWith("/projects/provision");
   const [drawer, setDrawer] = useState(false);
 
-  // Editors are confined to the CMS; bounce them off any control-plane route.
-  const editorAllowed = pathname.startsWith("/cms");
+  // Editors are confined to the CMS and the (scoped) Builds view; bounce them
+  // off any other control-plane route.
+  const editorAllowed = pathname.startsWith("/cms") || pathname.startsWith("/builds");
   useEffect(() => {
     if (user && !isAdmin && !editorAllowed) router.replace("/cms");
   }, [user, isAdmin, editorAllowed, router]);
@@ -134,6 +135,12 @@ function Shell({ children }: { children: React.ReactNode }) {
       icon: "article",
       label: "cms",
       active: pathname.startsWith("/cms"),
+    },
+    {
+      href: "/builds",
+      icon: "manage_history",
+      label: "builds",
+      active: pathname.startsWith("/builds"),
     },
   ];
   const navItems = isAdmin ? adminNav : editorNav;

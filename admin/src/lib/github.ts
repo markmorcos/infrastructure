@@ -261,6 +261,18 @@ export async function listRunJobs(runId: number): Promise<RunJob[]> {
   return reconcileJobs(live);
 }
 
+// Resolve a run's project (e.g. "lea") from its id. Used to authorize editor
+// access to a specific run when it isn't in the cached list.
+export async function getRunProject(runId: number): Promise<string> {
+  const { data } = await octokit().rest.actions.getWorkflowRun({
+    owner: GITHUB_OWNER,
+    repo: INFRA_REPO,
+    run_id: runId,
+  });
+  const title = (data as { display_title?: string }).display_title || data.name || "";
+  return title.replace(/^deploy-/, "");
+}
+
 export async function reRunFailedJobs(runId: number): Promise<void> {
   await octokit().rest.actions.reRunWorkflowFailedJobs({
     owner: GITHUB_OWNER,

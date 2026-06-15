@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, buttonClass, Card, Spinner, Callout } from "@/components/ui";
+import { useAuth } from "../auth/AuthProvider";
 
 interface DeployRun {
   id: number;
@@ -59,6 +60,7 @@ function dur(a: string, b: string): string {
 }
 
 export default function BuildsPage() {
+  const { isAdmin } = useAuth();
   const [runs, setRuns] = useState<DeployRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -240,7 +242,7 @@ export default function BuildsPage() {
                   <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-on-surface-variant)" }}>#{r.runNumber} · {r.event}</span>
                   <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-outline)" }}>{r.status === "completed" ? dur(r.createdAt, r.updatedAt) : ago(r.createdAt)}</span>
                   <span style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                    {failed && (
+                    {failed && isAdmin && (
                       <Button variant="ghost" onClick={(e) => { e.stopPropagation(); rerun(r.id, "failed"); }} className="h-[28px]! px-[10px]! text-[11px]!">
                         <span className="msym" style={{ fontSize: 14, animation: busy[r.id] ? "cpSpin 1s linear infinite" : "none" }}>replay</span>re-run
                       </Button>
@@ -274,7 +276,7 @@ export default function BuildsPage() {
                             </div>
                           );
                         })}
-                        {r.status === "completed" && (
+                        {r.status === "completed" && isAdmin && (
                           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                             <Button variant="ghost" onClick={() => rerun(r.id, "failed")} className="h-[30px]! !px-3 text-[11px]!">
                               <span className="msym" style={{ fontSize: 14 }}>replay</span>re-run failed

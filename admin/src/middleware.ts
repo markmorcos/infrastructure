@@ -10,10 +10,19 @@ const ADMIN_PREFIXES = ["/api/projects", "/api/deployments"];
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Auth routes (login/register/logout/me) are reachable without a prior session.
-  // /api/verify is a machine endpoint authenticated by the deployment token in
-  // its body, not by a cookie.
-  if (pathname.startsWith("/api/auth") || pathname === "/api/verify") {
+  // Public, unauthenticated endpoints:
+  // - /api/auth/* (login/register/logout/me)
+  // - /api/verify (machine endpoint authed by the deployment token in its body)
+  // - /api/<app>/v1/* (the public surfaces — CMS content + experimentation SDK;
+  //   public by design. The CMS content route does its own admin check for
+  //   ?draft=1.) Admin/console APIs live at /api/<app>/... without /v1 and stay
+  //   session-gated.
+  if (
+    pathname.startsWith("/api/auth") ||
+    pathname === "/api/verify" ||
+    pathname.startsWith("/api/cms/v1") ||
+    pathname.startsWith("/api/experimentation/v1")
+  ) {
     return NextResponse.next();
   }
 

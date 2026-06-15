@@ -110,7 +110,7 @@ export default function UsersPage() {
                   key={s.key}
                   onClick={() => setOwnedSites((p) => toggle(p, s.key))}
                   className={ownedSites.includes(s.key) ? "cp-btn-tonal" : "cp-btn-soft"}
-                  style={{ height: 32, fontSize: 12 }}
+                  style={{ height: 32, padding: "0 14px", fontSize: 12 }}
                 >
                   {s.key}
                 </button>
@@ -123,7 +123,7 @@ export default function UsersPage() {
         )}
         {err && <div style={{ color: "var(--cp-err)", fontSize: 12.5, marginTop: 10 }}>{err}</div>}
         <div style={{ marginTop: 14 }}>
-          <button type="submit" className="cp-btn-primary" style={{ height: 40, fontSize: 13 }}>
+          <button type="submit" className="cp-btn-primary" style={{ height: 40, padding: "0 22px", fontSize: 13 }}>
             create user
           </button>
         </div>
@@ -232,7 +232,7 @@ function UserRow({
                 key={s.key}
                 onClick={() => toggle(s.key)}
                 className={owned.includes(s.key) ? "cp-btn-tonal" : "cp-btn-soft"}
-                style={{ height: 30, fontSize: 12 }}
+                style={{ height: 30, padding: "0 14px", fontSize: 12 }}
               >
                 {s.key}
               </button>
@@ -250,12 +250,12 @@ function UserRow({
           onChange={(e) => setPw(e.target.value)}
           style={{ height: 34, maxWidth: 220, fontSize: 12 }}
         />
-        <button onClick={save} disabled={!dirty || busy} className="cp-btn-primary" style={{ height: 34, fontSize: 12 }}>
+        <button onClick={save} disabled={!dirty || busy} className="cp-btn-primary" style={{ height: 34, padding: "0 18px", fontSize: 12 }}>
           save
         </button>
         <div style={{ flex: 1 }} />
         {!isSelf && (
-          <button onClick={remove} disabled={busy} className="cp-btn-ghost" style={{ height: 34, fontSize: 12, color: "var(--cp-err)" }}>
+          <button onClick={remove} disabled={busy} className="cp-btn-ghost" style={{ height: 34, padding: "0 16px", fontSize: 12, color: "var(--cp-err)" }}>
             delete
           </button>
         )}

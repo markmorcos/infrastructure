@@ -62,10 +62,44 @@ const STACKS: Record<string, Stack> = {
           private: true,
           scripts: { build: "next build", start: `next start -p ${o.port}` },
           dependencies: { next: "15.3.1", react: "^19.0.0", "react-dom": "^19.0.0" },
+          devDependencies: {
+            typescript: "^5.7.3",
+            "@types/node": "^22.10.5",
+            "@types/react": "^19.0.7",
+            "@types/react-dom": "^19.0.3",
+          },
         },
         null,
         2
       ),
+      // Ship a tsconfig so `next build` doesn't auto-install the latest TypeScript
+      // and generate a default `moduleResolution: node10` config that TS6 rejects.
+      "tsconfig.json": JSON.stringify(
+        {
+          compilerOptions: {
+            target: "ES2017",
+            lib: ["dom", "dom.iterable", "esnext"],
+            allowJs: true,
+            skipLibCheck: true,
+            strict: true,
+            noEmit: true,
+            esModuleInterop: true,
+            module: "esnext",
+            moduleResolution: "bundler",
+            resolveJsonModule: true,
+            isolatedModules: true,
+            jsx: "preserve",
+            incremental: true,
+            plugins: [{ name: "next" }],
+            paths: { "@/*": ["./*"] },
+          },
+          include: ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+          exclude: ["node_modules"],
+        },
+        null,
+        2
+      ),
+      ".gitignore": "node_modules\n.next\nnpm-debug.log*\n",
       "next.config.mjs": "export default {};\n",
       "app/layout.tsx": `export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

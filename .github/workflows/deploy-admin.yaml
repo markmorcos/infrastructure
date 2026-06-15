@@ -1,0 +1,34 @@
+name: deploy-admin
+
+# Phase-1 scaffold for the infrastructure-admin -> admin rename. Dispatch-only
+# for now so it can't double-fire alongside deploy-infrastructure-admin (which
+# still owns the push:admin/** trigger). At cutover: move the push trigger here,
+# point admin/deployment.yaml at the `admin` namespace, and retire
+# deploy-infrastructure-admin. Token is still the existing DEPLOYMENT_TOKEN until
+# the sub=admin token is minted at cutover.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger infrastructure deployment
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.INFRASTRUCTURE_PAT }}
+          repository: markmorcos/infrastructure
+          event-type: deploy-admin
+          client-payload: |-
+            {
+              "repository": "markmorcos/infrastructure",
+              "token": "${{ secrets.DEPLOYMENT_TOKEN }}",
+              "version": "${{ github.sha }}",
+              "config_file": "admin/deployment.yaml",
+              "migrations": {
+                "dir": "admin/sql/migrations",
+                "secret": "database-secrets",
+                "namespace": "admin",
+                "key": "DATABASE_URL"
+              }
+            }

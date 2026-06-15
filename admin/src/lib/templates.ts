@@ -22,7 +22,7 @@ export interface Stack {
   files(o: StackOpts): Record<string, string>;
 }
 
-const CHART_VERSION = "0.8.1";
+const CHART_VERSION = "0.8.2";
 
 // Chart-shaped deployment.yaml shared by every stack.
 export function deploymentYaml(o: StackOpts, withIngress: boolean): string {

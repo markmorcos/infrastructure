@@ -21,6 +21,7 @@ export interface Site {
   presetId: string | null;
   themeOverrides: Record<string, unknown>;
   settings: Record<string, unknown>;
+  settingsDraft: Record<string, unknown>;
 }
 
 // Section mirrors the sections table with its parsed schema (cms/model.go
@@ -38,7 +39,7 @@ export interface Section extends DictSection {
 export async function getSiteByKey(key: string): Promise<Site | null> {
   const { rows } = await pool.query(
     `SELECT id, key, name, locales, default_locale, github_repo, dispatch_event,
-            created_at, owner_user_id, preset_id, theme_overrides, settings
+            created_at, owner_user_id, preset_id, theme_overrides, settings, settings_draft
      FROM sites WHERE key = $1`,
     [key]
   );
@@ -57,6 +58,7 @@ export async function getSiteByKey(key: string): Promise<Site | null> {
     presetId: r.preset_id ?? null,
     themeOverrides: r.theme_overrides ?? {},
     settings: r.settings ?? {},
+    settingsDraft: r.settings_draft ?? {},
   };
 }
 

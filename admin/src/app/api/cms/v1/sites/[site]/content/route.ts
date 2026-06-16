@@ -1,46 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
 import {
   getSiteByKey,
   siteContent,
   maxPublishedAt,
 } from "@/lib/cms/db";
+import { draftAuthorized } from "@/lib/cms/authz";
 import { assembleDict } from "@/lib/cms/dict";
 
 // Public content API, ported from cms/main.go handleContent. Serves the
 // assembled content dictionary for one locale of one site. Published content is
-// public; ?draft=1 previews drafts and requires admin auth.
-
-const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+// public; ?draft=1 previews drafts and requires admin/owner auth (or a
+// site-scoped preview token carried by the renderer).
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Admin-Token",
 } as const;
-
-// adminAuthed reports whether the request carries a valid admin session, via the
-// `token` cookie, an Authorization: Bearer header, or X-Admin-Token. Mirrors
-// cms/auth.go authed; drafts are only readable by admins.
-async function adminAuthed(req: NextRequest): Promise<boolean> {
-  const candidates: string[] = [];
-  const auth = req.headers.get("authorization");
-  if (auth && auth.startsWith("Bearer ")) candidates.push(auth.slice(7));
-  const xAdmin = req.headers.get("x-admin-token");
-  if (xAdmin) candidates.push(xAdmin);
-  const cookie = req.cookies.get("token")?.value;
-  if (cookie) candidates.push(cookie);
-
-  for (const token of candidates) {
-    try {
-      const { payload } = await jwtVerify(token, secret);
-      if (payload.role === "admin") return true;
-    } catch {
-      // try the next candidate
-    }
-  }
-  return false;
-}
 
 export async function GET(
   req: NextRequest,
@@ -57,7 +33,7 @@ export async function GET(
     }
 
     const draft = req.nextUrl.searchParams.get("draft") === "1";
-    if (draft && !(await adminAuthed(req))) {
+    if (draft && !draftAuthorized(req, site)) {
       return NextResponse.json(
         { error: "unauthorized" },
         { status: 401, headers: CORS_HEADERS }
@@ -92,7 +68,7 @@ export async function GET(
         name: site.name,
         locale,
         publishedAt,
-        settings: site.settings,
+        settings: draft ? site.settingsDraft : site.settings,
         content: assembleDict(sections, content, locale),
       },
       { status: 200, headers }

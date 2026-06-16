@@ -19,8 +19,9 @@ export async function POST(
       return NextResponse.json({ error: "site not found" }, { status: 404 });
     }
     const dispatched = await publishSite(site);
+    // Preset (studio-rendered) sites go live instantly — no rebuild dispatch.
     return NextResponse.json(
-      { published: true, dispatched },
+      { published: true, dispatched, instant: !!site.presetId },
       { status: 200 }
     );
   } catch (error) {

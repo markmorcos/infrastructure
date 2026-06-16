@@ -39,10 +39,11 @@ function mapSite(r: Record<string, unknown>): Site {
     presetId: (r.preset_id as string | null) ?? null,
     themeOverrides: (r.theme_overrides as Record<string, unknown>) ?? {},
     settings: (r.settings as Record<string, unknown>) ?? {},
+    settingsDraft: (r.settings_draft as Record<string, unknown>) ?? {},
   };
 }
 
-const SITE_COLS = `id, key, name, locales, default_locale, github_repo, dispatch_event, created_at, owner_user_id, preset_id, theme_overrides, settings`;
+const SITE_COLS = `id, key, name, locales, default_locale, github_repo, dispatch_event, created_at, owner_user_id, preset_id, theme_overrides, settings, settings_draft`;
 
 // ---- Sites ----
 
@@ -140,15 +141,16 @@ export async function updateSite(
   return mapSite(rows[0]);
 }
 
-// updateSiteSettings shallow-merges a partial object into the site's settings
-// JSONB (Postgres `||`), leaving other keys intact. Used for per-site config
-// like contactEmail / brandColor. Returns the refreshed site.
+// updateSiteSettings shallow-merges a partial object into the site's DRAFT
+// settings JSONB (Postgres `||`), leaving other keys intact. Edits stay in the
+// draft until Publish promotes them; the renderer previews the draft via
+// ?draft=1. Returns the refreshed site.
 export async function updateSiteSettings(
   id: string,
   patch: Record<string, unknown>
 ): Promise<Site> {
   const { rows } = await pool.query(
-    `UPDATE sites SET settings = settings || $2::jsonb WHERE id=$1
+    `UPDATE sites SET settings_draft = settings_draft || $2::jsonb WHERE id=$1
      RETURNING ${SITE_COLS}`,
     [id, JSON.stringify(patch)]
   );
@@ -542,6 +544,11 @@ export async function publishSite(site: Site): Promise<boolean> {
          AND draft IS DISTINCT FROM published`,
       [site.id]
     );
+    // Promote draft settings (brandColor/contactEmail/calcom) to live alongside
+    // content, so one Publish flips both.
+    await client.query(`UPDATE sites SET settings = settings_draft WHERE id = $1`, [
+      site.id,
+    ]);
     const { rows } = await client.query(
       `INSERT INTO publishes (site_id, snapshot) VALUES ($1,$2) RETURNING id`,
       [site.id, JSON.stringify(snapshot)]
@@ -554,6 +561,10 @@ export async function publishSite(site: Site): Promise<boolean> {
   } finally {
     client.release();
   }
+
+  // Studio-rendered sites (preset_id set) read published content/settings live
+  // via SSR — there's nothing to rebuild, so skip the GitHub dispatch entirely.
+  if (site.presetId) return false;
 
   const { dispatch } = await import("./dispatch");
   const dispatched = await dispatch(site);

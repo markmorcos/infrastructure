@@ -12,7 +12,6 @@
   "dependencies": {
     "@codemirror/lang-json": "^6.0.1",
     "@kubernetes/client-node": "^1.4.0",
-    "@material/material-color-utilities": "^0.2.7",
     "@octokit/rest": "^22.0.1",
     "@types/libsodium-wrappers": "^0.7.14",
     "@uiw/react-codemirror": "^4.23.12",

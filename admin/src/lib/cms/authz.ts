@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import { cmsPool as pool } from "@/lib/db";
+import type { Site } from "./db";
+
+const PREVIEW_TTL = "20m";
 
 // Authorization helpers for the CMS console. The session JWT carries the role;
 // per-site ownership is resolved against the DB (sites.owner_user_id) on every
@@ -42,6 +45,52 @@ export function requireAdmin(req: NextRequest): Guard {
   if (user.role !== "admin")
     return { error: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
   return { user };
+}
+
+// signPreviewToken mints a short-lived, site-scoped token the renderer carries
+// (as a Bearer) to read draft content/settings via ?draft=1. Issued only after
+// requireSiteAccess passes, so only an admin or the site's owner can obtain one.
+export function signPreviewToken(siteKey: string): string {
+  return jwt.sign({ kind: "preview", site: siteKey }, process.env.JWT_SECRET as string, {
+    expiresIn: PREVIEW_TTL,
+  });
+}
+
+// draftAuthorized reports whether the request may read this site's draft data,
+// via (a) an admin/owner session cookie, or (b) a Bearer token that is either an
+// admin/owner JWT or a preview token scoped to this site. Backs the ?draft=1 gate.
+export function draftAuthorized(req: NextRequest, site: Site): boolean {
+  const sessionAllows = (u: { role?: string; userId?: number } | null) =>
+    !!u &&
+    (u.role === "admin" ||
+      (site.ownerUserId !== null && Number(u.userId) === site.ownerUserId));
+
+  if (sessionAllows(getSessionUser(req))) return true;
+
+  const auth = req.headers.get("authorization");
+  const bearer = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+  const candidates = [bearer, req.headers.get("x-admin-token")].filter(Boolean) as string[];
+  for (const tok of candidates) {
+    try {
+      const p = jwt.verify(tok, process.env.JWT_SECRET as string) as {
+        kind?: string;
+        site?: string;
+        role?: string;
+        userId?: number | string;
+      };
+      if (p.role === "admin") return true;
+      if (p.kind === "preview" && p.site === site.key) return true;
+      if (
+        p.userId !== undefined &&
+        site.ownerUserId !== null &&
+        Number(p.userId) === site.ownerUserId
+      )
+        return true;
+    } catch {
+      // try the next candidate
+    }
+  }
+  return false;
 }
 
 // requireSiteAccess gates a per-site CMS handler: admins always pass; an editor

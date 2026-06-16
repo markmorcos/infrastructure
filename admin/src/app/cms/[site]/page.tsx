@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { localeAll, type Section, type Site } from "../types";
 import { Button, Card, Input, Label, Spinner } from "@/components/ui";
 import { useAuth } from "../../auth/AuthProvider";
-import { previewFromSeed } from "@/lib/theme-preview";
 
 // Site dashboard (/cms/[site]). Sections grouped by page_group, per-locale edit
 // links with a dirty dot when draft != published, a Publish button + "last
@@ -32,6 +31,7 @@ export default function SiteDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [msg, setMsg] = useState<{ kind: "ok" | "warn" | "err"; text: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -83,6 +83,25 @@ export default function SiteDashboard() {
     [dirty]
   );
 
+  const openPreview = async () => {
+    setPreviewing(true);
+    setMsg(null);
+    try {
+      const res = await fetch(
+        `/api/cms/sites/${encodeURIComponent(siteKey)}/preview-token`,
+        { method: "POST" }
+      );
+      if (!res.ok) {
+        setMsg({ kind: "err", text: "Could not open preview — please try again." });
+        return;
+      }
+      const { url } = await res.json();
+      window.open(url, "_blank", "noopener");
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
   const publish = async () => {
     setPublishing(true);
     setMsg(null);
@@ -96,7 +115,9 @@ export default function SiteDashboard() {
       return;
     }
     const d = await res.json();
-    if (!d.dispatched) {
+    if (d.instant) {
+      setMsg({ kind: "ok", text: "Published — your changes are now live." });
+    } else if (!d.dispatched) {
       setMsg({
         kind: "warn",
         text: "Content published, but the website rebuild could not be triggered — please let Mark know.",
@@ -158,6 +179,17 @@ export default function SiteDashboard() {
           className="px-[14px]! text-[12px]!"
         >
           <span className="msym" style={{ fontSize: 17 }}>image</span>images
+        </Button>
+        <Button
+          variant="soft"
+          size="md"
+          onClick={openPreview}
+          disabled={previewing}
+          className="px-[14px]! text-[12px]!"
+          title="preview unpublished changes"
+        >
+          <span className="msym" style={{ fontSize: 17 }}>visibility</span>
+          {previewing ? "opening…" : "preview"}
         </Button>
         <Button variant="primary" size="md" onClick={publish} disabled={publishing} className="px-4!">
           <span className="msym" style={{ fontSize: 18, animation: publishing ? "cpSpin 1s linear infinite" : "none" }}>
@@ -296,16 +328,18 @@ function SiteSettings({ site, isAdmin, onSaved }: { site: Site; isAdmin: boolean
   const [name, setName] = useState(site.name);
   const [repo, setRepo] = useState(site.githubRepo);
   const [dispatch, setDispatch] = useState(site.dispatchEvent);
-  const [contactEmail, setContactEmail] = useState(settingStr(site.settings, "contactEmail"));
-  const [brandColor, setBrandColor] = useState(settingStr(site.settings, "brandColor"));
-  const [calcomUrl, setCalcomUrl] = useState(settingStr(site.settings, "calcomUrl"));
+  // Edit the draft (what Publish will promote); fall back to live for old sites.
+  const draft = site.settingsDraft ?? site.settings;
+  const isPreset = !!site.presetId;
+  const [contactEmail, setContactEmail] = useState(settingStr(draft, "contactEmail"));
+  const [brandColor, setBrandColor] = useState(settingStr(draft, "brandColor"));
+  const [calcomUrl, setCalcomUrl] = useState(settingStr(draft, "calcomUrl"));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
   const emailInvalid = contactEmail.trim() !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
   const colorInvalid = brandColor.trim() !== "" && !HEX_RE.test(brandColor.trim());
   const calcomInvalid = calcomUrl.trim() !== "" && !/^https?:\/\/\S+$/.test(calcomUrl.trim());
-  const preview = previewFromSeed(brandColor.trim());
   const pickerValue = HEX_RE.test(brandColor.trim())
     ? (brandColor.trim().startsWith("#") ? brandColor.trim() : `#${brandColor.trim()}`)
     : "#243831";
@@ -330,9 +364,11 @@ function SiteSettings({ site, isAdmin, onSaved }: { site: Site; isAdmin: boolean
       brandColor: brandColor.trim(),
       calcomUrl: calcomUrl.trim(),
     };
-    const payload = isAdmin
-      ? { name, githubRepo: repo, dispatchEvent: dispatch, settings }
-      : { settings };
+    const payload = !isAdmin
+      ? { settings }
+      : isPreset
+        ? { name, settings }
+        : { name, githubRepo: repo, dispatchEvent: dispatch, settings };
     const res = await fetch(`/api/cms/sites/${encodeURIComponent(site.key)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -351,12 +387,14 @@ function SiteSettings({ site, isAdmin, onSaved }: { site: Site; isAdmin: boolean
       <Label as="div" className="mb-3 block">{"// SETTINGS"}</Label>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {isAdmin && (
+          <div>
+            <Label>NAME</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5" />
+          </div>
+        )}
+        {isAdmin && !isPreset && <div className="hidden md:block" />}
+        {isAdmin && !isPreset && (
           <>
-            <div>
-              <Label>NAME</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5" />
-            </div>
-            <div className="hidden md:block" />
             <div>
               <Label>GITHUB REPO</Label>
               <Input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="owner/repo" className="mt-1.5" />
@@ -399,21 +437,13 @@ function SiteSettings({ site, isAdmin, onSaved }: { site: Site; isAdmin: boolean
             />
             <Input value={brandColor} onChange={(e) => setBrandColor(e.target.value)} placeholder="#243831" />
           </div>
-          {preview && (
-            <div className="mt-2.5 flex items-stretch overflow-hidden rounded-[10px] border border-[var(--md-sys-color-outline-variant)]">
-              <ThemeSwatch color={preview.surface} label="surface" textColor={preview.primary} />
-              <ThemeSwatch color={preview.primary} label="primary" textColor="#ffffff" />
-              <ThemeSwatch color={preview.accent} label="accent" textColor="#ffffff" />
-            </div>
-          )}
           <div className="mt-1.5 font-[var(--cp-mono)] text-[10.5px] text-[var(--md-sys-color-on-surface-variant)]">
-            The accent is auto-derived from the brand color (sage → clay), matching the live site.
+            The accent is auto-derived (sage → clay). Use Preview to see the theme on the live site.
           </div>
         </div>
       </div>
       <div className="mt-1.5 font-[var(--cp-mono)] text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-        Contact email receives contact-form submissions; brand color seeds the site theme.
-        {isAdmin && " Publish fires a GitHub repository_dispatch (event = dispatch event) at this repo to rebuild the site."}
+        Edits are saved as a draft — use Preview to check them, then Publish to go live. Contact email receives contact-form submissions; brand color seeds the site theme.
       </div>
       {err && <div className="mt-2 text-[12px] text-[var(--cp-err)]">{err}</div>}
       <div className="mt-3.5">
@@ -451,17 +481,6 @@ function LocaleLink({
       {label}
       <span className="msym" style={{ fontSize: 15 }}>edit</span>
     </Button>
-  );
-}
-
-function ThemeSwatch({ color, label, textColor }: { color: string; label: string; textColor: string }) {
-  return (
-    <div
-      className="flex flex-1 items-end px-2 py-2.5"
-      style={{ background: color, color: textColor, minHeight: 46 }}
-    >
-      <span style={{ fontFamily: "var(--cp-mono)", fontSize: 10, opacity: 0.92 }}>{label}</span>
-    </div>
   );
 }
 

@@ -33,6 +33,11 @@ export async function listUsers(): Promise<ManagedUser[]> {
   }));
 }
 
+export async function findUserIdByEmail(email: string): Promise<number | null> {
+  const { rows } = await pool.query(`SELECT id FROM users WHERE email = $1`, [email]);
+  return rows.length ? Number(rows[0].id) : null;
+}
+
 export async function createUser(
   email: string,
   password: string,

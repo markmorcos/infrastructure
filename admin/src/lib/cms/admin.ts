@@ -97,11 +97,13 @@ export interface CreateSiteInput {
   defaultLocale?: string;
   githubRepo?: string;
   dispatchEvent?: string;
+  presetId?: string;
 }
 
 // createSite inserts a new site, defaulting locales/defaultLocale the same way
 // cms/store.go CreateSite does. Throws on a duplicate key (handled as 409 by
-// the route).
+// the route). A `presetId` marks the site as studio-rendered (served live by
+// the practa renderer — no repo/dispatch).
 export async function createSite(input: CreateSiteInput): Promise<Site> {
   const id = newId();
   // New sites default to English only; other locales (de/ar/…) are opt-in.
@@ -109,8 +111,8 @@ export async function createSite(input: CreateSiteInput): Promise<Site> {
   const defaultLocale = input.defaultLocale || locales[0];
   const name = input.name || input.key;
   const { rows } = await pool.query(
-    `INSERT INTO sites (id, key, name, locales, default_locale, github_repo, dispatch_event)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)
+    `INSERT INTO sites (id, key, name, locales, default_locale, github_repo, dispatch_event, preset_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
      RETURNING ${SITE_COLS}`,
     [
       id,
@@ -120,6 +122,7 @@ export async function createSite(input: CreateSiteInput): Promise<Site> {
       defaultLocale,
       input.githubRepo ?? "",
       input.dispatchEvent ?? "",
+      input.presetId ?? null,
     ]
   );
   return mapSite(rows[0]);

@@ -4,6 +4,30 @@ import { cmsPool as pool } from "@/lib/db";
 import type { Site } from "./db";
 
 const PREVIEW_TTL = "20m";
+const INVITE_TTL = "3d";
+
+// signInviteToken / verifyInviteToken back the onboarding set-password flow: a
+// newly-spawned owner is created with a random (locked) password and emailed a
+// link carrying this token; set-password verifies it and sets their password.
+export function signInviteToken(userId: number, email: string): string {
+  return jwt.sign({ kind: "invite", userId, email }, process.env.JWT_SECRET as string, {
+    expiresIn: INVITE_TTL,
+  });
+}
+
+export function verifyInviteToken(token: string): { userId: number; email: string } | null {
+  try {
+    const p = jwt.verify(token, process.env.JWT_SECRET as string) as {
+      kind?: string;
+      userId?: number | string;
+      email?: string;
+    };
+    if (p.kind !== "invite" || p.userId === undefined || !p.email) return null;
+    return { userId: Number(p.userId), email: p.email };
+  } catch {
+    return null;
+  }
+}
 
 // Authorization helpers for the CMS console. The session JWT carries the role;
 // per-site ownership is resolved against the DB (sites.owner_user_id) on every

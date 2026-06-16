@@ -285,20 +285,44 @@ export default function SiteDashboard() {
   );
 }
 
+function settingStr(settings: Record<string, unknown> | undefined, key: string): string {
+  const v = settings?.[key];
+  return typeof v === "string" ? v : "";
+}
+
+const HEX_RE = /^#?[0-9a-fA-F]{6}$/;
+
 function SiteSettings({ site, onSaved }: { site: Site; onSaved: () => void }) {
   const [name, setName] = useState(site.name);
   const [repo, setRepo] = useState(site.githubRepo);
   const [dispatch, setDispatch] = useState(site.dispatchEvent);
+  const [contactEmail, setContactEmail] = useState(settingStr(site.settings, "contactEmail"));
+  const [brandColor, setBrandColor] = useState(settingStr(site.settings, "brandColor"));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
+  const emailInvalid = contactEmail.trim() !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
+  const colorInvalid = brandColor.trim() !== "" && !HEX_RE.test(brandColor.trim());
+
   async function save() {
+    if (emailInvalid || colorInvalid) {
+      setErr(emailInvalid ? "enter a valid contact email" : "brand color must be a 6-digit hex (e.g. #243831)");
+      return;
+    }
     setBusy(true);
     setErr("");
     const res = await fetch(`/api/cms/sites/${encodeURIComponent(site.key)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, githubRepo: repo, dispatchEvent: dispatch }),
+      body: JSON.stringify({
+        name,
+        githubRepo: repo,
+        dispatchEvent: dispatch,
+        settings: {
+          contactEmail: contactEmail.trim(),
+          brandColor: brandColor.trim(),
+        },
+      }),
     });
     setBusy(false);
     if (!res.ok) {
@@ -325,9 +349,23 @@ function SiteSettings({ site, onSaved }: { site: Site; onSaved: () => void }) {
           <Label>DISPATCH EVENT</Label>
           <Input value={dispatch} onChange={(e) => setDispatch(e.target.value)} placeholder="deploy-my-site" className="mt-1.5" />
         </div>
+        <div>
+          <Label>CONTACT EMAIL</Label>
+          <Input
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+            placeholder="owner@example.com"
+            type="email"
+            className="mt-1.5"
+          />
+        </div>
+        <div>
+          <Label>BRAND COLOR</Label>
+          <Input value={brandColor} onChange={(e) => setBrandColor(e.target.value)} placeholder="#243831" className="mt-1.5" />
+        </div>
       </div>
       <div className="mt-1.5 font-[var(--cp-mono)] text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-        Publish fires a GitHub repository_dispatch (event = dispatch event) at this repo to rebuild the site.
+        Contact email receives contact-form submissions; brand color seeds the site theme. Publish fires a GitHub repository_dispatch (event = dispatch event) at this repo to rebuild the site.
       </div>
       {err && <div className="mt-2 text-[12px] text-[var(--cp-err)]">{err}</div>}
       <div className="mt-3.5">

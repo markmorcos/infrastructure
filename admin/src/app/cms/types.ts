@@ -10,6 +10,7 @@ export interface Site {
   githubRepo: string;
   dispatchEvent: string;
   createdAt: string;
+  settings?: Record<string, unknown>;
 }
 
 export type FieldType =

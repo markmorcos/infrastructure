@@ -3,8 +3,9 @@ import { deleteSite, getSiteByKey, updateSite, updateSiteSettings } from "@/lib/
 import { requireSiteAccess, requireAdmin } from "@/lib/cms/authz";
 
 // Admin single-site routes, ported from cms/adminapi.go apiGetSite /
-// apiUpdateSite / apiDeleteSite. PATCH edits name/githubRepo/dispatchEvent ONLY
-// (key/locales/defaultLocale are immutable), matching cms/store.go UpdateSite.
+// apiUpdateSite / apiDeleteSite. PATCH edits name/githubRepo/dispatchEvent and
+// shallow-merges an optional `settings` patch (contactEmail, brandColor, …);
+// key/locales/defaultLocale are immutable.
 
 export async function GET(
   req: NextRequest,

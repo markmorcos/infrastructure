@@ -36,10 +36,13 @@ function mapSite(r: Record<string, unknown>): Site {
     dispatchEvent: r.dispatch_event as string,
     createdAt: r.created_at as Date,
     ownerUserId: (r.owner_user_id as number | null) ?? null,
+    presetId: (r.preset_id as string | null) ?? null,
+    themeOverrides: (r.theme_overrides as Record<string, unknown>) ?? {},
+    settings: (r.settings as Record<string, unknown>) ?? {},
   };
 }
 
-const SITE_COLS = `id, key, name, locales, default_locale, github_repo, dispatch_event, created_at, owner_user_id`;
+const SITE_COLS = `id, key, name, locales, default_locale, github_repo, dispatch_event, created_at, owner_user_id, preset_id, theme_overrides, settings`;
 
 // ---- Sites ----
 

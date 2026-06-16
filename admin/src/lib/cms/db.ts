@@ -18,6 +18,9 @@ export interface Site {
   dispatchEvent: string;
   createdAt: Date;
   ownerUserId: number | null;
+  presetId: string | null;
+  themeOverrides: Record<string, unknown>;
+  settings: Record<string, unknown>;
 }
 
 // Section mirrors the sections table with its parsed schema (cms/model.go
@@ -34,7 +37,8 @@ export interface Section extends DictSection {
 // matches (cms/store.go GetSite).
 export async function getSiteByKey(key: string): Promise<Site | null> {
   const { rows } = await pool.query(
-    `SELECT id, key, name, locales, default_locale, github_repo, dispatch_event, created_at, owner_user_id
+    `SELECT id, key, name, locales, default_locale, github_repo, dispatch_event,
+            created_at, owner_user_id, preset_id, theme_overrides, settings
      FROM sites WHERE key = $1`,
     [key]
   );
@@ -50,6 +54,9 @@ export async function getSiteByKey(key: string): Promise<Site | null> {
     dispatchEvent: r.dispatch_event,
     createdAt: r.created_at,
     ownerUserId: r.owner_user_id ?? null,
+    presetId: r.preset_id ?? null,
+    themeOverrides: r.theme_overrides ?? {},
+    settings: r.settings ?? {},
   };
 }
 
@@ -118,4 +125,88 @@ export async function maxPublishedAt(siteId: string): Promise<string | null> {
   );
   const max = rows[0]?.max as Date | null;
   return max ? max.toISOString() : null;
+}
+
+// ---- Studio renderer bundle ----
+
+export interface BundleSection {
+  key: string;
+  title: string;
+  // content for the requested locale, or null when none exists (the renderer
+  // falls back to the preset's placeholder copy).
+  content: ContentValue | null;
+}
+export interface BundlePage {
+  group: string;
+  sections: BundleSection[];
+}
+export interface BundleAsset {
+  url: string;
+  filename: string;
+  contentType: string;
+}
+export interface SiteBundle {
+  key: string;
+  name: string;
+  locale: string;
+  locales: string[];
+  defaultLocale: string;
+  presetId: string | null;
+  themeOverrides: Record<string, unknown>;
+  settings: Record<string, unknown>;
+  publishedAt: string | null;
+  pages: BundlePage[];
+  assets: BundleAsset[];
+}
+
+export async function listAssets(siteId: string): Promise<BundleAsset[]> {
+  const { rows } = await pool.query(
+    `SELECT url, filename, content_type FROM assets WHERE site_id = $1 ORDER BY created_at`,
+    [siteId]
+  );
+  return rows.map((r) => ({
+    url: r.url,
+    filename: r.filename,
+    contentType: r.content_type,
+  }));
+}
+
+// siteBundle assembles everything the studio renderer needs for one locale in a
+// single object: site meta + theme/preset/settings, sections grouped into pages
+// (preserving position order, groups in first-seen order) with their content
+// for the locale, and the asset list. draft=true serves drafts (admin preview).
+export async function siteBundle(
+  site: Site,
+  locale: string,
+  draft: boolean
+): Promise<SiteBundle> {
+  const { sections, content } = await siteContent(site.id, draft);
+  const pages: BundlePage[] = [];
+  const indexByGroup = new Map<string, number>();
+  for (const s of sections) {
+    let idx = indexByGroup.get(s.pageGroup);
+    if (idx === undefined) {
+      idx = pages.length;
+      pages.push({ group: s.pageGroup, sections: [] });
+      indexByGroup.set(s.pageGroup, idx);
+    }
+    pages[idx].sections.push({
+      key: s.key,
+      title: s.title,
+      content: content[s.id]?.[locale] ?? null,
+    });
+  }
+  return {
+    key: site.key,
+    name: site.name,
+    locale,
+    locales: site.locales,
+    defaultLocale: site.defaultLocale,
+    presetId: site.presetId,
+    themeOverrides: site.themeOverrides,
+    settings: site.settings,
+    publishedAt: await maxPublishedAt(site.id),
+    pages,
+    assets: await listAssets(site.id),
+  };
 }

@@ -67,15 +67,16 @@ services:
       - name: R2_SECRET_KEY
         valueFrom: { secretKeyRef: { name: backup-r2, key: R2_SECRET_KEY, optional: true } }
 
-      # Brevo transactional email for contact-form notifications. Optional so
+      # Resend transactional email for contact-form notifications. Optional so
       # admin boots without it; submissions are still stored, just not emailed,
-      # until the `brevo` secret is created (sender must be Brevo-verified).
-      - name: BREVO_API_KEY
-        valueFrom: { secretKeyRef: { name: brevo, key: BREVO_API_KEY, optional: true } }
-      - name: BREVO_SENDER_EMAIL
-        valueFrom: { secretKeyRef: { name: brevo, key: BREVO_SENDER_EMAIL, optional: true } }
-      - name: BREVO_SENDER_NAME
-        valueFrom: { secretKeyRef: { name: brevo, key: BREVO_SENDER_NAME, optional: true } }
+      # until the `resend` secret is created (sender domain must be verified in
+      # Resend).
+      - name: RESEND_API_KEY
+        valueFrom: { secretKeyRef: { name: resend, key: RESEND_API_KEY, optional: true } }
+      - name: RESEND_SENDER_EMAIL
+        valueFrom: { secretKeyRef: { name: resend, key: RESEND_SENDER_EMAIL, optional: true } }
+      - name: RESEND_SENDER_NAME
+        valueFrom: { secretKeyRef: { name: resend, key: RESEND_SENDER_NAME, optional: true } }
     ingress:
       host: admin.morcos.tech
       path: /

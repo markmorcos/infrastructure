@@ -1,7 +1,8 @@
 -- Contact form submissions for studio-rendered sites. The practa renderer's
 -- contact form posts here (via its own /api/contact proxy, which injects the
 -- trusted site key from the request Host). Storage is the source of truth;
--- Brevo email is best-effort (the `emailed` flag records whether it went out).
+-- the notification email is best-effort (the `emailed` flag records whether it
+-- went out).
 -- Idempotent.
 SET search_path TO cms, public;
 

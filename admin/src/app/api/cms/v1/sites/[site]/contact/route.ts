@@ -94,7 +94,7 @@ export async function POST(
     });
 
     // Best-effort owner notification. Recipient comes from site settings; if
-    // unset (or Brevo unconfigured) the submission is still stored.
+    // unset (or Resend unconfigured) the submission is still stored.
     const settings = site.settings as Record<string, unknown>;
     const recipient = str(settings.contactEmail) || str(settings.email);
     if (recipient) {

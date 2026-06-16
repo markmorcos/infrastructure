@@ -13,3 +13,16 @@ spec:
       - http01:
           ingress:
             ingressClassName: nginx
+      # Wildcard certs (e.g. *.practa.co for the studio multi-tenant renderer)
+      # can't be issued over HTTP-01 — use a Cloudflare DNS-01 solver, scoped to
+      # the practa.co zone so HTTP-01 stays the default for every other host.
+      # Needs secret `cloudflare-api-token` (key: api-token) in the cert-manager
+      # namespace: a Cloudflare token scoped to Zone:DNS:Edit on practa.co.
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+        selector:
+          dnsZones:
+            - practa.co

@@ -128,13 +128,13 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - {{ .ingress.host }}
+        - {{ .ingress.host | quote }}
 {{- if .ingress.www }}
-        - www.{{ .ingress.host }}
+        - {{ printf "www.%s" .ingress.host | quote }}
 {{- end }}
       secretName: {{ .ingress.tlsSecret | default (printf "%s-tls" $resourceName) }}
   rules:
-    - host: {{ .ingress.host }}
+    - host: {{ .ingress.host | quote }}
       http:
         paths:
           - path: {{ .ingress.path }}

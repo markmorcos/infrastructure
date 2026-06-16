@@ -4,7 +4,10 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci
+# npm install (not ci) so a lockfile generated on another platform — missing
+# that platform's optional deps, e.g. @emnapi/* on Linux — doesn't hard-fail the
+# build. ci's strict in-sync check breaks on cross-platform locks.
+RUN --mount=type=cache,target=/root/.npm npm install --no-audit --no-fund
 
 FROM node:20-alpine AS builder
 WORKDIR /app

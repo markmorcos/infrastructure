@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteSite, getSiteByKey, updateSite } from "@/lib/cms/admin";
+import { deleteSite, getSiteByKey, updateSite, updateSiteSettings } from "@/lib/cms/admin";
 import { requireSiteAccess, requireAdmin } from "@/lib/cms/authz";
 
 // Admin single-site routes, ported from cms/adminapi.go apiGetSite /
@@ -38,7 +38,12 @@ export async function PATCH(
     if (!site) {
       return NextResponse.json({ error: "site not found" }, { status: 404 });
     }
-    let body: { name?: string; githubRepo?: string; dispatchEvent?: string };
+    let body: {
+      name?: string;
+      githubRepo?: string;
+      dispatchEvent?: string;
+      settings?: Record<string, unknown>;
+    };
     try {
       body = await req.json();
     } catch {
@@ -48,7 +53,15 @@ export async function PATCH(
     const name = body.name || site.name;
     const githubRepo = body.githubRepo || site.githubRepo;
     const dispatchEvent = body.dispatchEvent || site.dispatchEvent;
-    const updated = await updateSite(site.id, name, githubRepo, dispatchEvent);
+    let updated = await updateSite(site.id, name, githubRepo, dispatchEvent);
+    // Optional shallow-merge of per-site settings (contactEmail, brandColor, …).
+    if (
+      body.settings &&
+      typeof body.settings === "object" &&
+      !Array.isArray(body.settings)
+    ) {
+      updated = await updateSiteSettings(site.id, body.settings);
+    }
     return NextResponse.json(updated, { status: 200 });
   } catch (error) {
     console.error(error);

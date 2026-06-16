@@ -140,6 +140,21 @@ export async function updateSite(
   return mapSite(rows[0]);
 }
 
+// updateSiteSettings shallow-merges a partial object into the site's settings
+// JSONB (Postgres `||`), leaving other keys intact. Used for per-site config
+// like contactEmail / brandColor. Returns the refreshed site.
+export async function updateSiteSettings(
+  id: string,
+  patch: Record<string, unknown>
+): Promise<Site> {
+  const { rows } = await pool.query(
+    `UPDATE sites SET settings = settings || $2::jsonb WHERE id=$1
+     RETURNING ${SITE_COLS}`,
+    [id, JSON.stringify(patch)]
+  );
+  return mapSite(rows[0]);
+}
+
 // deleteSite removes a site (cascades to sections/contents/assets/publishes).
 export async function deleteSite(id: string): Promise<void> {
   await pool.query(`DELETE FROM sites WHERE id=$1`, [id]);

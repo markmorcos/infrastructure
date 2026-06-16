@@ -9,7 +9,7 @@ import { requireSiteAccess, requireAdmin } from "@/lib/cms/authz";
 
 // Settings keys a site owner (non-admin) may edit. Anything else in a settings
 // patch from a non-admin is dropped (admins may set any key).
-const OWNER_SETTINGS = ["contactEmail", "brandColor"] as const;
+const OWNER_SETTINGS = ["contactEmail", "brandColor", "calcomUrl"] as const;
 
 function pickKeys(
   obj: Record<string, unknown>,

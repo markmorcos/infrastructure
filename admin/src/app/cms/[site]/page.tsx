@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { localeAll, type Section, type Site } from "../types";
 import { Button, Card, Input, Label, Spinner } from "@/components/ui";
 import { useAuth } from "../../auth/AuthProvider";
+import { previewFromSeed } from "@/lib/theme-preview";
 
 // Site dashboard (/cms/[site]). Sections grouped by page_group, per-locale edit
 // links with a dirty dot when draft != published, a Publish button + "last
@@ -297,29 +298,41 @@ function SiteSettings({ site, isAdmin, onSaved }: { site: Site; isAdmin: boolean
   const [dispatch, setDispatch] = useState(site.dispatchEvent);
   const [contactEmail, setContactEmail] = useState(settingStr(site.settings, "contactEmail"));
   const [brandColor, setBrandColor] = useState(settingStr(site.settings, "brandColor"));
+  const [calcomUrl, setCalcomUrl] = useState(settingStr(site.settings, "calcomUrl"));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
   const emailInvalid = contactEmail.trim() !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
   const colorInvalid = brandColor.trim() !== "" && !HEX_RE.test(brandColor.trim());
+  const calcomInvalid = calcomUrl.trim() !== "" && !/^https?:\/\/\S+$/.test(calcomUrl.trim());
+  const preview = previewFromSeed(brandColor.trim());
+  const pickerValue = HEX_RE.test(brandColor.trim())
+    ? (brandColor.trim().startsWith("#") ? brandColor.trim() : `#${brandColor.trim()}`)
+    : "#243831";
 
   async function save() {
-    if (emailInvalid || colorInvalid) {
-      setErr(emailInvalid ? "enter a valid contact email" : "brand color must be a 6-digit hex (e.g. #243831)");
+    if (emailInvalid || colorInvalid || calcomInvalid) {
+      setErr(
+        emailInvalid
+          ? "enter a valid contact email"
+          : colorInvalid
+            ? "brand color must be a 6-digit hex (e.g. #243831)"
+            : "cal.com link must be a full URL (https://…)"
+      );
       return;
     }
     setBusy(true);
     setErr("");
     // Infra fields are admin-only; owners send presentation settings only (the
     // API drops anything else from a non-admin patch regardless).
+    const settings = {
+      contactEmail: contactEmail.trim(),
+      brandColor: brandColor.trim(),
+      calcomUrl: calcomUrl.trim(),
+    };
     const payload = isAdmin
-      ? {
-          name,
-          githubRepo: repo,
-          dispatchEvent: dispatch,
-          settings: { contactEmail: contactEmail.trim(), brandColor: brandColor.trim() },
-        }
-      : { settings: { contactEmail: contactEmail.trim(), brandColor: brandColor.trim() } };
+      ? { name, githubRepo: repo, dispatchEvent: dispatch, settings }
+      : { settings };
     const res = await fetch(`/api/cms/sites/${encodeURIComponent(site.key)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -365,8 +378,37 @@ function SiteSettings({ site, isAdmin, onSaved }: { site: Site; isAdmin: boolean
           />
         </div>
         <div>
+          <Label>CAL.COM LINK</Label>
+          <Input
+            value={calcomUrl}
+            onChange={(e) => setCalcomUrl(e.target.value)}
+            placeholder="https://cal.com/your-handle/intro"
+            type="url"
+            className="mt-1.5"
+          />
+        </div>
+        <div className="md:col-span-2">
           <Label>BRAND COLOR</Label>
-          <Input value={brandColor} onChange={(e) => setBrandColor(e.target.value)} placeholder="#243831" className="mt-1.5" />
+          <div className="mt-1.5 flex items-center gap-2.5">
+            <input
+              type="color"
+              value={pickerValue}
+              onChange={(e) => setBrandColor(e.target.value)}
+              aria-label="brand color picker"
+              className="h-[42px] w-[52px] shrink-0 cursor-pointer rounded-[10px] border border-[var(--md-sys-color-outline-variant)] bg-transparent p-1"
+            />
+            <Input value={brandColor} onChange={(e) => setBrandColor(e.target.value)} placeholder="#243831" />
+          </div>
+          {preview && (
+            <div className="mt-2.5 flex items-stretch overflow-hidden rounded-[10px] border border-[var(--md-sys-color-outline-variant)]">
+              <ThemeSwatch color={preview.surface} label="surface" textColor={preview.primary} />
+              <ThemeSwatch color={preview.primary} label="primary" textColor="#ffffff" />
+              <ThemeSwatch color={preview.accent} label="accent" textColor="#ffffff" />
+            </div>
+          )}
+          <div className="mt-1.5 font-[var(--cp-mono)] text-[10.5px] text-[var(--md-sys-color-on-surface-variant)]">
+            The accent is auto-derived from the brand color (sage → clay), matching the live site.
+          </div>
         </div>
       </div>
       <div className="mt-1.5 font-[var(--cp-mono)] text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
@@ -409,6 +451,17 @@ function LocaleLink({
       {label}
       <span className="msym" style={{ fontSize: 15 }}>edit</span>
     </Button>
+  );
+}
+
+function ThemeSwatch({ color, label, textColor }: { color: string; label: string; textColor: string }) {
+  return (
+    <div
+      className="flex flex-1 items-end px-2 py-2.5"
+      style={{ background: color, color: textColor, minHeight: 46 }}
+    >
+      <span style={{ fontFamily: "var(--cp-mono)", fontSize: 10, opacity: 0.92 }}>{label}</span>
+    </div>
   );
 }
 

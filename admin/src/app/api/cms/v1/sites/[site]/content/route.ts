@@ -91,6 +91,7 @@ export async function GET(
         site: site.key,
         locale,
         publishedAt,
+        settings: site.settings,
         content: assembleDict(sections, content, locale),
       },
       { status: 200, headers }

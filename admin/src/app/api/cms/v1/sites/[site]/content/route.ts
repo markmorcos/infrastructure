@@ -89,6 +89,7 @@ export async function GET(
     return NextResponse.json(
       {
         site: site.key,
+        name: site.name,
         locale,
         publishedAt,
         settings: site.settings,

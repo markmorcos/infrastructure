@@ -3,9 +3,11 @@
 import React, { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Input, Label } from "@/components/ui";
+import { useAuth } from "../auth/AuthProvider";
 
 function SetPasswordForm() {
   const router = useRouter();
+  const auth = useAuth();
   const token = useSearchParams().get("token") ?? "";
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -33,11 +35,14 @@ function SetPasswordForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, password }),
     });
+    const data = await res.json().catch(() => ({}));
     setLoading(false);
     if (res.ok) {
+      // Update auth state so the gate doesn't bounce us back to /login.
+      auth.setUser({ id: String(data.id), email: data.email, role: data.role });
       router.push("/cms");
     } else {
-      setError((await res.json().catch(() => ({})))?.error || "Could not set password.");
+      setError(data?.error || "Could not set password.");
     }
   };
 

@@ -45,7 +45,12 @@ export async function POST(req: NextRequest) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
   });
-  const res = NextResponse.json({ ok: true, email: user.email });
+  const res = NextResponse.json({
+    ok: true,
+    id: invite.userId,
+    email: user.email,
+    role: user.role,
+  });
   res.headers.set("Set-Cookie", cookie);
   return res;
 }

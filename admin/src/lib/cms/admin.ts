@@ -213,7 +213,7 @@ function mapSection(r: Record<string, unknown>): Section {
 }
 
 const FIELD_TYPES = new Set([
-  "text", "textarea", "stringlist", "paragraphs", "object", "list", "pairs", "image",
+  "text", "textarea", "stringlist", "paragraphs", "object", "list", "pairs", "image", "select",
 ]);
 const keyOk = (s: unknown): s is string =>
   typeof s === "string" && /^[a-zA-Z][a-zA-Z0-9_]*$/.test(s);
@@ -239,6 +239,14 @@ export function sanitizeFields(input: unknown, depth = 0): Field[] {
       out.fields = sanitizeFields(f.fields ?? [], depth + 1);
       if (out.fields.length === 0)
         throw new SectionError(`"${f.key}" (${f.type}) needs at least one subfield`);
+    }
+    if (f.type === "select") {
+      const opts = Array.isArray(f.options)
+        ? f.options.filter((o): o is string => typeof o === "string" && o.trim() !== "").map((o) => o.trim())
+        : [];
+      if (opts.length === 0)
+        throw new SectionError(`"${f.key}" (select) needs at least one option`);
+      out.options = opts;
     }
     return out;
   });

@@ -322,6 +322,29 @@ function FieldEditor({
         </div>
       );
     }
+    case "select": {
+      const options = field.options ?? [];
+      const current = typeof value === "string" ? value : "";
+      return (
+        <div>
+          {label}
+          <Select
+            style={{ marginTop: 6, appearance: "auto" }}
+            value={current}
+            disabled={field.readOnly}
+            onChange={(e) => onChange(e.target.value)}
+          >
+            <option value="">— none —</option>
+            {options.map((o) => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+            {current && !options.includes(current) && (
+              <option value={current}>{current}</option>
+            )}
+          </Select>
+        </div>
+      );
+    }
     case "textarea":
     case "stringlist":
     case "paragraphs":

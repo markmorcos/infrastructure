@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Input, Select, Label, Callout } from "@/components/ui";
+import { Button, Card, Input, Select, Label, Callout, Textarea } from "@/components/ui";
 import type { Field, FieldType, Section } from "../../types";
 
 const TYPES: { value: FieldType; label: string }[] = [
@@ -10,6 +10,7 @@ const TYPES: { value: FieldType; label: string }[] = [
   { value: "textarea", label: "Text — paragraph" },
   { value: "paragraphs", label: "Paragraphs — many blocks" },
   { value: "stringlist", label: "List — one item per line" },
+  { value: "select", label: "Choice — pick one option" },
   { value: "image", label: "Image" },
   { value: "pairs", label: "Label / value pairs" },
   { value: "object", label: "Group — named subfields" },
@@ -173,6 +174,29 @@ export default function SectionForm({
                 </Button>
               </div>
             )}
+
+            {f.type === "select" && (
+              <OptionsEditor
+                value={f.options ?? []}
+                onChange={(options) => patchField(i, { options })}
+              />
+            )}
+
+            {subs(i).some((s) => s.type === "select") && (
+              <div className="mt-3 border-l-2 border-[var(--md-sys-color-outline-variant)] pl-3">
+                {subs(i).map((s, si) =>
+                  s.type === "select" ? (
+                    <div key={si} className="mb-2">
+                      <Label as="div" className="mb-1 block">{(s.label || s.key || "choice")} — options</Label>
+                      <OptionsEditor
+                        value={s.options ?? []}
+                        onChange={(options) => patchSub(i, si, { options })}
+                      />
+                    </div>
+                  ) : null
+                )}
+              </div>
+            )}
           </Card>
         ))}
       </div>
@@ -193,6 +217,28 @@ export default function SectionForm({
           <Button variant="ghost" size="md" danger onClick={remove} disabled={busy}>delete section</Button>
         )}
       </div>
+    </div>
+  );
+}
+
+// OptionsEditor edits a select field's allowed values, one per line. Blank lines
+// are kept while typing and dropped on save (server-side sanitizeFields).
+function OptionsEditor({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (options: string[]) => void;
+}) {
+  return (
+    <div className="mt-3 border-l-2 border-[var(--md-sys-color-outline-variant)] pl-3">
+      <Label as="div" className="mb-1 block">OPTIONS — one per line</Label>
+      <Textarea
+        value={value.join("\n")}
+        onChange={(e) => onChange(e.target.value.split("\n"))}
+        placeholder={"mail\nphone\ncalendar"}
+        className="min-h-[88px] font-[var(--cp-mono)] text-[12px]"
+      />
     </div>
   );
 }

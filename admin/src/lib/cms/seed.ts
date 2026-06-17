@@ -17,9 +17,10 @@ export interface Field {
   label: string;
   readOnly?: boolean;
   fields?: Field[]; // subfields for object/list
+  options?: string[]; // allowed values for select
 }
 
-// The 8 field types (cms/model.go field constants).
+// The 9 field types (cms/model.go field constants).
 export const fieldText = "text" as const;
 export const fieldTextarea = "textarea" as const;
 export const fieldStringlist = "stringlist" as const; // string[], one per line
@@ -28,6 +29,7 @@ export const fieldObject = "object" as const; // fixed named subfields
 export const fieldList = "list" as const; // repeatable group of flat fields
 export const fieldPairs = "pairs" as const; // [string, string][] label/value tuples
 export const fieldImage = "image" as const; // asset URL string
+export const fieldSelect = "select" as const; // one string from `options` (a dropdown)
 
 export type FieldType =
   | typeof fieldText
@@ -37,7 +39,8 @@ export type FieldType =
   | typeof fieldObject
   | typeof fieldList
   | typeof fieldPairs
-  | typeof fieldImage;
+  | typeof fieldImage
+  | typeof fieldSelect;
 
 // SeedSection is a section schema definition (cms/model.go Section, minus the
 // DB-assigned id/siteId/position which are set during upsert).

@@ -72,6 +72,7 @@ export function toEditor(fields: Field[], obj: EditorObject): EditorObject {
       case "text":
       case "textarea":
       case "image":
+      case "select":
         out[f.key] = asString(raw);
         break;
       case "stringlist":
@@ -128,6 +129,7 @@ export function fromEditor(
     switch (f.type) {
       case "text":
       case "image":
+      case "select":
         out[f.key] = asString(v).trim();
         break;
       case "textarea":

@@ -23,7 +23,8 @@ export type FieldType =
   | "object"
   | "list"
   | "pairs"
-  | "image";
+  | "image"
+  | "select";
 
 export interface Field {
   key: string;
@@ -31,6 +32,7 @@ export interface Field {
   label: string;
   readOnly?: boolean;
   fields?: Field[];
+  options?: string[]; // allowed values when type === "select"
 }
 
 export interface Section {

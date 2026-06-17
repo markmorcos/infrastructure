@@ -206,9 +206,16 @@
           },
           "ingress": {
             "type": "object",
-            "required": ["host", "path", "pathType"],
+            "required": ["path", "pathType"],
+            "anyOf": [{ "required": ["host"] }, { "required": ["hosts"] }],
             "properties": {
-              "host": { "type": "string", "description": "Ingress hostname" },
+              "host": { "type": "string", "description": "Ingress hostname (single host)" },
+              "hosts": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 1,
+                "description": "Multiple ingress hostnames served by this service (e.g. a wildcard plus its apex). Use instead of `host`; all are added to the TLS SANs and rules."
+              },
               "www": {
                 "type": "boolean",
                 "default": false,

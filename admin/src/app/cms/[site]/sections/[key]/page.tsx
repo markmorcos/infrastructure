@@ -16,6 +16,7 @@ import {
   type EditorObject,
 } from "./editor";
 import { Button, Card, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
+import { Glyph, GLYPH_NAMES, hasGlyph } from "@/components/Glyph";
 
 // Schema-driven content editor (/cms/[site]/sections/[key]). Renders the 8 field
 // types from section.schema; locale tabs for localized sections; image fields
@@ -268,6 +269,20 @@ function FieldList({
   );
 }
 
+// iconButtonStyle styles one swatch in the icon picker; highlighted when chosen.
+const iconButtonStyle = (selected: boolean): React.CSSProperties => ({
+  width: 42,
+  height: 42,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 10,
+  cursor: "pointer",
+  border: `1px solid ${selected ? "var(--md-sys-color-primary)" : "var(--md-sys-color-outline-variant, #444)"}`,
+  background: selected ? "color-mix(in srgb, var(--md-sys-color-primary) 16%, transparent)" : "transparent",
+  color: selected ? "var(--md-sys-color-primary)" : "var(--md-sys-color-on-surface, #ddd)",
+});
+
 function FieldEditor({
   field,
   value,
@@ -325,6 +340,39 @@ function FieldEditor({
     case "select": {
       const options = field.options ?? [];
       const current = typeof value === "string" ? value : "";
+      // Icon fields (every option is a known glyph) get a visual picker showing
+      // the full renderer icon set, so the editor sees what they're choosing.
+      const isIcon = options.length > 0 && options.every(hasGlyph);
+      if (isIcon) {
+        return (
+          <div>
+            {label}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+              <button
+                type="button"
+                title="none"
+                disabled={field.readOnly}
+                onClick={() => onChange("")}
+                style={iconButtonStyle(current === "")}
+              >
+                <span style={{ fontSize: 12, color: "var(--md-sys-color-on-surface-variant)" }}>none</span>
+              </button>
+              {GLYPH_NAMES.map((o) => (
+                <button
+                  key={o}
+                  type="button"
+                  title={o}
+                  disabled={field.readOnly}
+                  onClick={() => onChange(o)}
+                  style={iconButtonStyle(current === o)}
+                >
+                  <Glyph name={o} size={22} />
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      }
       return (
         <div>
           {label}

@@ -19,9 +19,13 @@ export async function POST(
       return NextResponse.json({ error: "site not found" }, { status: 404 });
     }
     const dispatched = await publishSite(site);
-    // Preset (studio-rendered) sites go live instantly — no rebuild dispatch.
+    // "instant" = nothing to rebuild: studio (preset) sites render live via SSR,
+    // and sites with no rebuild webhook configured have no CI to trigger. Only a
+    // site that HAS a configured rebuild target but failed to dispatch warrants
+    // the "rebuild could not be triggered" warning.
+    const instant = !!site.presetId || !site.githubRepo || !site.dispatchEvent;
     return NextResponse.json(
-      { published: true, dispatched, instant: !!site.presetId },
+      { published: true, dispatched, instant },
       { status: 200 }
     );
   } catch (error) {

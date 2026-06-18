@@ -1,16 +1,13 @@
--- Studio multi-tenant renderer. A cms.site becomes "studio-rendered" the moment
--- it has a preset_id: the studio app serves any site with one, while sites
--- without (e.g. repo-per-site like portfolio) are untouched. The preset itself
--- (palette, fonts, layout, placeholder copy) lives as code in the studio
--- renderer; the DB stores only the assignment plus per-site deviations:
---   theme_overrides — token nudges that stay within the preset
---   settings        — "config later" data (cal.com link, embed url, socials)
--- Idempotent.
+-- Studio/practa config REMOVED from the CMS. preset_id, theme_overrides and
+-- settings used to mark a site studio-rendered and hold its config; that now
+-- lives in practa's own DB (a site is "studio" simply when it has no
+-- github_repo/dispatch_event). This migration drops them. Idempotent — re-run
+-- every deploy, so it also keeps them gone.
 SET search_path TO cms, public;
 
-ALTER TABLE sites
-  ADD COLUMN IF NOT EXISTS preset_id       TEXT,
-  ADD COLUMN IF NOT EXISTS theme_overrides JSONB NOT NULL DEFAULT '{}',
-  ADD COLUMN IF NOT EXISTS settings        JSONB NOT NULL DEFAULT '{}';
+DROP INDEX IF EXISTS idx_sites_preset;
 
-CREATE INDEX IF NOT EXISTS idx_sites_preset ON sites(preset_id);
+ALTER TABLE sites
+  DROP COLUMN IF EXISTS preset_id,
+  DROP COLUMN IF EXISTS theme_overrides,
+  DROP COLUMN IF EXISTS settings;

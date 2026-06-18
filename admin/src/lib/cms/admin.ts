@@ -36,11 +36,10 @@ function mapSite(r: Record<string, unknown>): Site {
     dispatchEvent: r.dispatch_event as string,
     createdAt: r.created_at as Date,
     ownerUserId: (r.owner_user_id as number | null) ?? null,
-    themeOverrides: (r.theme_overrides as Record<string, unknown>) ?? {},
   };
 }
 
-const SITE_COLS = `id, key, name, locales, default_locale, github_repo, dispatch_event, created_at, owner_user_id, theme_overrides`;
+const SITE_COLS = `id, key, name, locales, default_locale, github_repo, dispatch_event, created_at, owner_user_id`;
 
 // ---- Sites ----
 
@@ -579,6 +578,29 @@ export async function importDictSeparate(
   } finally {
     client.release();
   }
+}
+
+// mergeContent shallow-merges a patch into a section's draft + published content
+// (Postgres jsonb `||`) for one locale, creating the row if absent. Used for
+// targeted field updates (e.g. media.logo / media.portraitUrl) that must not
+// clobber sibling fields the way a full import would.
+export async function mergeContent(
+  siteId: string,
+  sectionKey: string,
+  locale: string,
+  patch: Record<string, unknown>
+): Promise<void> {
+  const sec = await getSection(siteId, sectionKey);
+  if (!sec) throw new ImportError(`no section "${sectionKey}"`);
+  await pool.query(
+    `INSERT INTO contents (id, section_id, locale, draft, published, published_at)
+     VALUES ($1,$2,$3,$4,$4,now())
+     ON CONFLICT (section_id, locale) DO UPDATE SET
+       draft = contents.draft || EXCLUDED.draft,
+       published = contents.published || EXCLUDED.published,
+       updated_at = now(), published_at = now()`,
+    [newId(), sec.id, locale, JSON.stringify(patch)]
+  );
 }
 
 // ImportError marks a client (400) error from importDict, vs a 500.

@@ -18,7 +18,6 @@ export interface Site {
   dispatchEvent: string;
   createdAt: Date;
   ownerUserId: number | null;
-  themeOverrides: Record<string, unknown>;
 }
 
 // Section mirrors the sections table with its parsed schema (cms/model.go
@@ -36,7 +35,7 @@ export interface Section extends DictSection {
 export async function getSiteByKey(key: string): Promise<Site | null> {
   const { rows } = await pool.query(
     `SELECT id, key, name, locales, default_locale, github_repo, dispatch_event,
-            created_at, owner_user_id, theme_overrides
+            created_at, owner_user_id
      FROM sites WHERE key = $1`,
     [key]
   );
@@ -52,7 +51,6 @@ export async function getSiteByKey(key: string): Promise<Site | null> {
     dispatchEvent: r.dispatch_event,
     createdAt: r.created_at,
     ownerUserId: r.owner_user_id ?? null,
-    themeOverrides: r.theme_overrides ?? {},
   };
 }
 
@@ -147,7 +145,6 @@ export interface SiteBundle {
   locale: string;
   locales: string[];
   defaultLocale: string;
-  themeOverrides: Record<string, unknown>;
   publishedAt: string | null;
   pages: BundlePage[];
   assets: BundleAsset[];
@@ -196,7 +193,6 @@ export async function siteBundle(
     locale,
     locales: site.locales,
     defaultLocale: site.defaultLocale,
-    themeOverrides: site.themeOverrides,
     publishedAt: await maxPublishedAt(site.id),
     pages,
     assets: await listAssets(site.id),

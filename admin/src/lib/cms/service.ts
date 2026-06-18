@@ -5,6 +5,7 @@ import {
   assignSiteOwner,
   importDict,
   importDictSeparate,
+  mergeContent,
   publishSite,
   validKey,
   ImportError,
@@ -130,6 +131,22 @@ export async function handleServiceAction(
       const site = await requireSite(params.key);
       const dispatched = await publishSite(site);
       return { dispatched };
+    }
+
+    case "content.merge": {
+      const site = await requireSite(params.key);
+      const section = typeof params.section === "string" ? params.section : "";
+      if (!section) throw new ServiceError("missing section");
+      const locale = typeof params.locale === "string" ? params.locale : "*";
+      const patch = params.patch && typeof params.patch === "object" ? (params.patch as Record<string, unknown>) : null;
+      if (!patch) throw new ServiceError("missing patch");
+      try {
+        await mergeContent(site.id, section, locale, patch);
+      } catch (e) {
+        if (e instanceof ImportError) throw new ServiceError(e.message, 400);
+        throw e;
+      }
+      return { ok: true };
     }
 
     case "assets.add": {

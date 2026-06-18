@@ -9,9 +9,8 @@ import type { Site } from "./db";
 // failure — the caller surfaces a warning instead of failing the publish.
 export async function dispatch(site: Site): Promise<boolean> {
   if (!site.githubRepo || !site.dispatchEvent) {
-    console.error(
-      `publish ${site.key}: dispatch: site has no github_repo/dispatch_event configured`
-    );
+    // Studio sites render live via SSR — no CI rebuild to trigger. Normal, not
+    // an error; the caller treats this as an instant publish.
     return false;
   }
   // The global PAT (GITHUB_PAT, repo+workflow scope) covers repository_dispatch;

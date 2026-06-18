@@ -29,6 +29,9 @@ export async function middleware(req: NextRequest) {
     pathname === "/api/verify" ||
     pathname.startsWith("/api/webhooks") ||
     pathname.startsWith("/api/cms/v1") ||
+    // Internal CMS service API: authed by its own shared secret (not a session
+    // cookie), so it must bypass the session gate here.
+    pathname.startsWith("/api/cms/service") ||
     pathname.startsWith("/api/experimentation/v1")
   ) {
     return NextResponse.next();

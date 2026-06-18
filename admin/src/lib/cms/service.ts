@@ -11,6 +11,7 @@ import {
   type Site,
 } from "./admin";
 import { upsertSections, type SeedSection } from "./seed";
+import { uploadFile } from "./storage";
 import { createUser, findUserIdByEmail } from "@/lib/users";
 import { signInviteToken } from "./authz";
 
@@ -130,6 +131,17 @@ export async function handleServiceAction(
       const site = await requireSite(params.key);
       const dispatched = await publishSite(site);
       return { dispatched };
+    }
+
+    case "assets.add": {
+      const site = await requireSite(params.key);
+      const b64 = typeof params.dataBase64 === "string" ? params.dataBase64 : "";
+      if (!b64) throw new ServiceError("missing dataBase64");
+      const filename = typeof params.filename === "string" && params.filename ? params.filename : "upload";
+      const data = Buffer.from(b64, "base64");
+      const result = await uploadFile(site, filename, data);
+      if (!result.ok) throw new ServiceError(result.error, 400);
+      return { url: result.asset.url, id: result.asset.id, filename: result.asset.filename };
     }
 
     case "owners.assign": {

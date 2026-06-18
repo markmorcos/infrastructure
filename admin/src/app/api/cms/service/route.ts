@@ -5,6 +5,9 @@ import {
   ServiceError,
 } from "@/lib/cms/service";
 
+// minio (assets.add) + pg need the Node runtime.
+export const runtime = "nodejs";
+
 // Internal CMS service API (single shared-secret write path). Not public, not
 // CORS-enabled: only in-cluster callers (the admin console, the practa product)
 // with the shared secret. RPC-style: POST { action, params }.

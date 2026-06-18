@@ -2,6 +2,11 @@ import { timingSafeEqual } from "crypto";
 import {
   createSite,
   getSiteByKey,
+  getSection,
+  createSection,
+  updateSection,
+  deleteSection,
+  upsertDraft,
   assignSiteOwner,
   importDict,
   importDictSeparate,
@@ -131,6 +136,62 @@ export async function handleServiceAction(
       const site = await requireSite(params.key);
       const dispatched = await publishSite(site);
       return { dispatched };
+    }
+
+    case "sections.create": {
+      const site = await requireSite(params.key);
+      const input = params.section as Record<string, unknown> | undefined;
+      const sectionKey = typeof input?.key === "string" ? input.key : "";
+      if (!sectionKey) throw new ServiceError("section key required");
+      if (await getSection(site.id, sectionKey)) throw new ServiceError("section already exists", 409);
+      const section = await createSection(site.id, {
+        key: sectionKey,
+        title: typeof input?.title === "string" ? input.title : sectionKey,
+        pageGroup: typeof input?.pageGroup === "string" ? input.pageGroup : undefined,
+        localized: typeof input?.localized === "boolean" ? input.localized : undefined,
+        flatten: typeof input?.flatten === "boolean" ? input.flatten : undefined,
+        fields: (input?.fields ?? []) as never,
+      });
+      return { section };
+    }
+
+    case "sections.update": {
+      const site = await requireSite(params.key);
+      const sectionKey = typeof params.sectionKey === "string" ? params.sectionKey : "";
+      const sec = await getSection(site.id, sectionKey);
+      if (!sec) throw new ServiceError("section not found", 404);
+      const input = params.section as Record<string, unknown> | undefined;
+      const section = await updateSection(sec.id, {
+        title: typeof input?.title === "string" ? input.title : sec.title,
+        pageGroup: typeof input?.pageGroup === "string" ? input.pageGroup : sec.pageGroup,
+        localized: typeof input?.localized === "boolean" ? input.localized : sec.localized,
+        flatten: typeof input?.flatten === "boolean" ? input.flatten : sec.flatten,
+        fields: (input?.fields ?? sec.schema) as never,
+      });
+      return { section };
+    }
+
+    case "sections.delete": {
+      const site = await requireSite(params.key);
+      const sec = await getSection(site.id, typeof params.sectionKey === "string" ? params.sectionKey : "");
+      if (!sec) throw new ServiceError("section not found", 404);
+      await deleteSection(sec.id);
+      return { ok: true };
+    }
+
+    case "content.putDraft": {
+      const site = await requireSite(params.key);
+      const sec = await getSection(site.id, typeof params.sectionKey === "string" ? params.sectionKey : "");
+      if (!sec) throw new ServiceError("section not found", 404);
+      const draft = params.draft && typeof params.draft === "object" && !Array.isArray(params.draft)
+        ? (params.draft as Record<string, unknown>) : null;
+      if (!draft) throw new ServiceError("draft must be an object");
+      // Non-localized sections store under "*"; localized ones validate the locale.
+      let locale = typeof params.locale === "string" ? params.locale : site.defaultLocale;
+      if (!sec.localized) locale = "*";
+      else if (!site.locales.includes(locale)) throw new ServiceError("unknown locale");
+      await upsertDraft(sec.id, locale, draft);
+      return { ok: true, locale };
     }
 
     case "content.merge": {

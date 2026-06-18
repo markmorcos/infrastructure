@@ -86,17 +86,24 @@ export default function SiteDashboard() {
   const openPreview = async () => {
     setPreviewing(true);
     setMsg(null);
+    // Open the tab synchronously inside the click; a window.open() after the
+    // awaited fetch loses the user-activation and Safari blocks it as a popup.
+    // Dropping `noopener` is required to keep the handle — sever opener manually.
+    const tab = window.open("about:blank", "_blank");
+    if (tab) tab.opener = null;
     try {
       const res = await fetch(
         `/api/cms/sites/${encodeURIComponent(siteKey)}/preview-token`,
         { method: "POST" }
       );
       if (!res.ok) {
+        tab?.close();
         setMsg({ kind: "err", text: "Could not open preview — please try again." });
         return;
       }
       const { url } = await res.json();
-      window.open(url, "_blank", "noopener");
+      if (tab) tab.location.replace(url);
+      else window.open(url, "_blank", "noopener");
     } finally {
       setPreviewing(false);
     }
@@ -104,16 +111,20 @@ export default function SiteDashboard() {
 
   const openBranding = async () => {
     setMsg(null);
+    const tab = window.open("about:blank", "_blank");
+    if (tab) tab.opener = null;
     const res = await fetch(
       `/api/cms/sites/${encodeURIComponent(siteKey)}/manage-token`,
       { method: "POST" }
     );
     if (!res.ok) {
+      tab?.close();
       setMsg({ kind: "err", text: "Could not open branding — please try again." });
       return;
     }
     const { url } = await res.json();
-    window.open(url, "_blank", "noopener");
+    if (tab) tab.location.replace(url);
+    else window.open(url, "_blank", "noopener");
   };
 
   const publish = async () => {

@@ -20,6 +20,13 @@ services:
           secretKeyRef:
             name: jwt-secret
             key: JWT_SECRET
+      # Shared secret guarding the internal CMS service API (single write path,
+      # called by the admin console and the practa product).
+      - name: CMS_SERVICE_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: cms-service-secret
+            key: CMS_SERVICE_SECRET
       - name: GITHUB_PAT
         valueFrom:
           secretKeyRef:

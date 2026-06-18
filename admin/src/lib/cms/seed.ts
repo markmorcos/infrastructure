@@ -390,7 +390,17 @@ function newId(): string {
 // cms/seed.go's per-boot upsert and cms/store.go UpsertSection. The live DB
 // already holds these rows, so this is optional but safe to call.
 export async function upsertSeedSections(siteId: string): Promise<void> {
-  const sections = leaSections();
+  await upsertSections(siteId, leaSections());
+}
+
+// upsertSections upserts an arbitrary list of section schemas by (site, key),
+// assigning positions in array order. The generic primitive behind the CMS
+// service API's sections.upsert (consumers like practa pass their preset's
+// sections); upsertSeedSections is just this with leaSections().
+export async function upsertSections(
+  siteId: string,
+  sections: SeedSection[]
+): Promise<void> {
   for (let i = 0; i < sections.length; i++) {
     const sec = sections[i];
     await pool.query(

@@ -527,6 +527,81 @@ export async function importDict(
   await importContent(values);
 }
 
+// importDictSeparate imports DIFFERENT published vs draft content in one pass:
+// `published` and `draft` are each a {locale: dict} payload. Used for the
+// onboarding flow where the public site shows generic placeholders (published)
+// while the owner reviews an AI draft (draft). When a section/locale appears in
+// only one payload, that value is used for both columns so neither side is
+// blank. Mirrors importDict's explode/validate per locale.
+export async function importDictSeparate(
+  site: Site,
+  published: Record<string, Record<string, unknown>>,
+  draft: Record<string, Record<string, unknown>>
+): Promise<void> {
+  const sections = await listSections(site.id);
+  const sectionByKey = new Map(sections.map((s) => [s.key, s]));
+
+  // sectionId -> locale -> { pub?, drf? }
+  const merged: Record<string, Record<string, { pub?: Record<string, unknown>; drf?: Record<string, unknown> }>> = {};
+  const slot = (secId: string, locale: string) => {
+    if (!merged[secId]) merged[secId] = {};
+    if (!merged[secId][locale]) merged[secId][locale] = {};
+    return merged[secId][locale];
+  };
+
+  const ingest = (
+    payload: Record<string, Record<string, unknown>>,
+    which: "pub" | "drf"
+  ) => {
+    for (const locale of Object.keys(payload)) {
+      if (!site.locales.includes(locale)) {
+        throw new ImportError(`unknown locale ${locale.trim()}`);
+      }
+      let exploded: Record<string, Record<string, unknown>>;
+      try {
+        exploded = explodeDict(sections, payload[locale]);
+      } catch (e) {
+        throw new ImportError(`locale ${locale}: ${(e as Error).message}`);
+      }
+      for (const key of Object.keys(exploded)) {
+        const sec = sectionByKey.get(key)!;
+        const loc = sec.localized ? locale : localeAll;
+        if (!sec.localized && locale !== site.defaultLocale) continue;
+        slot(sec.id, loc)[which] = exploded[key];
+      }
+    }
+  };
+
+  ingest(published, "pub");
+  ingest(draft, "drf");
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (const sectionId of Object.keys(merged)) {
+      for (const locale of Object.keys(merged[sectionId])) {
+        const { pub, drf } = merged[sectionId][locale];
+        const finalPub = JSON.stringify(pub ?? drf ?? {});
+        const finalDraft = JSON.stringify(drf ?? pub ?? {});
+        await client.query(
+          `INSERT INTO contents (id, section_id, locale, draft, published, published_at)
+           VALUES ($1,$2,$3,$4,$5,now())
+           ON CONFLICT (section_id, locale) DO UPDATE SET
+             draft=EXCLUDED.draft, published=EXCLUDED.published,
+             updated_at=now(), published_at=now()`,
+          [newId(), sectionId, locale, finalDraft, finalPub]
+        );
+      }
+    }
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 // ImportError marks a client (400) error from importDict, vs a 500.
 export class ImportError extends Error {}
 

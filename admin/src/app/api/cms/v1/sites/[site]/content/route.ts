@@ -69,7 +69,6 @@ export async function GET(
         locale,
         locales: site.locales,
         publishedAt,
-        settings: draft ? site.settingsDraft : site.settings,
         content: assembleDict(sections, content, locale),
       },
       { status: 200, headers }

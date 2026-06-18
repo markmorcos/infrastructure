@@ -18,10 +18,7 @@ export interface Site {
   dispatchEvent: string;
   createdAt: Date;
   ownerUserId: number | null;
-  presetId: string | null;
   themeOverrides: Record<string, unknown>;
-  settings: Record<string, unknown>;
-  settingsDraft: Record<string, unknown>;
 }
 
 // Section mirrors the sections table with its parsed schema (cms/model.go
@@ -39,7 +36,7 @@ export interface Section extends DictSection {
 export async function getSiteByKey(key: string): Promise<Site | null> {
   const { rows } = await pool.query(
     `SELECT id, key, name, locales, default_locale, github_repo, dispatch_event,
-            created_at, owner_user_id, preset_id, theme_overrides, settings, settings_draft
+            created_at, owner_user_id, theme_overrides
      FROM sites WHERE key = $1`,
     [key]
   );
@@ -55,10 +52,7 @@ export async function getSiteByKey(key: string): Promise<Site | null> {
     dispatchEvent: r.dispatch_event,
     createdAt: r.created_at,
     ownerUserId: r.owner_user_id ?? null,
-    presetId: r.preset_id ?? null,
     themeOverrides: r.theme_overrides ?? {},
-    settings: r.settings ?? {},
-    settingsDraft: r.settings_draft ?? {},
   };
 }
 
@@ -153,9 +147,7 @@ export interface SiteBundle {
   locale: string;
   locales: string[];
   defaultLocale: string;
-  presetId: string | null;
   themeOverrides: Record<string, unknown>;
-  settings: Record<string, unknown>;
   publishedAt: string | null;
   pages: BundlePage[];
   assets: BundleAsset[];
@@ -204,9 +196,7 @@ export async function siteBundle(
     locale,
     locales: site.locales,
     defaultLocale: site.defaultLocale,
-    presetId: site.presetId,
     themeOverrides: site.themeOverrides,
-    settings: site.settings,
     publishedAt: await maxPublishedAt(site.id),
     pages,
     assets: await listAssets(site.id),

@@ -317,58 +317,17 @@ export default function SiteDashboard() {
   );
 }
 
-function settingStr(settings: Record<string, unknown> | undefined, key: string): string {
-  const v = settings?.[key];
-  return typeof v === "string" ? v : "";
-}
-
-const HEX_RE = /^#?[0-9a-fA-F]{6}$/;
-
 function SiteSettings({ site, isAdmin, onSaved }: { site: Site; isAdmin: boolean; onSaved: () => void }) {
   const [name, setName] = useState(site.name);
   const [repo, setRepo] = useState(site.githubRepo);
   const [dispatch, setDispatch] = useState(site.dispatchEvent);
-  // Edit the draft (what Publish will promote); fall back to live for old sites.
-  const draft = site.settingsDraft ?? site.settings;
-  const isPreset = !!site.presetId;
-  const [contactEmail, setContactEmail] = useState(settingStr(draft, "contactEmail"));
-  const [brandColor, setBrandColor] = useState(settingStr(draft, "brandColor"));
-  const [calcomUrl, setCalcomUrl] = useState(settingStr(draft, "calcomUrl"));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  const emailInvalid = contactEmail.trim() !== "" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim());
-  const colorInvalid = brandColor.trim() !== "" && !HEX_RE.test(brandColor.trim());
-  const calcomInvalid = calcomUrl.trim() !== "" && !/^https?:\/\/\S+$/.test(calcomUrl.trim());
-  const pickerValue = HEX_RE.test(brandColor.trim())
-    ? (brandColor.trim().startsWith("#") ? brandColor.trim() : `#${brandColor.trim()}`)
-    : "#243831";
-
   async function save() {
-    if (emailInvalid || colorInvalid || calcomInvalid) {
-      setErr(
-        emailInvalid
-          ? "enter a valid contact email"
-          : colorInvalid
-            ? "brand color must be a 6-digit hex (e.g. #243831)"
-            : "cal.com link must be a full URL (https://…)"
-      );
-      return;
-    }
     setBusy(true);
     setErr("");
-    // Infra fields are admin-only; owners send presentation settings only (the
-    // API drops anything else from a non-admin patch regardless).
-    const settings = {
-      contactEmail: contactEmail.trim(),
-      brandColor: brandColor.trim(),
-      calcomUrl: calcomUrl.trim(),
-    };
-    const payload = !isAdmin
-      ? { settings }
-      : isPreset
-        ? { name, settings }
-        : { name, githubRepo: repo, dispatchEvent: dispatch, settings };
+    const payload = { name, githubRepo: repo, dispatchEvent: dispatch };
     const res = await fetch(`/api/cms/sites/${encodeURIComponent(site.key)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -382,68 +341,37 @@ function SiteSettings({ site, isAdmin, onSaved }: { site: Site; isAdmin: boolean
     onSaved();
   }
 
+  if (!isAdmin) {
+    return (
+      <Card className="mt-4">
+        <Label as="div" className="mb-2 block">{"// SETTINGS"}</Label>
+        <div className="font-[var(--cp-mono)] text-[12px] text-[var(--md-sys-color-on-surface-variant)]">
+          Branding (logo, colour, cal.com, contact) is edited in your site content. Site-level settings are admin-managed.
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card className="mt-4">
       <Label as="div" className="mb-3 block">{"// SETTINGS"}</Label>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {isAdmin && (
-          <div>
-            <Label>NAME</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5" />
-          </div>
-        )}
-        {isAdmin && !isPreset && <div className="hidden md:block" />}
-        {isAdmin && !isPreset && (
-          <>
-            <div>
-              <Label>GITHUB REPO</Label>
-              <Input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="owner/repo" className="mt-1.5" />
-            </div>
-            <div>
-              <Label>DISPATCH EVENT</Label>
-              <Input value={dispatch} onChange={(e) => setDispatch(e.target.value)} placeholder="deploy-my-site" className="mt-1.5" />
-            </div>
-          </>
-        )}
         <div>
-          <Label>CONTACT EMAIL</Label>
-          <Input
-            value={contactEmail}
-            onChange={(e) => setContactEmail(e.target.value)}
-            placeholder="owner@example.com"
-            type="email"
-            className="mt-1.5"
-          />
+          <Label>NAME</Label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1.5" />
+        </div>
+        <div className="hidden md:block" />
+        <div>
+          <Label>GITHUB REPO</Label>
+          <Input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="owner/repo (empty = studio site)" className="mt-1.5" />
         </div>
         <div>
-          <Label>CAL.COM LINK</Label>
-          <Input
-            value={calcomUrl}
-            onChange={(e) => setCalcomUrl(e.target.value)}
-            placeholder="https://cal.com/your-handle/intro"
-            type="url"
-            className="mt-1.5"
-          />
-        </div>
-        <div className="md:col-span-2">
-          <Label>BRAND COLOR</Label>
-          <div className="mt-1.5 flex items-center gap-2.5">
-            <input
-              type="color"
-              value={pickerValue}
-              onChange={(e) => setBrandColor(e.target.value)}
-              aria-label="brand color picker"
-              className="h-[42px] w-[52px] shrink-0 cursor-pointer rounded-[10px] border border-[var(--md-sys-color-outline-variant)] bg-transparent p-1"
-            />
-            <Input value={brandColor} onChange={(e) => setBrandColor(e.target.value)} placeholder="#243831" />
-          </div>
-          <div className="mt-1.5 font-[var(--cp-mono)] text-[10.5px] text-[var(--md-sys-color-on-surface-variant)]">
-            The accent is auto-derived (sage → clay). Use Preview to see the theme on the live site.
-          </div>
+          <Label>DISPATCH EVENT</Label>
+          <Input value={dispatch} onChange={(e) => setDispatch(e.target.value)} placeholder="deploy-my-site" className="mt-1.5" />
         </div>
       </div>
       <div className="mt-1.5 font-[var(--cp-mono)] text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
-        Edits are saved as a draft — use Preview to check them, then Publish to go live. Contact email receives contact-form submissions; brand color seeds the site theme.
+        Studio sites (no repo/dispatch) render live on Publish. Branding (logo, colour, cal.com, contact) is edited in the site content, not here.
       </div>
       {err && <div className="mt-2 text-[12px] text-[var(--cp-err)]">{err}</div>}
       <div className="mt-3.5">

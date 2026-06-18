@@ -23,7 +23,7 @@ export async function POST(
     // and sites with no rebuild webhook configured have no CI to trigger. Only a
     // site that HAS a configured rebuild target but failed to dispatch warrants
     // the "rebuild could not be triggered" warning.
-    const instant = !!site.presetId || !site.githubRepo || !site.dispatchEvent;
+    const instant = !site.githubRepo || !site.dispatchEvent;
     return NextResponse.json(
       { published: true, dispatched, instant },
       { status: 200 }

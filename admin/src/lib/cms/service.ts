@@ -80,7 +80,6 @@ export async function handleServiceAction(
         locales,
         defaultLocale:
           typeof params.defaultLocale === "string" ? params.defaultLocale : undefined,
-        presetId: typeof params.presetId === "string" ? params.presetId : undefined,
       });
       return { site: serializeSite(site) };
     }

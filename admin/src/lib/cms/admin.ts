@@ -36,14 +36,11 @@ function mapSite(r: Record<string, unknown>): Site {
     dispatchEvent: r.dispatch_event as string,
     createdAt: r.created_at as Date,
     ownerUserId: (r.owner_user_id as number | null) ?? null,
-    presetId: (r.preset_id as string | null) ?? null,
     themeOverrides: (r.theme_overrides as Record<string, unknown>) ?? {},
-    settings: (r.settings as Record<string, unknown>) ?? {},
-    settingsDraft: (r.settings_draft as Record<string, unknown>) ?? {},
   };
 }
 
-const SITE_COLS = `id, key, name, locales, default_locale, github_repo, dispatch_event, created_at, owner_user_id, preset_id, theme_overrides, settings, settings_draft`;
+const SITE_COLS = `id, key, name, locales, default_locale, github_repo, dispatch_event, created_at, owner_user_id, theme_overrides`;
 
 // ---- Sites ----
 
@@ -97,13 +94,12 @@ export interface CreateSiteInput {
   defaultLocale?: string;
   githubRepo?: string;
   dispatchEvent?: string;
-  presetId?: string;
 }
 
 // createSite inserts a new site, defaulting locales/defaultLocale the same way
 // cms/store.go CreateSite does. Throws on a duplicate key (handled as 409 by
-// the route). A `presetId` marks the site as studio-rendered (served live by
-// the practa renderer — no repo/dispatch).
+// the route). A site with no github_repo/dispatch_event is studio-rendered
+// (served live by the practa renderer — no CI rebuild on publish).
 export async function createSite(input: CreateSiteInput): Promise<Site> {
   const id = newId();
   // New sites default to English only; other locales (de/ar/…) are opt-in.
@@ -111,8 +107,8 @@ export async function createSite(input: CreateSiteInput): Promise<Site> {
   const defaultLocale = input.defaultLocale || locales[0];
   const name = input.name || input.key;
   const { rows } = await pool.query(
-    `INSERT INTO sites (id, key, name, locales, default_locale, github_repo, dispatch_event, preset_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+    `INSERT INTO sites (id, key, name, locales, default_locale, github_repo, dispatch_event)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
      RETURNING ${SITE_COLS}`,
     [
       id,
@@ -122,7 +118,6 @@ export async function createSite(input: CreateSiteInput): Promise<Site> {
       defaultLocale,
       input.githubRepo ?? "",
       input.dispatchEvent ?? "",
-      input.presetId ?? null,
     ]
   );
   return mapSite(rows[0]);
@@ -140,22 +135,6 @@ export async function updateSite(
     `UPDATE sites SET name=$2, github_repo=$3, dispatch_event=$4 WHERE id=$1
      RETURNING ${SITE_COLS}`,
     [id, name, githubRepo, dispatchEvent]
-  );
-  return mapSite(rows[0]);
-}
-
-// updateSiteSettings shallow-merges a partial object into the site's DRAFT
-// settings JSONB (Postgres `||`), leaving other keys intact. Edits stay in the
-// draft until Publish promotes them; the renderer previews the draft via
-// ?draft=1. Returns the refreshed site.
-export async function updateSiteSettings(
-  id: string,
-  patch: Record<string, unknown>
-): Promise<Site> {
-  const { rows } = await pool.query(
-    `UPDATE sites SET settings_draft = settings_draft || $2::jsonb WHERE id=$1
-     RETURNING ${SITE_COLS}`,
-    [id, JSON.stringify(patch)]
   );
   return mapSite(rows[0]);
 }
@@ -630,11 +609,6 @@ export async function publishSite(site: Site): Promise<boolean> {
          AND draft IS DISTINCT FROM published`,
       [site.id]
     );
-    // Promote draft settings (brandColor/contactEmail/calcom) to live alongside
-    // content, so one Publish flips both.
-    await client.query(`UPDATE sites SET settings = settings_draft WHERE id = $1`, [
-      site.id,
-    ]);
     const { rows } = await client.query(
       `INSERT INTO publishes (site_id, snapshot) VALUES ($1,$2) RETURNING id`,
       [site.id, JSON.stringify(snapshot)]
@@ -648,9 +622,9 @@ export async function publishSite(site: Site): Promise<boolean> {
     client.release();
   }
 
-  // Studio-rendered sites (preset_id set) read published content/settings live
-  // via SSR — there's nothing to rebuild, so skip the GitHub dispatch entirely.
-  if (site.presetId) return false;
+  // Studio-rendered sites (no github_repo/dispatch_event) read published content
+  // live via SSR — there's nothing to rebuild, so skip the GitHub dispatch.
+  if (!site.githubRepo || !site.dispatchEvent) return false;
 
   const { dispatch } = await import("./dispatch");
   const dispatched = await dispatch(site);

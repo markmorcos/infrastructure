@@ -13,7 +13,7 @@ import {
 import { upsertSections, type SeedSection } from "./seed";
 import { uploadFile } from "./storage";
 import { createUser, findUserIdByEmail } from "@/lib/users";
-import { signInviteToken } from "./authz";
+import { signInviteToken, verifyManageToken } from "./authz";
 
 // Internal CMS service API: the single shared-secret write path that the admin
 // console and the practa product both call, so there's no second copy of the
@@ -149,6 +149,14 @@ export async function handleServiceAction(
       if (!Number.isInteger(userId)) throw new ServiceError("invalid userId");
       await assignSiteOwner(site.id, userId);
       return { ok: true };
+    }
+
+    case "manage.verify": {
+      // practa calls this to validate an owner's branding-editor token without
+      // needing JWT_SECRET. Returns the site the token authorizes, or null.
+      const token = typeof params.token === "string" ? params.token : "";
+      const result = verifyManageToken(token);
+      return { site: result ? result.site : null };
     }
 
     case "users.create": {

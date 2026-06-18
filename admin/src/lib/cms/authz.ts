@@ -4,7 +4,28 @@ import { cmsPool as pool } from "@/lib/db";
 import type { Site } from "./db";
 
 const PREVIEW_TTL = "20m";
+const MANAGE_TTL = "30m";
 const INVITE_TTL = "3d";
+
+// signManageToken / verifyManageToken back the practa branding editor: the CMS
+// console mints a short-lived, site-scoped token (owner/admin only) that practa
+// trusts (via the service API manage.verify) to let the owner edit that one
+// site's config. Same trust model as the preview token.
+export function signManageToken(siteKey: string): string {
+  return jwt.sign({ kind: "manage", site: siteKey }, process.env.JWT_SECRET as string, {
+    expiresIn: MANAGE_TTL,
+  });
+}
+
+export function verifyManageToken(token: string): { site: string } | null {
+  try {
+    const p = jwt.verify(token, process.env.JWT_SECRET as string) as { kind?: string; site?: string };
+    if (p.kind !== "manage" || !p.site) return null;
+    return { site: p.site };
+  } catch {
+    return null;
+  }
+}
 
 // signInviteToken / verifyInviteToken back the onboarding set-password flow: a
 // newly-spawned owner is created with a random (locked) password and emailed a

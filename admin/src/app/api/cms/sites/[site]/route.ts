@@ -46,11 +46,13 @@ export async function PATCH(
     } catch {
       return NextResponse.json({ error: "invalid json" }, { status: 400 });
     }
+    // Use ?? (not ||) for repo/dispatch so an explicit "" clears them — that's
+    // how a site is turned into a Studio site (render-live, no GitHub deploy).
     const updated = await updateSite(
       site.id,
       body.name || site.name,
-      body.githubRepo || site.githubRepo,
-      body.dispatchEvent || site.dispatchEvent
+      body.githubRepo ?? site.githubRepo,
+      body.dispatchEvent ?? site.dispatchEvent
     );
     return NextResponse.json(updated, { status: 200 });
   } catch (error) {

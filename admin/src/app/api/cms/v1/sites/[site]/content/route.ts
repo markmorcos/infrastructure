@@ -67,6 +67,7 @@ export async function GET(
         site: site.key,
         name: site.name,
         locale,
+        locales: site.locales,
         publishedAt,
         settings: draft ? site.settingsDraft : site.settings,
         content: assembleDict(sections, content, locale),

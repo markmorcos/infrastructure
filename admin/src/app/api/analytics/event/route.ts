@@ -6,9 +6,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // First-party analytics ingest. Called server-to-server by the practa renderer's
-// collector with the tenant's API token (same token used for the CMS API). The
-// site is taken from the token, never the body. The renderer enriches the event
-// at the edge (visitor_id = daily-salted hash, UA fields) so no raw IP ever
+// collector, authenticated with practa's CMS service token (any valid token =
+// authorized service caller, same model as /api/cms/service). The site is passed
+// in the body (practa is multi-tenant on one token). The renderer enriches the
+// event at the edge (visitor_id = daily-salted hash, UA fields) so no raw IP ever
 // reaches here. One row per pageview / funnel event.
 
 const s = (v: unknown, max: number): string | null => {
@@ -18,8 +19,8 @@ const s = (v: unknown, max: number): string | null => {
 };
 
 export async function POST(req: NextRequest) {
-  const tenant = await verifyToken(bearer(req.headers.get("authorization")));
-  if (!tenant) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const authed = (await verifyToken(bearer(req.headers.get("authorization")))) !== null;
+  if (!authed) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   let body: Record<string, unknown>;
   try {
@@ -28,10 +29,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
 
+  const site = s(body.site ?? body.site_key, 64);
   const name = s(body.name, 64);
   const visitorId = s(body.visitorId ?? body.visitor_id, 64);
-  if (!name || !visitorId) {
-    return NextResponse.json({ error: "name and visitorId required" }, { status: 422 });
+  if (!site || !name || !visitorId) {
+    return NextResponse.json({ error: "site, name and visitorId required" }, { status: 422 });
   }
 
   const props = body.props && typeof body.props === "object" ? body.props : null;
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
           country, browser, os, device, visitor_id, props)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
       [
-        tenant,
+        site,
         name,
         s(body.path, 1024) ?? "/",
         s(body.referrer ?? body.referrer_host, 255),

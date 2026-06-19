@@ -32,9 +32,10 @@ export async function middleware(req: NextRequest) {
     // Internal CMS service API: authed by its own shared secret (not a session
     // cookie), so it must bypass the session gate here.
     pathname.startsWith("/api/cms/service") ||
-    // Analytics ingest: token-authed in-handler (practa's service token), called
-    // server-to-server by the renderer's collector — not a session cookie.
-    pathname.startsWith("/api/analytics/event") ||
+    // Analytics ingest + per-tenant stats: token-authed in-handler (practa's
+    // service token), called server-to-server by the renderer — not a session
+    // cookie. (The admin global dashboard uses /api/admin/analytics, still gated.)
+    pathname.startsWith("/api/analytics/") ||
     pathname.startsWith("/api/experimentation/v1")
   ) {
     return NextResponse.next();

@@ -23,6 +23,8 @@ function pageMeta(pathname: string): { title: string; sub: string } {
     return { title: "CMS", sub: "sites, content, assets" };
   if (pathname.startsWith("/experimentation"))
     return { title: "Experimentation", sub: "flags, experiments, results" };
+  if (pathname.startsWith("/analytics"))
+    return { title: "Analytics", sub: "privacy-first traffic & funnels" };
   if (pathname.startsWith("/users"))
     return { title: "Users & Access", sub: "people and site access" };
   if (pathname.startsWith("/backups"))
@@ -85,7 +87,7 @@ function Shell({ children }: { children: React.ReactNode }) {
     }
   }, [drawer]);
 
-  type NavItem = { href: string; icon: string; label: string; active: boolean; hard?: boolean };
+  type NavItem = { href: string; icon: string; label: string; active: boolean };
   const adminNav: NavItem[] = [
     {
       href: "/projects",
@@ -112,13 +114,10 @@ function Shell({ children }: { children: React.ReactNode }) {
       active: pathname.startsWith("/experimentation"),
     },
     {
-      // Reverse-proxied to Plausible at /analytics (outside the Next app), so it
-      // needs a full navigation, not client-side routing.
       href: "/analytics",
       icon: "bar_chart_4_bars",
       label: "analytics",
       active: pathname.startsWith("/analytics"),
-      hard: true,
     },
     {
       href: "/users",
@@ -195,26 +194,14 @@ function Shell({ children }: { children: React.ReactNode }) {
         </Link>
 
         <div style={{ padding: "6px 12px", display: "flex", flexDirection: "column", gap: 3 }}>
-          {navItems.map((n) => {
-            const inner = (
-              <>
-                <span className="msym" style={{ fontSize: 19 }}>
-                  {n.icon}
-                </span>
-                <span style={{ flex: 1 }}>{n.label}</span>
-              </>
-            );
-            const cls = `cp-nav-item ${n.active ? "active" : ""}`;
-            return n.hard ? (
-              <a key={n.href} href={n.href} className={cls}>
-                {inner}
-              </a>
-            ) : (
-              <Link key={n.href} href={n.href} className={cls}>
-                {inner}
-              </Link>
-            );
-          })}
+          {navItems.map((n) => (
+            <Link key={n.href} href={n.href} className={`cp-nav-item ${n.active ? "active" : ""}`}>
+              <span className="msym" style={{ fontSize: 19 }}>
+                {n.icon}
+              </span>
+              <span style={{ flex: 1 }}>{n.label}</span>
+            </Link>
+          ))}
         </div>
 
         <div style={{ marginTop: "auto", padding: 14 }}>

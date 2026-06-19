@@ -11,9 +11,6 @@ interface App {
   icon: string;
   href: string;
   soon?: boolean;
-  // Reverse-proxied outside the Next app (e.g. Plausible at /analytics) → needs
-  // a full navigation, not client-side routing.
-  hard?: boolean;
 }
 
 const APPS: App[] = [
@@ -22,7 +19,7 @@ const APPS: App[] = [
   { label: "Provision", icon: "rocket_launch", href: "/projects/provision" },
   { label: "CMS", icon: "article", href: "/cms" },
   { label: "Experimentation", icon: "science", href: "/experimentation" },
-  { label: "Analytics", icon: "bar_chart_4_bars", href: "/analytics", hard: true },
+  { label: "Analytics", icon: "bar_chart_4_bars", href: "/analytics" },
   { label: "Users", icon: "group", href: "/users" },
   { label: "Backups", icon: "cloud_sync", href: "/backups" },
 ];
@@ -43,12 +40,6 @@ function Tile({ app }: { app: App }) {
     </>
   );
   if (app.soon) return <div className="os-app os-soon">{inner}</div>;
-  if (app.hard)
-    return (
-      <a href={app.href} className="os-app">
-        {inner}
-      </a>
-    );
   return (
     <Link href={app.href} className="os-app">
       {inner}

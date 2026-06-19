@@ -4,6 +4,7 @@ import {
   handleServiceAction,
   ServiceError,
 } from "@/lib/cms/service";
+import { verifyToken, bearer } from "@/lib/cms/tokens";
 
 // minio (assets.add) + pg need the Node runtime.
 export const runtime = "nodejs";
@@ -13,7 +14,13 @@ export const runtime = "nodejs";
 // with the shared secret. RPC-style: POST { action, params }.
 
 export async function POST(req: NextRequest) {
-  if (!serviceAuthorized(req.headers.get("x-service-secret"))) {
+  // Dual-accept during cutover: a per-tenant API token (Authorization: Bearer)
+  // or the legacy shared secret. The secret accept is dropped once practa is on
+  // the token.
+  const authed =
+    serviceAuthorized(req.headers.get("x-service-secret")) ||
+    (await verifyToken(bearer(req.headers.get("authorization")))) !== null;
+  if (!authed) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

@@ -6,6 +6,7 @@ import {
 } from "@/lib/cms/db";
 import { draftAuthorized } from "@/lib/cms/authz";
 import { assembleDict } from "@/lib/cms/dict";
+import { verifyToken, bearer } from "@/lib/cms/tokens";
 
 // Public content API, ported from cms/main.go handleContent. Serves the
 // assembled content dictionary for one locale of one site. Published content is
@@ -33,11 +34,17 @@ export async function GET(
     }
 
     const draft = req.nextUrl.searchParams.get("draft") === "1";
-    if (draft && !draftAuthorized(req, site)) {
-      return NextResponse.json(
-        { error: "unauthorized" },
-        { status: 401, headers: CORS_HEADERS }
-      );
+    if (draft) {
+      // A valid per-tenant API token authorizes draft reads (the consumer app,
+      // e.g. practa, has done its own ownership check). Fall back to the legacy
+      // owner/admin/preview-token path during cutover.
+      const tenant = await verifyToken(bearer(req.headers.get("authorization")));
+      if (!tenant && !draftAuthorized(req, site)) {
+        return NextResponse.json(
+          { error: "unauthorized" },
+          { status: 401, headers: CORS_HEADERS }
+        );
+      }
     }
 
     let locale = req.nextUrl.searchParams.get("locale") ?? "";

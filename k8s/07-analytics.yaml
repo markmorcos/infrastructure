@@ -304,7 +304,9 @@ data:
         # all with /analytics exactly once. HTML attributes cover nav/assets/forms;
         # the JS rules cover the dashboard's fetch + LiveView socket URLs.
         sub_filter_once off;
-        sub_filter_types application/javascript text/css;
+        # Plausible serves its bundle as text/javascript — must be listed or the
+        # JS (incl. the LiveView "/live" socket) is never rewritten.
+        sub_filter_types application/javascript text/javascript text/css;
         sub_filter 'href="/'   'href="/analytics/';
         sub_filter 'src="/'    'src="/analytics/';
         sub_filter 'action="/' 'action="/analytics/';
@@ -334,7 +336,7 @@ spec:
       annotations:
         # Bump when analytics-proxy-conf changes so `kubectl apply` rolls the pod
         # (a ConfigMap edit alone doesn't restart it).
-        config-rev: "2"
+        config-rev: "3"
     spec:
       containers:
         - name: nginx

@@ -314,6 +314,11 @@ data:
         sub_filter '"/api/'    '"/analytics/api/';
         sub_filter '`/api/'    '`/analytics/api/';
         sub_filter '"/live'    '"/analytics/live';
+        # Cache-bust Plausible's content-versioned assets (?vsn=d) so Cloudflare
+        # (which caches by query string and can't be purged with our scoped
+        # token) fetches the freshly-rewritten copy. Bump cb when rewrite rules
+        # change; the served HTML is DYNAMIC (uncached) so the new URL propagates.
+        sub_filter '?vsn=d'    '?vsn=d&cb=1';
       }
     }
 ---
@@ -336,7 +341,7 @@ spec:
       annotations:
         # Bump when analytics-proxy-conf changes so `kubectl apply` rolls the pod
         # (a ConfigMap edit alone doesn't restart it).
-        config-rev: "3"
+        config-rev: "4"
     spec:
       containers:
         - name: nginx

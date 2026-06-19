@@ -5,23 +5,23 @@
 #   - Postgres (existing host backend via the postgres.data ExternalName alias):
 #     Plausible's relational metadata DB — no second Postgres needed.
 #
-# Surfaced in the admin OS under "Analytics" (links to plausible.morcos.tech).
+# Surfaced in the admin OS under "Analytics" — reverse-proxied at
+# admin.morcos.tech/analytics (no separate subdomain), see analytics-ingress.
 #
 # ── One-time bootstrap (secrets are never committed; create them out-of-band) ──
-# 1. On the host Postgres, create the Plausible DB + user:
-#      CREATE USER plausible WITH PASSWORD '<pw>';
-#      CREATE DATABASE plausible_db OWNER plausible;
-# 2. Create the secret the Plausible Deployment consumes:
-#      kubectl -n analytics create secret generic plausible-secrets \
+# 1. On the host Postgres, create the analytics DB + role (CREATEDB lets the app
+#    run its own ecto.create on first boot):
+#      CREATE ROLE analytics LOGIN PASSWORD '<pw>' CREATEDB;
+# 2. Create the secret the analytics Deployment consumes:
+#      kubectl -n analytics create secret generic analytics-secrets \
 #        --from-literal=SECRET_KEY_BASE=$(openssl rand -base64 48) \
 #        --from-literal=TOTP_VAULT_KEY=$(openssl rand -base64 32) \
-#        --from-literal=DATABASE_URL='postgres://plausible:<pw>@postgres.data.svc.cluster.local:5432/plausible_db' \
-#        --from-literal=CLICKHOUSE_DATABASE_URL='http://clickhouse.analytics.svc.cluster.local:8123/plausible_events_db'
-# 3. DNS: point plausible.morcos.tech at the cluster ingress (same as the other
-#    *.morcos.tech hosts).
+#        --from-literal=DATABASE_URL='postgres://analytics:<pw>@postgres.data.svc.cluster.local:5432/analytics' \
+#        --from-literal=CLICKHOUSE_DATABASE_URL='http://clickhouse.analytics.svc.cluster.local:8123/analytics_events'
+# 3. No new DNS: it rides on the existing admin.morcos.tech host under /analytics.
 # 4. First run: DISABLE_REGISTRATION below is "false" so you can register the
-#    owner account once at https://plausible.morcos.tech/register — then flip it
-#    to "true" and re-deploy to lock down sign-ups.
+#    owner account once at https://admin.morcos.tech/analytics/register — then
+#    flip it to "true" and re-deploy to lock down sign-ups.
 ---
 apiVersion: v1
 kind: Namespace
@@ -171,24 +171,24 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: plausible
+  name: analytics
   namespace: analytics
   labels:
-    app: plausible
+    app: analytics
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: plausible
+      app: analytics
   template:
     metadata:
       labels:
-        app: plausible
+        app: analytics
     spec:
       containers:
-        - name: plausible
+        - name: analytics
           image: ghcr.io/plausible/community-edition:v2.1.4
           # Create the relational DB (idempotent), run migrations, then serve.
           command:
@@ -199,8 +199,11 @@ spec:
             - name: http
               containerPort: 8000
           env:
+            # Served under /analytics on the admin host (reverse-proxied by the
+            # analytics-ingress below), so it lives inside the admin OS rather
+            # than on a separate subdomain.
             - name: BASE_URL
-              value: "https://plausible.morcos.tech"
+              value: "https://admin.morcos.tech/analytics"
             # First boot: keep "false" to register the owner account, then flip
             # to "true" and re-deploy to lock sign-ups.
             - name: DISABLE_REGISTRATION
@@ -208,22 +211,22 @@ spec:
             - name: SECRET_KEY_BASE
               valueFrom:
                 secretKeyRef:
-                  name: plausible-secrets
+                  name: analytics-secrets
                   key: SECRET_KEY_BASE
             - name: TOTP_VAULT_KEY
               valueFrom:
                 secretKeyRef:
-                  name: plausible-secrets
+                  name: analytics-secrets
                   key: TOTP_VAULT_KEY
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: plausible-secrets
+                  name: analytics-secrets
                   key: DATABASE_URL
             - name: CLICKHOUSE_DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: plausible-secrets
+                  name: analytics-secrets
                   key: CLICKHOUSE_DATABASE_URL
           readinessProbe:
             httpGet:
@@ -247,40 +250,41 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: plausible
+  name: analytics
   namespace: analytics
 spec:
   selector:
-    app: plausible
+    app: analytics
   ports:
     - name: http
       port: 8000
       targetPort: 8000
 ---
+# Mounts Plausible at admin.morcos.tech/analytics. The prefix is stripped before
+# forwarding (rewrite-target /$2); Plausible re-adds it in generated URLs via
+# BASE_URL's path. TLS for admin.morcos.tech is provided by the admin app's own
+# ingress (same host, SNI), so no tls block / cert is needed here.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: plausible-ingress
+  name: analytics-ingress
   namespace: analytics
   annotations:
-    cert-manager.io/cluster-issuer: "infrastructure-issuer"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
 spec:
   ingressClassName: nginx
-  tls:
-    - hosts:
-        - plausible.morcos.tech
-      secretName: plausible-tls
   rules:
-    - host: plausible.morcos.tech
+    - host: admin.morcos.tech
       http:
         paths:
-          - path: /
-            pathType: Prefix
+          - path: /analytics(/|$)(.*)
+            pathType: ImplementationSpecific
             backend:
               service:
-                name: plausible
+                name: analytics
                 port:
                   number: 8000

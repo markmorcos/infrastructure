@@ -9,7 +9,10 @@ export interface AnalyticsSummary {
   timeseries: { day: string; pageviews: number; visitors: number }[];
   topPages: { path: string; pageviews: number; visitors: number }[];
   topReferrers: { referrer_host: string; visitors: number }[];
-  funnel: { signup: number; publish: number; paid: number };
+  // Tenant-meaningful conversion: distinct visitors who submitted the contact
+  // form. (The practa business funnel — signup/publish/paid — is admin-only and
+  // lives in the admin route, not here, so it's never exposed to tenants.)
+  enquiries: number;
 }
 
 // summarize aggregates events for an optional site (null = all tenants) over a
@@ -19,7 +22,7 @@ export async function summarize(site: string | null, days: number): Promise<Anal
   const scope = "ts >= now() - ($1 || ' days')::interval AND ($2::text IS NULL OR site_key = $2)";
   const pv = `${scope} AND name = 'pageview'`;
 
-  const [kpis, series, pages, referrers, funnel] = await Promise.all([
+  const [kpis, series, pages, referrers, enquiries] = await Promise.all([
     pool.query(
       `SELECT count(*)::int AS pageviews, count(DISTINCT visitor_id)::int AS visitors
          FROM analytics_events WHERE ${pv}`,
@@ -46,22 +49,33 @@ export async function summarize(site: string | null, days: number): Promise<Anal
       params
     ),
     pool.query(
-      `SELECT name, count(DISTINCT visitor_id)::int AS visitors
-         FROM analytics_events
-        WHERE ${scope} AND name IN ('signup','publish','paid')
-        GROUP BY name`,
+      `SELECT count(DISTINCT visitor_id)::int AS n
+         FROM analytics_events WHERE ${scope} AND name = 'enquiry'`,
       params
     ),
   ]);
 
-  const fm = Object.fromEntries(funnel.rows.map((r) => [r.name, r.visitors]));
   return {
     kpis: kpis.rows[0] ?? { pageviews: 0, visitors: 0 },
     timeseries: series.rows,
     topPages: pages.rows,
     topReferrers: referrers.rows,
-    funnel: { signup: fm.signup ?? 0, publish: fm.publish ?? 0, paid: fm.paid ?? 0 },
+    enquiries: enquiries.rows[0]?.n ?? 0,
   };
+}
+
+// businessFunnel is the PRACTA-level tenant lifecycle (signup→publish→paid),
+// counted as distinct sites. Admin-only — never returned to a tenant.
+export async function businessFunnel(days: number): Promise<{ signup: number; publish: number; paid: number }> {
+  const { rows } = await pool.query(
+    `SELECT name, count(DISTINCT visitor_id)::int AS sites
+       FROM analytics_events
+      WHERE ts >= now() - ($1 || ' days')::interval AND name IN ('signup','publish','paid')
+      GROUP BY name`,
+    [days]
+  );
+  const m = Object.fromEntries(rows.map((r) => [r.name, r.sites]));
+  return { signup: m.signup ?? 0, publish: m.publish ?? 0, paid: m.paid ?? 0 };
 }
 
 // clampDays parses + bounds the ?days window (1..365, default 30).

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { requireAdmin } from "@/lib/cms/authz";
-import { summarize, clampDays } from "@/lib/analytics-query";
+import { summarize, businessFunnel, clampDays } from "@/lib/analytics-query";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,8 +17,9 @@ export async function GET(req: NextRequest) {
   const days = clampDays(url.searchParams.get("days"));
 
   try {
-    const [summary, sites] = await Promise.all([
+    const [summary, funnel, sites] = await Promise.all([
       summarize(site, days),
+      businessFunnel(days),
       pool.query(
         `SELECT site_key, count(*)::int AS pageviews
            FROM analytics_events
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
         [days]
       ),
     ]);
-    return NextResponse.json({ site: site || null, days, ...summary, sites: sites.rows });
+    return NextResponse.json({ site: site || null, days, ...summary, funnel, sites: sites.rows });
   } catch (e) {
     console.error("analytics query failed", e);
     return NextResponse.json({ error: "query failed" }, { status: 500 });

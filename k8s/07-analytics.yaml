@@ -331,6 +331,10 @@ spec:
     metadata:
       labels:
         app: analytics-proxy
+      annotations:
+        # Bump when analytics-proxy-conf changes so `kubectl apply` rolls the pod
+        # (a ConfigMap edit alone doesn't restart it).
+        config-rev: "2"
     spec:
       containers:
         - name: nginx

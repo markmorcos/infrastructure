@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "crypto";
 import {
   createSite,
   getSiteByKey,
@@ -7,7 +6,6 @@ import {
   updateSection,
   deleteSection,
   upsertDraft,
-  assignSiteOwner,
   importDict,
   importDictSeparate,
   mergeContent,
@@ -18,8 +16,6 @@ import {
 } from "./admin";
 import { upsertSections, type SeedSection } from "./seed";
 import { uploadFile } from "./storage";
-import { createUser, findUserIdByEmail } from "@/lib/users";
-import { signInviteToken, verifyManageToken } from "./authz";
 
 // Internal CMS service API: the single shared-secret write path that the admin
 // console and the practa product both call, so there's no second copy of the
@@ -33,16 +29,6 @@ export class ServiceError extends Error {
     super(message);
     this.status = status;
   }
-}
-
-// serviceAuthorized checks the shared secret in constant time. Returns false
-// (deny) when the secret is unset, so the endpoint is closed until configured.
-export function serviceAuthorized(headerValue: string | null): boolean {
-  const expected = process.env.CMS_SERVICE_SECRET;
-  if (!expected || !headerValue) return false;
-  const a = Buffer.from(headerValue);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 function serializeSite(s: Site) {
@@ -219,35 +205,6 @@ export async function handleServiceAction(
       const result = await uploadFile(site, filename, data);
       if (!result.ok) throw new ServiceError(result.error, 400);
       return { url: result.asset.url, id: result.asset.id, filename: result.asset.filename };
-    }
-
-    case "owners.assign": {
-      const site = await requireSite(params.key);
-      const userId = Number(params.userId);
-      if (!Number.isInteger(userId)) throw new ServiceError("invalid userId");
-      await assignSiteOwner(site.id, userId);
-      return { ok: true };
-    }
-
-    case "manage.verify": {
-      // practa calls this to validate an owner's branding-editor token without
-      // needing JWT_SECRET. Returns the site the token authorizes, or null.
-      const token = typeof params.token === "string" ? params.token : "";
-      const result = verifyManageToken(token);
-      return { site: result ? result.site : null };
-    }
-
-    case "users.create": {
-      const email = typeof params.email === "string" ? params.email.trim() : "";
-      if (!email) throw new ServiceError("missing email");
-      const role = params.role === "admin" ? "admin" : "editor";
-      const existing = await findUserIdByEmail(email);
-      if (existing !== null) {
-        return { userId: existing, isNew: false };
-      }
-      const { randomBytes } = await import("crypto");
-      const userId = await createUser(email, randomBytes(24).toString("hex"), role);
-      return { userId, isNew: true, inviteToken: signInviteToken(userId, email) };
     }
 
     default:

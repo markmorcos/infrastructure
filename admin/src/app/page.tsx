@@ -19,6 +19,7 @@ const APPS: App[] = [
   { label: "Provision", icon: "rocket_launch", href: "/projects/provision" },
   { label: "CMS", icon: "article", href: "/cms" },
   { label: "Experimentation", icon: "science", href: "/experimentation" },
+  { label: "Analytics", icon: "bar_chart_4_bars", href: "/analytics" },
   { label: "Users", icon: "group", href: "/users" },
   { label: "Backups", icon: "cloud_sync", href: "/backups" },
 ];

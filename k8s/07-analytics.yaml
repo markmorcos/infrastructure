@@ -1,0 +1,286 @@
+# Self-hosted, privacy-first web analytics (Plausible Community Edition) for the
+# practa tenant sites + other morcos.tech properties. Runs on the m720q k3s
+# cluster (amd64). Two stores:
+#   - ClickHouse (in-cluster, this file): the event/stats store.
+#   - Postgres (existing host backend via the postgres.data ExternalName alias):
+#     Plausible's relational metadata DB — no second Postgres needed.
+#
+# Surfaced in the admin OS under "Analytics" (links to plausible.morcos.tech).
+#
+# ── One-time bootstrap (secrets are never committed; create them out-of-band) ──
+# 1. On the host Postgres, create the Plausible DB + user:
+#      CREATE USER plausible WITH PASSWORD '<pw>';
+#      CREATE DATABASE plausible_db OWNER plausible;
+# 2. Create the secret the Plausible Deployment consumes:
+#      kubectl -n analytics create secret generic plausible-secrets \
+#        --from-literal=SECRET_KEY_BASE=$(openssl rand -base64 48) \
+#        --from-literal=TOTP_VAULT_KEY=$(openssl rand -base64 32) \
+#        --from-literal=DATABASE_URL='postgres://plausible:<pw>@postgres.data.svc.cluster.local:5432/plausible_db' \
+#        --from-literal=CLICKHOUSE_DATABASE_URL='http://clickhouse.analytics.svc.cluster.local:8123/plausible_events_db'
+# 3. DNS: point plausible.morcos.tech at the cluster ingress (same as the other
+#    *.morcos.tech hosts).
+# 4. First run: DISABLE_REGISTRATION below is "false" so you can register the
+#    owner account once at https://plausible.morcos.tech/register — then flip it
+#    to "true" and re-deploy to lock down sign-ups.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: analytics
+  labels:
+    name: analytics
+---
+# ── ClickHouse tuning: silence the chatty system log tables that otherwise grow
+#    unbounded on a small single-node box (per Plausible's self-hosting guide).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-config
+  namespace: analytics
+data:
+  low-resources.xml: |
+    <clickhouse>
+        <logger>
+            <level>warning</level>
+            <console>true</console>
+        </logger>
+        <query_thread_log remove="remove"/>
+        <query_log remove="remove"/>
+        <text_log remove="remove"/>
+        <trace_log remove="remove"/>
+        <metric_log remove="remove"/>
+        <asynchronous_metric_log remove="remove"/>
+        <session_log remove="remove"/>
+        <part_log remove="remove"/>
+    </clickhouse>
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-user-config
+  namespace: analytics
+data:
+  low-resources.xml: |
+    <clickhouse>
+        <profiles>
+            <default>
+                <log_queries>0</log_queries>
+                <log_query_threads>0</log_query_threads>
+            </default>
+        </profiles>
+    </clickhouse>
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: clickhouse-data
+  namespace: analytics
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 8Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clickhouse
+  namespace: analytics
+  labels:
+    app: clickhouse
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: clickhouse
+  template:
+    metadata:
+      labels:
+        app: clickhouse
+    spec:
+      securityContext:
+        fsGroup: 101
+      containers:
+        - name: clickhouse
+          image: clickhouse/clickhouse-server:24.3-alpine
+          ports:
+            - name: http
+              containerPort: 8123
+            - name: native
+              containerPort: 9000
+          env:
+            - name: CLICKHOUSE_SKIP_USER_SETUP
+              value: "1"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/clickhouse
+            - name: config
+              mountPath: /etc/clickhouse-server/config.d/low-resources.xml
+              subPath: low-resources.xml
+            - name: user-config
+              mountPath: /etc/clickhouse-server/users.d/low-resources.xml
+              subPath: low-resources.xml
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 8123
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8123
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "512Mi"
+            limits:
+              memory: "2Gi"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: clickhouse-data
+        - name: config
+          configMap:
+            name: clickhouse-config
+        - name: user-config
+          configMap:
+            name: clickhouse-user-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clickhouse
+  namespace: analytics
+spec:
+  selector:
+    app: clickhouse
+  ports:
+    - name: http
+      port: 8123
+      targetPort: 8123
+    - name: native
+      port: 9000
+      targetPort: 9000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: plausible
+  namespace: analytics
+  labels:
+    app: plausible
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: plausible
+  template:
+    metadata:
+      labels:
+        app: plausible
+    spec:
+      containers:
+        - name: plausible
+          image: ghcr.io/plausible/community-edition:v2.1.4
+          # Create the relational DB (idempotent), run migrations, then serve.
+          command:
+            - sh
+            - -c
+            - "/entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run"
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: BASE_URL
+              value: "https://plausible.morcos.tech"
+            # First boot: keep "false" to register the owner account, then flip
+            # to "true" and re-deploy to lock sign-ups.
+            - name: DISABLE_REGISTRATION
+              value: "false"
+            - name: SECRET_KEY_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: plausible-secrets
+                  key: SECRET_KEY_BASE
+            - name: TOTP_VAULT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: plausible-secrets
+                  key: TOTP_VAULT_KEY
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: plausible-secrets
+                  key: DATABASE_URL
+            - name: CLICKHOUSE_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: plausible-secrets
+                  key: CLICKHOUSE_DATABASE_URL
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "384Mi"
+            limits:
+              memory: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: plausible
+  namespace: analytics
+spec:
+  selector:
+    app: plausible
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: plausible-ingress
+  namespace: analytics
+  annotations:
+    cert-manager.io/cluster-issuer: "infrastructure-issuer"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - plausible.morcos.tech
+      secretName: plausible-tls
+  rules:
+    - host: plausible.morcos.tech
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: plausible
+                port:
+                  number: 8000

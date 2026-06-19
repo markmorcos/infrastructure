@@ -23,6 +23,8 @@ function pageMeta(pathname: string): { title: string; sub: string } {
     return { title: "CMS", sub: "sites, content, assets" };
   if (pathname.startsWith("/experimentation"))
     return { title: "Experimentation", sub: "flags, experiments, results" };
+  if (pathname.startsWith("/analytics"))
+    return { title: "Analytics", sub: "privacy-first traffic & funnels" };
   if (pathname.startsWith("/users"))
     return { title: "Users & Access", sub: "people and site access" };
   if (pathname.startsWith("/backups"))
@@ -109,6 +111,12 @@ function Shell({ children }: { children: React.ReactNode }) {
       icon: "science",
       label: "experimentation",
       active: pathname.startsWith("/experimentation"),
+    },
+    {
+      href: "/analytics",
+      icon: "bar_chart_4_bars",
+      label: "analytics",
+      active: pathname.startsWith("/analytics"),
     },
     {
       href: "/users",

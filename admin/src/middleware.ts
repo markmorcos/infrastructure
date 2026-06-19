@@ -7,13 +7,6 @@ const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 // live under /api/admin/*; the experimentation console is admin-only too.
 // Editors are confined to /api/cms/* (with per-site ownership enforced in those
 // handlers); other authenticated routes only need a valid session.
-const ADMIN_PREFIXES = ["/api/admin", "/api/experimentation"];
-
-// Carve-outs from ADMIN_PREFIXES that authenticated editors may also reach —
-// these handlers enforce their own per-resource scoping (the Builds console
-// filters runs to the editor's owned apps; re-run stays admin-only in-handler).
-const SCOPED_PREFIXES = ["/api/admin/builds"];
-
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -47,11 +40,10 @@ export async function middleware(req: NextRequest) {
   }
 
   try {
+    // The control plane is admin-only (customer CMS moved to the practa scope),
+    // so every authenticated route requires the admin role — no editor tier.
     const { payload } = await jwtVerify(token, secret);
-    const needsAdmin =
-      ADMIN_PREFIXES.some((p) => pathname.startsWith(p)) &&
-      !SCOPED_PREFIXES.some((p) => pathname.startsWith(p));
-    if (needsAdmin && payload.role !== "admin") {
+    if (payload.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     return NextResponse.next();

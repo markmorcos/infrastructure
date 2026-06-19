@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { AuthProvider, useAuth } from "./auth/AuthProvider";
 
 const BARE_ROUTES = ["/", "/login"];
@@ -59,18 +59,10 @@ export function Brand({ size = 32 }: { size?: number }) {
 
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { logout, isAdmin, user } = useAuth();
+  const { logout, isAdmin } = useAuth();
   const meta = pageMeta(pathname);
   const onProvision = pathname.startsWith("/projects/provision");
   const [drawer, setDrawer] = useState(false);
-
-  // Editors are confined to the CMS and the (scoped) Builds view; bounce them
-  // off any other control-plane route.
-  const editorAllowed = pathname.startsWith("/cms") || pathname.startsWith("/builds");
-  useEffect(() => {
-    if (user && !isAdmin && !editorAllowed) router.replace("/cms");
-  }, [user, isAdmin, editorAllowed, router]);
 
   // close the drawer whenever the route changes
   useEffect(() => {
@@ -138,21 +130,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       active: onProvision,
     },
   ];
-  const editorNav: NavItem[] = [
-    {
-      href: "/cms",
-      icon: "article",
-      label: "cms",
-      active: pathname.startsWith("/cms"),
-    },
-    {
-      href: "/builds",
-      icon: "manage_history",
-      label: "builds",
-      active: pathname.startsWith("/builds"),
-    },
-  ];
-  const navItems = isAdmin ? adminNav : editorNav;
+  const navItems = adminNav;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>

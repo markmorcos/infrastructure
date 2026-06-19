@@ -199,11 +199,13 @@ spec:
             - name: http
               containerPort: 8000
           env:
-            # Served under /analytics on the admin host (reverse-proxied by the
-            # analytics-ingress below), so it lives inside the admin OS rather
-            # than on a separate subdomain.
+            # Served under /analytics on the admin host via the analytics-proxy.
+            # BASE_URL is kept PATHLESS on purpose: Plausible only partially
+            # honours a subpath (it prefixes assets/actions but not nav links or
+            # redirects), which double-prefixes under rewriting. Pathless → every
+            # URL is uniformly root-relative, and the proxy adds /analytics once.
             - name: BASE_URL
-              value: "https://admin.morcos.tech/analytics"
+              value: "https://admin.morcos.tech"
             # First boot: keep "false" to register the owner account, then flip
             # to "true" and re-deploy to lock sign-ups.
             - name: DISABLE_REGISTRATION
@@ -298,16 +300,18 @@ data:
         # re-prefix redirect targets that aren't already under /analytics
         proxy_redirect ~^(https?://[^/]+)?(/(?!analytics/).*)$ /analytics$2;
 
+        # With a pathless BASE_URL every app URL is root-relative; prefix them
+        # all with /analytics exactly once. HTML attributes cover nav/assets/forms;
+        # the JS rules cover the dashboard's fetch + LiveView socket URLs.
         sub_filter_once off;
         sub_filter_types application/javascript text/css;
         sub_filter 'href="/'   'href="/analytics/';
         sub_filter 'src="/'    'src="/analytics/';
         sub_filter 'action="/' 'action="/analytics/';
+        sub_filter 'url(/'     'url(/analytics/';
         sub_filter '"/api/'    '"/analytics/api/';
-        sub_filter '"/js/'     '"/analytics/js/';
-        sub_filter '"/css/'    '"/analytics/css/';
-        sub_filter '"/live'    '"/analytics/live';
         sub_filter '`/api/'    '`/analytics/api/';
+        sub_filter '"/live'    '"/analytics/live';
       }
     }
 ---

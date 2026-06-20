@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
   // Derive country from the forwarded IP, then discard the IP — it's never
   // stored. Falls back to a client-provided country (or null) when geo is off.
   const country = (await countryOf(s(body.ip, 45))) ?? s(body.country, 2);
+  console.warn("geo-debug", JSON.stringify({ hasIp: typeof body.ip === "string" && body.ip.length > 0, country }));
 
   try {
     await pool.query(

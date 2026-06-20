@@ -102,15 +102,11 @@ export function signPreviewToken(siteKey: string): string {
 }
 
 // draftAuthorized reports whether the request may read this site's draft data,
-// via (a) an admin/owner session cookie, or (b) a Bearer token that is either an
-// admin/owner JWT or a preview token scoped to this site. Backs the ?draft=1 gate.
+// via (a) an admin session cookie, or (b) a Bearer that is an admin JWT or a
+// preview token scoped to this site (the renderer carries it). Admin-only —
+// there's no editor/owner tier anymore. Backs the ?draft=1 gate.
 export function draftAuthorized(req: NextRequest, site: Site): boolean {
-  const sessionAllows = (u: { role?: string; userId?: number } | null) =>
-    !!u &&
-    (u.role === "admin" ||
-      (site.ownerUserId !== null && Number(u.userId) === site.ownerUserId));
-
-  if (sessionAllows(getSessionUser(req))) return true;
+  if (getSessionUser(req)?.role === "admin") return true;
 
   const auth = req.headers.get("authorization");
   const bearer = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
@@ -121,16 +117,9 @@ export function draftAuthorized(req: NextRequest, site: Site): boolean {
         kind?: string;
         site?: string;
         role?: string;
-        userId?: number | string;
       };
       if (p.role === "admin") return true;
       if (p.kind === "preview" && p.site === site.key) return true;
-      if (
-        p.userId !== undefined &&
-        site.ownerUserId !== null &&
-        Number(p.userId) === site.ownerUserId
-      )
-        return true;
     } catch {
       // try the next candidate
     }
@@ -138,23 +127,17 @@ export function draftAuthorized(req: NextRequest, site: Site): boolean {
   return false;
 }
 
-// requireSiteAccess gates a per-site CMS handler: admins always pass; an editor
-// passes only if they own the site (sites.owner_user_id === their id).
+// requireSiteAccess gates a per-site CMS handler. The control plane is admin-only
+// (customer CMS moved to the practa scope), so this requires the admin role and
+// just 404s unknown sites — there's no longer an editor/owner tier.
 export async function requireSiteAccess(
   req: NextRequest,
   siteKey: string
 ): Promise<Guard> {
-  const user = getSessionUser(req);
-  if (!user)
-    return { error: NextResponse.json({ error: "unauthorized" }, { status: 401 }) };
-  if (user.role === "admin") return { user };
-
-  const { rows } = await pool.query(
-    `SELECT owner_user_id FROM sites WHERE key = $1`,
-    [siteKey]
-  );
+  const gate = requireAdmin(req);
+  if ("error" in gate) return gate;
+  const { rows } = await pool.query(`SELECT 1 FROM sites WHERE key = $1`, [siteKey]);
   if (rows.length === 0)
     return { error: NextResponse.json({ error: "not found" }, { status: 404 }) };
-  if (Number(rows[0].owner_user_id) === user.userId) return { user };
-  return { error: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
+  return gate;
 }

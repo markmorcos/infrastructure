@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listUsers, createUser, setOwnedSites } from "@/lib/users";
+import { listUsers, createUser } from "@/lib/users";
 
 // Users & Access admin API. Admin-only via src/middleware.ts (under /api/admin).
 
@@ -13,12 +13,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  let body: {
-    email?: string;
-    password?: string;
-    role?: string;
-    ownedSites?: unknown;
-  };
+  let body: { email?: string; password?: string };
   try {
     body = await req.json();
   } catch {
@@ -30,13 +25,9 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  const role = body.role === "admin" ? "admin" : "editor";
-  const sites = Array.isArray(body.ownedSites)
-    ? body.ownedSites.filter((s): s is string => typeof s === "string")
-    : [];
   try {
-    const id = await createUser(body.email, body.password, role);
-    if (sites.length) await setOwnedSites(id, sites);
+    // Admin-only control plane: every user is an admin.
+    const id = await createUser(body.email, body.password, "admin");
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {
     // Most likely a duplicate email (users.email is UNIQUE).

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { verifyToken, bearer } from "@/lib/cms/tokens";
+import { countryOf } from "@/lib/geo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,6 +38,9 @@ export async function POST(req: NextRequest) {
   }
 
   const props = body.props && typeof body.props === "object" ? body.props : null;
+  // Derive country from the forwarded IP, then discard the IP — it's never
+  // stored. Falls back to a client-provided country (or null) when geo is off.
+  const country = (await countryOf(s(body.ip, 45))) ?? s(body.country, 2);
 
   try {
     await pool.query(
@@ -52,7 +56,7 @@ export async function POST(req: NextRequest) {
         s(body.utmSource ?? body.utm_source, 128),
         s(body.utmMedium ?? body.utm_medium, 128),
         s(body.utmCampaign ?? body.utm_campaign, 128),
-        s(body.country, 2),
+        country,
         s(body.browser, 64),
         s(body.os, 64),
         s(body.device, 16),

@@ -84,6 +84,13 @@ services:
         valueFrom: { secretKeyRef: { name: resend, key: RESEND_SENDER_EMAIL, optional: true } }
       - name: RESEND_SENDER_NAME
         valueFrom: { secretKeyRef: { name: resend, key: RESEND_SENDER_NAME, optional: true } }
+
+      # MaxMind GeoLite2 — IP→country enrichment for analytics. Optional: without
+      # it, events are stored with country = null. Shared across all products.
+      - name: MAXMIND_ACCOUNT_ID
+        valueFrom: { secretKeyRef: { name: maxmind-secrets, key: MAXMIND_ACCOUNT_ID, optional: true } }
+      - name: MAXMIND_LICENSE_KEY
+        valueFrom: { secretKeyRef: { name: maxmind-secrets, key: MAXMIND_LICENSE_KEY, optional: true } }
     ingress:
       host: admin.morcos.tech
       path: /

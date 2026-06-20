@@ -21,12 +21,14 @@
     "jose": "^6.2.3",
     "jsonwebtoken": "^9.0.2",
     "libsodium-wrappers": "^0.8.4",
+    "maxmind": "^5.0.6",
     "minio": "^8.0.7",
     "next": "15.3.9",
     "pg": "^8.15.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-hook-form": "^7.56.2"
+    "react-hook-form": "^7.56.2",
+    "tar": "^7.5.16"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -37,6 +39,7 @@
     "@types/pg": "^8.15.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/tar": "^6.1.13",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
     "tailwindcss": "^4",

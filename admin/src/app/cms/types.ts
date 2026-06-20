@@ -17,6 +17,15 @@ export interface Site {
   projectKey?: string | null;
 }
 
+// Project mirrors the cms.projects table. Optional scope for sites; selectable
+// when creating or moving a site.
+export interface Project {
+  id: string;
+  key: string;
+  name: string;
+  createdAt: string;
+}
+
 export type FieldType =
   | "text"
   | "textarea"

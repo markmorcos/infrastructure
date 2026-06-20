@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSite, listSitesForUser, validKey } from "@/lib/cms/admin";
+import {
+  createSite,
+  isUniqueViolation,
+  listSitesForUser,
+  validKey,
+} from "@/lib/cms/admin";
 import { getSessionUser, requireAdmin } from "@/lib/cms/authz";
 
 // Admin sites collection, ported from cms/adminapi.go apiListSites /
@@ -32,6 +37,9 @@ export async function POST(req: NextRequest) {
     defaultLocale?: string;
     githubRepo?: string;
     dispatchEvent?: string;
+    // null/absent = the global (console) namespace; a project id scopes the
+    // site (and its key uniqueness) to that project.
+    projectId?: string | null;
   };
   try {
     body = await req.json();
@@ -49,10 +57,17 @@ export async function POST(req: NextRequest) {
       defaultLocale: body.defaultLocale,
       githubRepo: body.githubRepo,
       dispatchEvent: body.dispatchEvent,
+      projectId: body.projectId ?? null,
     });
     return NextResponse.json(site, { status: 201 });
   } catch (error) {
-    // Duplicate key etc. — Go returns 409 here.
+    // Duplicate key (in the chosen project / global scope) — Go returns 409.
+    if (isUniqueViolation(error)) {
+      return NextResponse.json(
+        { error: `a site with key "${body.key}" already exists in this scope` },
+        { status: 409 }
+      );
+    }
     console.error(error);
     return NextResponse.json(
       { error: "could not create site" },

@@ -6,7 +6,7 @@
 import { cmsPool as pool } from "@/lib/db";
 import { randomBytes } from "crypto";
 import { assembleDict, type ContentBySectionLocale } from "./dict";
-import { listSections, type Section, type Site } from "./db";
+import { listSections, type Project, type Section, type Site } from "./db";
 import type { Field } from "./seed";
 
 export { listSections, getProjectByKey } from "./db";
@@ -19,6 +19,27 @@ export const localeAll = "*";
 const keyRe = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 export function validKey(s: string): boolean {
   return keyRe.test(s);
+}
+
+// slugify turns a free-text project name into a valid project key: lowercase,
+// non-alphanumerics collapsed to single dashes, trimmed, capped at 64 chars.
+// Returns "" when nothing usable remains (caller should reject).
+export function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+}
+
+// isUniqueViolation reports whether a pg error is a unique-constraint violation
+// (SQLSTATE 23505) so routes can map it to a 409 instead of a 500.
+export function isUniqueViolation(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    (e as { code?: string }).code === "23505"
+  );
 }
 
 function newId(): string {
@@ -47,6 +68,44 @@ const SITE_COLS = `id, key, name, locales, default_locale, github_repo, dispatch
 // SITE_COLS_J selects the same columns plus the joined project key, for list
 // queries that group sites by project (aliased table `s`, projects as `p`).
 const SITE_COLS_J = `s.id, s.key, s.name, s.locales, s.default_locale, s.github_repo, s.dispatch_event, s.created_at, s.owner_user_id, s.project_id, p.key AS project_key`;
+
+// ---- Projects ----
+
+function mapProject(r: Record<string, unknown>): Project {
+  return {
+    id: r.id as string,
+    key: r.key as string,
+    name: r.name as string,
+    createdAt: r.created_at as Date,
+  };
+}
+
+// listProjects returns every project ordered by key, for the create-site
+// project selector and the move/reassign control.
+export async function listProjects(): Promise<Project[]> {
+  const { rows } = await pool.query(
+    `SELECT id, key, name, created_at FROM projects ORDER BY key`
+  );
+  return rows.map(mapProject);
+}
+
+export interface CreateProjectInput {
+  key: string;
+  name?: string;
+}
+
+// createProject inserts a new project. The key is globally UNIQUE (011-cms-
+// projects.sql), so a duplicate throws a 23505 the route maps to 409.
+export async function createProject(
+  input: CreateProjectInput
+): Promise<Project> {
+  const { rows } = await pool.query(
+    `INSERT INTO projects (id, key, name) VALUES ($1,$2,$3)
+     RETURNING id, key, name, created_at`,
+    [`proj_${newId()}`, input.key, input.name || input.key]
+  );
+  return mapProject(rows[0]);
+}
 
 // ---- Sites ----
 
@@ -110,6 +169,29 @@ export async function assignSiteOwner(
     siteId,
     ownerUserId,
   ]);
+}
+
+// setSiteProject moves a site to another project (projectId) or unassigns it
+// (null = the global namespace). Returns the refreshed site. Throws a 23505
+// unique-violation when the site's key already exists in the target scope (the
+// partial unique indexes uq_sites_project_key / uq_sites_null_project_key);
+// callers map that to a 409 with a clear message.
+export async function setSiteProject(
+  id: string,
+  projectId: string | null
+): Promise<Site> {
+  await pool.query(`UPDATE sites SET project_id = $2 WHERE id = $1`, [
+    id,
+    projectId,
+  ]);
+  // Re-select with the project JOIN so the returned site carries projectKey
+  // (needed by the console to re-scope ?project= after a move).
+  const { rows } = await pool.query(
+    `SELECT ${SITE_COLS_J} FROM sites s LEFT JOIN projects p ON p.id = s.project_id
+     WHERE s.id = $1`,
+    [id]
+  );
+  return mapSite(rows[0]);
 }
 
 // getSiteByKey returns the site with the given key or null (cms/store.go

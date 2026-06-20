@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteSite, getSiteByKey, getProjectByKey, updateSite } from "@/lib/cms/admin";
+import {
+  deleteSite,
+  getSiteByKey,
+  getProjectByKey,
+  isUniqueViolation,
+  setSiteProject,
+  updateSite,
+} from "@/lib/cms/admin";
 import { requireSiteAccess, requireAdmin } from "@/lib/cms/authz";
 
 // projectIdFromQuery resolves an optional ?project=<key> into a project id (or
@@ -53,11 +60,37 @@ export async function PATCH(
     if (!site) {
       return NextResponse.json({ error: "site not found" }, { status: 404 });
     }
-    let body: { name?: string; githubRepo?: string; dispatchEvent?: string };
+    let body: {
+      name?: string;
+      githubRepo?: string;
+      dispatchEvent?: string;
+      // Move/reassign: present (string id) moves the site to that project;
+      // explicit null unassigns it (global namespace). Omitted = unchanged.
+      projectId?: string | null;
+    };
     try {
       body = await req.json();
     } catch {
       return NextResponse.json({ error: "invalid json" }, { status: 400 });
+    }
+    // Move/reassign is its own operation: when the body carries projectId,
+    // update only the project (key uniqueness is scoped per project, so this can
+    // collide — map that 23505 to a clear 409 instead of a 500).
+    if (Object.prototype.hasOwnProperty.call(body, "projectId")) {
+      try {
+        const moved = await setSiteProject(site.id, body.projectId ?? null);
+        return NextResponse.json(moved, { status: 200 });
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          return NextResponse.json(
+            {
+              error: `another site with key "${site.key}" already exists in the target project`,
+            },
+            { status: 409 }
+          );
+        }
+        throw error;
+      }
     }
     // Use ?? (not ||) for repo/dispatch so an explicit "" clears them — that's
     // how a site is turned into a Studio site (render-live, no GitHub deploy).

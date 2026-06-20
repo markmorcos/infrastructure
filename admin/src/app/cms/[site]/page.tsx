@@ -2,8 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { localeAll, type Section, type Site } from "../types";
-import { Button, Card, Input, Label, Spinner } from "@/components/ui";
+import { localeAll, type Project, type Section, type Site } from "../types";
+import { Button, Card, Input, Label, Select, Spinner } from "@/components/ui";
 import { useAuth } from "../../auth/AuthProvider";
 
 // Site dashboard (/cms/[site]). Sections grouped by page_group, per-locale edit
@@ -238,6 +238,7 @@ export default function SiteDashboard() {
         <SiteSettings
           site={site}
           isAdmin={isAdmin}
+          projQuery={projQuery}
           onSaved={() => {
             setShowSettings(false);
             setLoading(true);
@@ -330,18 +331,41 @@ export default function SiteDashboard() {
   );
 }
 
-function SiteSettings({ site, isAdmin, onSaved }: { site: Site; isAdmin: boolean; onSaved: () => void }) {
+function SiteSettings({
+  site,
+  isAdmin,
+  projQuery,
+  onSaved,
+}: {
+  site: Site;
+  isAdmin: boolean;
+  projQuery: string;
+  onSaved: () => void;
+}) {
+  const router = useRouter();
   const [name, setName] = useState(site.name);
   const [repo, setRepo] = useState(site.githubRepo);
   const [dispatch, setDispatch] = useState(site.dispatchEvent);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [projects, setProjects] = useState<Project[]>([]);
+  // "" = unassigned/global; else a project id.
+  const [project, setProject] = useState<string>(site.projectId ?? "");
+  const [moving, setMoving] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetch("/api/cms/projects")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d: Project[]) => setProjects(d))
+      .catch(() => {});
+  }, [isAdmin]);
 
   async function save() {
     setBusy(true);
     setErr("");
     const payload = { name, githubRepo: repo, dispatchEvent: dispatch };
-    const res = await fetch(`/api/cms/sites/${encodeURIComponent(site.key)}`, {
+    const res = await fetch(`/api/cms/sites/${encodeURIComponent(site.key)}${projQuery}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -351,6 +375,30 @@ function SiteSettings({ site, isAdmin, onSaved }: { site: Site; isAdmin: boolean
       setErr((await res.json().catch(() => ({}))).error || "could not save settings");
       return;
     }
+    onSaved();
+  }
+
+  // moveProject reassigns the site to another project (or unassigns it). A
+  // key-collision in the target scope returns 409 with a clear message.
+  async function moveProject() {
+    setMoving(true);
+    setErr("");
+    const res = await fetch(`/api/cms/sites/${encodeURIComponent(site.key)}${projQuery}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: project || null }),
+    });
+    setMoving(false);
+    if (!res.ok) {
+      setErr((await res.json().catch(() => ({}))).error || "could not move site");
+      return;
+    }
+    // The site's project scope changed, so the current ?project= in the URL is
+    // now stale. Navigate to the new scope (the list view also reflects the move)
+    // so subsequent key resolution stays correct.
+    const moved: Site = await res.json();
+    const base = `/cms/${encodeURIComponent(site.key)}`;
+    router.replace(moved.projectKey ? `${base}?project=${encodeURIComponent(moved.projectKey)}` : base);
     onSaved();
   }
 
@@ -389,6 +437,36 @@ function SiteSettings({ site, isAdmin, onSaved }: { site: Site; isAdmin: boolean
       {err && <div className="mt-2 text-[12px] text-[var(--cp-err)]">{err}</div>}
       <div className="mt-3.5">
         <Button size="md" onClick={save} disabled={busy} icon="check">save settings</Button>
+      </div>
+
+      <div className="mt-5 border-t border-[var(--md-sys-color-outline-variant)] pt-4">
+        <Label as="div" className="mb-1.5 block">PROJECT</Label>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={project}
+            onChange={(e) => setProject(e.target.value)}
+            className="max-w-[260px]"
+          >
+            <option value="">(Unassigned / global)</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({p.key})
+              </option>
+            ))}
+          </Select>
+          <Button
+            size="md"
+            variant="soft"
+            icon="drive_file_move"
+            onClick={moveProject}
+            disabled={moving || project === (site.projectId ?? "")}
+          >
+            {moving ? "moving…" : "move"}
+          </Button>
+        </div>
+        <div className="mt-1.5 font-[var(--cp-mono)] text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+          Moving fails if a site with this key already exists in the target project.
+        </div>
       </div>
     </Card>
   );

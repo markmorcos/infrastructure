@@ -10,12 +10,15 @@ interface Summary {
   timeseries: { day: string; pageviews: number; visitors: number }[];
   topPages: { path: string; pageviews: number; visitors: number }[];
   topReferrers: { referrer_host: string; visitors: number }[];
+  topCountries: { country: string; visitors: number }[];
   funnel: { signup: number; publish: number; paid: number };
   sites: { site_key: string; pageviews: number }[];
 }
 
 const nf = (n: number) => new Intl.NumberFormat().format(n);
 const pct = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
+// ISO alpha-2 → flag emoji (regional indicators).
+const flag = (cc: string) => cc.length === 2 ? cc.toUpperCase().replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0))) : "";
 
 const label: React.CSSProperties = {
   fontFamily: "var(--cp-mono)", fontSize: 11, letterSpacing: ".1em",
@@ -110,6 +113,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <TopTable title="TOP PAGES" rows={data.topPages.map((p) => ({ k: p.path, v: p.pageviews }))} unit="views" />
             <TopTable title="TOP REFERRERS" rows={data.topReferrers.map((r) => ({ k: r.referrer_host, v: r.visitors }))} unit="visitors" empty="Direct / none" />
+            <TopTable title="TOP COUNTRIES" rows={data.topCountries.map((c) => ({ k: `${flag(c.country)} ${c.country}`, v: c.visitors }))} unit="visitors" empty="No country data yet" />
           </div>
         </div>
       )}

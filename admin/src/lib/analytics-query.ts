@@ -9,6 +9,7 @@ export interface AnalyticsSummary {
   timeseries: { day: string; pageviews: number; visitors: number }[];
   topPages: { path: string; pageviews: number; visitors: number }[];
   topReferrers: { referrer_host: string; visitors: number }[];
+  topCountries: { country: string; visitors: number }[];
   // Tenant-meaningful conversion: distinct visitors who submitted the contact
   // form. (The practa business funnel — signup/publish/paid — is admin-only and
   // lives in the admin route, not here, so it's never exposed to tenants.)
@@ -22,7 +23,7 @@ export async function summarize(site: string | null, days: number): Promise<Anal
   const scope = "ts >= now() - ($1 || ' days')::interval AND ($2::text IS NULL OR site_key = $2)";
   const pv = `${scope} AND name = 'pageview'`;
 
-  const [kpis, series, pages, referrers, enquiries] = await Promise.all([
+  const [kpis, series, pages, referrers, countries, enquiries] = await Promise.all([
     pool.query(
       `SELECT count(*)::int AS pageviews, count(DISTINCT visitor_id)::int AS visitors
          FROM analytics_events WHERE ${pv}`,
@@ -49,6 +50,12 @@ export async function summarize(site: string | null, days: number): Promise<Anal
       params
     ),
     pool.query(
+      `SELECT country, count(DISTINCT visitor_id)::int AS visitors
+         FROM analytics_events WHERE ${pv} AND country IS NOT NULL
+        GROUP BY country ORDER BY visitors DESC LIMIT 10`,
+      params
+    ),
+    pool.query(
       `SELECT count(DISTINCT visitor_id)::int AS n
          FROM analytics_events WHERE ${scope} AND name = 'enquiry'`,
       params
@@ -60,6 +67,7 @@ export async function summarize(site: string | null, days: number): Promise<Anal
     timeseries: series.rows,
     topPages: pages.rows,
     topReferrers: referrers.rows,
+    topCountries: countries.rows,
     enquiries: enquiries.rows[0]?.n ?? 0,
   };
 }

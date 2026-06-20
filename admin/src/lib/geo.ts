@@ -37,12 +37,16 @@ function minio(): { client: MinioClient } | null {
 
 async function load(): Promise<void> {
   const m = minio();
-  if (!m) return; // geo off until S3 is configured + the cron has populated it
+  if (!m) {
+    console.warn("geo: S3 not configured");
+    return;
+  }
   const stream = await m.client.getObject(BUCKET, OBJECT);
   const chunks: Buffer[] = [];
   for await (const c of stream) chunks.push(c as Buffer);
   reader = new Reader<CountryResponse>(Buffer.concat(chunks));
   loadedAt = Date.now();
+  console.warn("geo: db loaded from minio", JSON.stringify({ bytes: Buffer.concat(chunks).length }));
 }
 
 async function ensure(): Promise<void> {

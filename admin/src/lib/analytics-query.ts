@@ -38,8 +38,9 @@ export async function summarize(site: string | null, days: number): Promise<Anal
       params
     ),
     pool.query(
+      // Hide internal/debug paths (/__*) from Top Pages.
       `SELECT path, count(*)::int AS pageviews, count(DISTINCT visitor_id)::int AS visitors
-         FROM analytics_events WHERE ${pv}
+         FROM analytics_events WHERE ${pv} AND path NOT LIKE '/__%'
         GROUP BY path ORDER BY pageviews DESC LIMIT 10`,
       params
     ),

@@ -86,11 +86,11 @@ export default function AnalyticsPage() {
             {data.timeseries.length === 0 ? (
               <Empty />
             ) : (
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 120 }}>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 120, overflow: "hidden" }}>
                 {data.timeseries.map((d) => (
                   <div key={d.day} title={`${d.day}: ${d.pageviews} views, ${d.visitors} visitors`}
                     style={{
-                      flex: 1, minWidth: 2,
+                      flex: 1, minWidth: 0,
                       height: `${Math.max(2, (d.pageviews / maxPv) * 100)}%`,
                       background: "var(--md-sys-color-primary)", borderRadius: "3px 3px 0 0", opacity: 0.85,
                     }} />

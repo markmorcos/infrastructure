@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteSite, getSiteByKey, updateSite } from "@/lib/cms/admin";
+import { deleteSite, getSiteByKey, getProjectByKey, updateSite } from "@/lib/cms/admin";
 import { requireSiteAccess, requireAdmin } from "@/lib/cms/authz";
+
+// projectIdFromQuery resolves an optional ?project=<key> into a project id (or
+// null for the global namespace) so single-site console routes can scope their
+// lookups. Absent query => null (global), which getSiteByKey's transitional
+// fallback widens to a global key lookup.
+async function projectIdFromQuery(req: NextRequest): Promise<string | null> {
+  const key = req.nextUrl.searchParams.get("project");
+  if (!key) return null;
+  const project = await getProjectByKey(key);
+  return project?.id ?? null;
+}
 
 // Admin single-site routes, ported from cms/adminapi.go apiGetSite /
 // apiUpdateSite / apiDeleteSite. PATCH edits name/githubRepo/dispatchEvent (all
@@ -15,7 +26,8 @@ export async function GET(
   const access = await requireSiteAccess(req, siteKey);
   if ("error" in access) return access.error;
   try {
-    const site = await getSiteByKey(siteKey);
+    const projectId = await projectIdFromQuery(req);
+    const site = await getSiteByKey(siteKey, { projectId });
     if (!site) {
       return NextResponse.json({ error: "site not found" }, { status: 404 });
     }
@@ -36,7 +48,8 @@ export async function PATCH(
   const admin = requireAdmin(req);
   if ("error" in admin) return admin.error;
   try {
-    const site = await getSiteByKey(siteKey);
+    const projectId = await projectIdFromQuery(req);
+    const site = await getSiteByKey(siteKey, { projectId });
     if (!site) {
       return NextResponse.json({ error: "site not found" }, { status: 404 });
     }
@@ -70,7 +83,8 @@ export async function DELETE(
   const admin = requireAdmin(req);
   if ("error" in admin) return admin.error;
   try {
-    const site = await getSiteByKey(siteKey);
+    const projectId = await projectIdFromQuery(req);
+    const site = await getSiteByKey(siteKey, { projectId });
     if (!site) {
       return NextResponse.json({ error: "site not found" }, { status: 404 });
     }

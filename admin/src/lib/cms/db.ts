@@ -18,6 +18,31 @@ export interface Site {
   dispatchEvent: string;
   createdAt: Date;
   ownerUserId: number | null;
+  // Optional project scope. NULL = the global (console) namespace; non-null =
+  // owned by a project (e.g. practa), where site keys are unique per project.
+  projectId: string | null;
+  // The owning project's public key (e.g. "practa"), populated by list queries
+  // that JOIN projects. null/undefined when global or not joined.
+  projectKey?: string | null;
+}
+
+// Project mirrors the cms.projects table (011-cms-projects.sql).
+export interface Project {
+  id: string;
+  key: string;
+  name: string;
+  createdAt: Date;
+}
+
+// getProjectByKey resolves a project by its public key (e.g. "practa") or null.
+export async function getProjectByKey(key: string): Promise<Project | null> {
+  const { rows } = await pool.query(
+    `SELECT id, key, name, created_at FROM projects WHERE key = $1`,
+    [key]
+  );
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return { id: r.id, key: r.key, name: r.name, createdAt: r.created_at };
 }
 
 // Section mirrors the sections table with its parsed schema (cms/model.go
@@ -32,25 +57,48 @@ export interface Section extends DictSection {
 
 // getSiteByKey returns the site with the given public key, or null when none
 // matches (cms/store.go GetSite).
-export async function getSiteByKey(key: string): Promise<Site | null> {
+//
+// Project-aware with a TRANSITIONAL GLOBAL FALLBACK: when a projectId is given,
+// it first looks for the site in that project; if none is found it falls back to
+// a global key lookup so reads keep working before callers (practa) start
+// passing a project. When projectId is undefined the lookup is global.
+//
+// TODO: remove the transitional fallback after practa sends ?project=practa /
+// resolves its project on every read+write path.
+export async function getSiteByKey(
+  key: string,
+  opts?: { projectId?: string | null }
+): Promise<Site | null> {
+  const cols = `id, key, name, locales, default_locale, github_repo, dispatch_event,
+            created_at, owner_user_id, project_id`;
+  const projectId = opts?.projectId;
+  if (projectId !== undefined && projectId !== null) {
+    const scoped = await pool.query(
+      `SELECT ${cols} FROM sites WHERE key = $1 AND project_id = $2`,
+      [key, projectId]
+    );
+    if (scoped.rows.length) return mapDbSite(scoped.rows[0]);
+    // TODO: remove transitional fallback after practa sends project.
+  }
   const { rows } = await pool.query(
-    `SELECT id, key, name, locales, default_locale, github_repo, dispatch_event,
-            created_at, owner_user_id
-     FROM sites WHERE key = $1`,
+    `SELECT ${cols} FROM sites WHERE key = $1`,
     [key]
   );
-  if (rows.length === 0) return null;
-  const r = rows[0];
+  return rows.length ? mapDbSite(rows[0]) : null;
+}
+
+function mapDbSite(r: Record<string, unknown>): Site {
   return {
-    id: r.id,
-    key: r.key,
-    name: r.name,
-    locales: r.locales,
-    defaultLocale: r.default_locale,
-    githubRepo: r.github_repo,
-    dispatchEvent: r.dispatch_event,
-    createdAt: r.created_at,
-    ownerUserId: r.owner_user_id ?? null,
+    id: r.id as string,
+    key: r.key as string,
+    name: r.name as string,
+    locales: r.locales as string[],
+    defaultLocale: r.default_locale as string,
+    githubRepo: r.github_repo as string,
+    dispatchEvent: r.dispatch_event as string,
+    createdAt: r.created_at as Date,
+    ownerUserId: (r.owner_user_id as number | null) ?? null,
+    projectId: (r.project_id as string | null) ?? null,
   };
 }
 

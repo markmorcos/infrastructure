@@ -10,6 +10,11 @@ export interface Site {
   githubRepo: string;
   dispatchEvent: string;
   createdAt: string;
+  // Optional project scope. null = the global (console) namespace.
+  projectId: string | null;
+  // The owning project's public key (e.g. "practa"), or null when global. Used
+  // to group the site list and to carry ?project= on links.
+  projectKey?: string | null;
 }
 
 export type FieldType =

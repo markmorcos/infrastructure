@@ -11,9 +11,10 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   // Per-tenant API token only (Authorization: Bearer). The legacy shared-secret
-  // accept was dropped after practa moved to tokens.
-  const authed = (await verifyToken(bearer(req.headers.get("authorization")))) !== null;
-  if (!authed) {
+  // accept was dropped after practa moved to tokens. The token's tenant scopes
+  // every site lookup/create to that tenant's project (e.g. practa).
+  const tenant = await verifyToken(bearer(req.headers.get("authorization")));
+  if (tenant === null) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
       : {};
 
   try {
-    const result = await handleServiceAction(body.action, params);
+    const result = await handleServiceAction(body.action, params, { tenant });
     return NextResponse.json({ ok: true, result }, { status: 200 });
   } catch (e) {
     if (e instanceof ServiceError) {

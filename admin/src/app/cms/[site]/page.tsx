@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { localeAll, type Section, type Site } from "../types";
 import { Button, Card, Input, Label, Spinner } from "@/components/ui";
 import { useAuth } from "../../auth/AuthProvider";
@@ -20,9 +20,15 @@ interface SectionsResponse {
 export default function SiteDashboard() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAdmin } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
   const siteKey = decodeURIComponent(params.site as string);
+  // Optional project scope (?project=<key>); empty/absent = global namespace.
+  // Forwarded to the site-resolving API call and preserved on navigation so the
+  // per-project key resolves correctly while browsing.
+  const projectKey = searchParams.get("project") || "";
+  const projQuery = projectKey ? `?project=${encodeURIComponent(projectKey)}` : "";
 
   const [site, setSite] = useState<Site | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
@@ -36,7 +42,7 @@ export default function SiteDashboard() {
 
   const load = useCallback(async () => {
     const [siteRes, secRes] = await Promise.all([
-      fetch(`/api/cms/sites/${encodeURIComponent(siteKey)}`),
+      fetch(`/api/cms/sites/${encodeURIComponent(siteKey)}${projQuery}`),
       fetch(`/api/cms/sites/${encodeURIComponent(siteKey)}/sections`),
     ]);
     if (!siteRes.ok) {
@@ -58,7 +64,7 @@ export default function SiteDashboard() {
       setDirty(st.dirty ?? {});
       setLastPublished(st.lastPublished ?? null);
     }
-  }, [siteKey]);
+  }, [siteKey, projQuery]);
 
   useEffect(() => {
     load().finally(() => setLoading(false));

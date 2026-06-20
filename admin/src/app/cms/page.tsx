@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../auth/AuthProvider";
 import { Button, Card, Input, Label, Spinner, Callout } from "@/components/ui";
@@ -34,7 +34,7 @@ export default function CmsSitesPage() {
     // Editors with a single site go straight to its dashboard; admins always see
     // the list so they can create and manage other sites.
     if (!isAdmin && data.length === 1) {
-      router.replace(`/cms/${encodeURIComponent(data[0].key)}`);
+      router.replace(siteHref(data[0]));
       return;
     }
     setSites(data);
@@ -74,6 +74,28 @@ export default function CmsSitesPage() {
     setLoading(true);
     load().finally(() => setLoading(false));
   };
+
+  // Group sites by project: a group per project (label = project key) plus an
+  // "Unassigned" group for global (null-project) sites. Projects sort first,
+  // alphabetically; "Unassigned" always last.
+  const groups = useMemo(() => {
+    const byKey = new Map<string, Site[]>();
+    for (const s of sites) {
+      const k = s.projectKey ?? "";
+      if (!byKey.has(k)) byKey.set(k, []);
+      byKey.get(k)!.push(s);
+    }
+    const projectKeys = [...byKey.keys()].filter((k) => k !== "").sort();
+    const ordered: { label: string; sites: Site[] }[] = projectKeys.map((k) => ({
+      label: k,
+      sites: byKey.get(k)!,
+    }));
+    if (byKey.has("")) ordered.push({ label: "Unassigned", sites: byKey.get("")! });
+    return ordered;
+  }, [sites]);
+  // Only show group headers when there's more than one group (keeps the common
+  // single-namespace case clean).
+  const showGroupHeaders = groups.length > 1;
 
   if (loading)
     return (
@@ -163,35 +185,53 @@ export default function CmsSitesPage() {
           <div style={{ marginTop: 12, fontSize: 13 }}>no sites yet</div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-[14px] md:grid-cols-[repeat(auto-fill,minmax(320px,1fr))]">
-          {sites.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => router.push(`/cms/${encodeURIComponent(s.key)}`)}
-              className="cp-card cp-card-hover"
-              style={{ padding: "18px 18px 16px", textAlign: "left" }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span className="msym fill" style={{ fontSize: 20, color: "var(--md-sys-color-primary)" }}>language</span>
-                <span style={{ fontFamily: "var(--cp-mono)", fontSize: 15, fontWeight: 600, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {s.name}
-                </span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 11, fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--md-sys-color-on-surface-variant)" }}>
-                <span className="msym" style={{ fontSize: 15 }}>key</span>
-                {s.key}
-              </div>
-              <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
-                {s.locales.map((l) => (
-                  <span key={l} style={chip(l === s.defaultLocale)}>{l.toUpperCase()}</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
+          {groups.map((g) => (
+            <div key={g.label}>
+              {showGroupHeaders && (
+                <Label as="div" className="mb-3 block">{`// ${g.label.toUpperCase()}`}</Label>
+              )}
+              <div className="grid grid-cols-1 gap-[14px] md:grid-cols-[repeat(auto-fill,minmax(320px,1fr))]">
+                {g.sites.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => router.push(siteHref(s))}
+                    className="cp-card cp-card-hover"
+                    style={{ padding: "18px 18px 16px", textAlign: "left" }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span className="msym fill" style={{ fontSize: 20, color: "var(--md-sys-color-primary)" }}>language</span>
+                      <span style={{ fontFamily: "var(--cp-mono)", fontSize: 15, fontWeight: 600, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {s.name}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 11, fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--md-sys-color-on-surface-variant)" }}>
+                      <span className="msym" style={{ fontSize: 15 }}>key</span>
+                      {s.key}
+                    </div>
+                    <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
+                      {s.locales.map((l) => (
+                        <span key={l} style={chip(l === s.defaultLocale)}>{l.toUpperCase()}</span>
+                      ))}
+                    </div>
+                  </button>
                 ))}
               </div>
-            </button>
+            </div>
           ))}
         </div>
       )}
     </div>
   );
+}
+
+// siteHref builds the dashboard link for a site, carrying ?project=<key> when
+// the site belongs to a project so its per-project key resolves correctly.
+function siteHref(s: Site): string {
+  const base = `/cms/${encodeURIComponent(s.key)}`;
+  return s.projectKey
+    ? `${base}?project=${encodeURIComponent(s.projectKey)}`
+    : base;
 }
 
 function chip(primary: boolean): React.CSSProperties {

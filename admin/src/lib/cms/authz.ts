@@ -130,14 +130,38 @@ export function draftAuthorized(req: NextRequest, site: Site): boolean {
 // requireSiteAccess gates a per-site CMS handler. The control plane is admin-only
 // (customer CMS moved to the practa scope), so this requires the admin role and
 // just 404s unknown sites — there's no longer an editor/owner tier.
+//
+// Project-aware: the existence check defaults to the global namespace
+// (project_id IS NULL) for console (session) routes. An optional ?project=<key>
+// query (or projectKey arg) scopes it to that project instead.
 export async function requireSiteAccess(
   req: NextRequest,
-  siteKey: string
+  siteKey: string,
+  projectKey?: string | null
 ): Promise<Guard> {
   const gate = requireAdmin(req);
   if ("error" in gate) return gate;
-  const { rows } = await pool.query(`SELECT 1 FROM sites WHERE key = $1`, [siteKey]);
-  if (rows.length === 0)
+  // Resolve project: explicit arg wins, else read ?project= from the URL.
+  const key =
+    projectKey !== undefined
+      ? projectKey
+      : req.nextUrl.searchParams.get("project") || null;
+  let exists: boolean;
+  if (key) {
+    const { rows } = await pool.query(
+      `SELECT 1 FROM sites s JOIN projects p ON p.id = s.project_id
+       WHERE s.key = $1 AND p.key = $2`,
+      [siteKey, key]
+    );
+    exists = rows.length > 0;
+  } else {
+    const { rows } = await pool.query(
+      `SELECT 1 FROM sites WHERE key = $1 AND project_id IS NULL`,
+      [siteKey]
+    );
+    exists = rows.length > 0;
+  }
+  if (!exists)
     return { error: NextResponse.json({ error: "not found" }, { status: 404 }) };
   return gate;
 }

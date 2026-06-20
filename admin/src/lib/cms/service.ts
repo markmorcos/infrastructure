@@ -1,6 +1,7 @@
 import {
   createSite,
   getSiteByKey,
+  getProjectByKey,
   getSection,
   createSection,
   updateSection,
@@ -39,13 +40,25 @@ function serializeSite(s: Site) {
     locales: s.locales,
     defaultLocale: s.defaultLocale,
     ownerUserId: s.ownerUserId,
+    projectId: s.projectId,
     createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
   };
 }
 
-async function requireSite(key: unknown): Promise<Site> {
+// ServiceContext carries the authenticated caller's tenant (from the per-tenant
+// token) so the service can scope every site lookup/create to that tenant's
+// project. Resolved once per request into `projectId`.
+export interface ServiceContext {
+  // The tenant string from verifyToken (e.g. "practa"), or null when unknown.
+  tenant?: string | null;
+}
+
+async function requireSite(
+  key: unknown,
+  projectId: string | null
+): Promise<Site> {
   if (typeof key !== "string" || !key) throw new ServiceError("missing site key");
-  const site = await getSiteByKey(key);
+  const site = await getSiteByKey(key, { projectId });
   if (!site) throw new ServiceError(`site "${key}" not found`, 404);
   return site;
 }
@@ -53,11 +66,20 @@ async function requireSite(key: unknown): Promise<Site> {
 type Params = Record<string, unknown>;
 
 // handleServiceAction dispatches one RPC call. Throws ServiceError (mapped to a
-// status by the route) on bad input.
+// status by the route) on bad input. The optional ctx carries the caller's
+// tenant; when it resolves to a project, all site lookups are scoped to it and
+// new sites are stamped with its project_id (so practa's token only ever
+// resolves/creates proj_practa sites).
 export async function handleServiceAction(
   action: string,
-  params: Params
+  params: Params,
+  ctx: ServiceContext = {}
 ): Promise<unknown> {
+  // Resolve the caller's project from its tenant once. A null projectId means
+  // the global namespace (and getSiteByKey's transitional fallback still applies
+  // when a project is set but the site isn't yet assigned to it).
+  const project = ctx.tenant ? await getProjectByKey(ctx.tenant) : null;
+  const projectId = project?.id ?? null;
   switch (action) {
     case "sites.create": {
       const key = params.key;
@@ -72,24 +94,29 @@ export async function handleServiceAction(
         locales,
         defaultLocale:
           typeof params.defaultLocale === "string" ? params.defaultLocale : undefined,
+        projectId,
       });
       return { site: serializeSite(site) };
     }
 
     case "sites.get": {
       const site =
-        typeof params.key === "string" ? await getSiteByKey(params.key) : null;
+        typeof params.key === "string"
+          ? await getSiteByKey(params.key, { projectId })
+          : null;
       return { site: site ? serializeSite(site) : null };
     }
 
     case "sites.exists": {
       const site =
-        typeof params.key === "string" ? await getSiteByKey(params.key) : null;
+        typeof params.key === "string"
+          ? await getSiteByKey(params.key, { projectId })
+          : null;
       return { exists: site !== null };
     }
 
     case "sections.upsert": {
-      const site = await requireSite(params.key);
+      const site = await requireSite(params.key, projectId);
       if (!Array.isArray(params.sections))
         throw new ServiceError("sections must be an array");
       await upsertSections(site.id, params.sections as SeedSection[]);
@@ -97,7 +124,7 @@ export async function handleServiceAction(
     }
 
     case "content.import": {
-      const site = await requireSite(params.key);
+      const site = await requireSite(params.key, projectId);
       try {
         if (params.published !== undefined || params.draft !== undefined) {
           await importDictSeparate(
@@ -119,13 +146,13 @@ export async function handleServiceAction(
     }
 
     case "publish": {
-      const site = await requireSite(params.key);
+      const site = await requireSite(params.key, projectId);
       const dispatched = await publishSite(site);
       return { dispatched };
     }
 
     case "sections.create": {
-      const site = await requireSite(params.key);
+      const site = await requireSite(params.key, projectId);
       const input = params.section as Record<string, unknown> | undefined;
       const sectionKey = typeof input?.key === "string" ? input.key : "";
       if (!sectionKey) throw new ServiceError("section key required");
@@ -142,7 +169,7 @@ export async function handleServiceAction(
     }
 
     case "sections.update": {
-      const site = await requireSite(params.key);
+      const site = await requireSite(params.key, projectId);
       const sectionKey = typeof params.sectionKey === "string" ? params.sectionKey : "";
       const sec = await getSection(site.id, sectionKey);
       if (!sec) throw new ServiceError("section not found", 404);
@@ -158,7 +185,7 @@ export async function handleServiceAction(
     }
 
     case "sections.delete": {
-      const site = await requireSite(params.key);
+      const site = await requireSite(params.key, projectId);
       const sec = await getSection(site.id, typeof params.sectionKey === "string" ? params.sectionKey : "");
       if (!sec) throw new ServiceError("section not found", 404);
       await deleteSection(sec.id);
@@ -166,7 +193,7 @@ export async function handleServiceAction(
     }
 
     case "content.putDraft": {
-      const site = await requireSite(params.key);
+      const site = await requireSite(params.key, projectId);
       const sec = await getSection(site.id, typeof params.sectionKey === "string" ? params.sectionKey : "");
       if (!sec) throw new ServiceError("section not found", 404);
       const draft = params.draft && typeof params.draft === "object" && !Array.isArray(params.draft)
@@ -181,7 +208,7 @@ export async function handleServiceAction(
     }
 
     case "content.merge": {
-      const site = await requireSite(params.key);
+      const site = await requireSite(params.key, projectId);
       const section = typeof params.section === "string" ? params.section : "";
       if (!section) throw new ServiceError("missing section");
       const locale = typeof params.locale === "string" ? params.locale : "*";
@@ -197,7 +224,7 @@ export async function handleServiceAction(
     }
 
     case "assets.add": {
-      const site = await requireSite(params.key);
+      const site = await requireSite(params.key, projectId);
       const b64 = typeof params.dataBase64 === "string" ? params.dataBase64 : "";
       if (!b64) throw new ServiceError("missing dataBase64");
       const filename = typeof params.filename === "string" && params.filename ? params.filename : "upload";

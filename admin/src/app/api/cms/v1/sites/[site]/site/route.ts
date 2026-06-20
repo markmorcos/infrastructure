@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
-import { getSiteByKey, siteBundle } from "@/lib/cms/db";
+import { getSiteByKey, getProjectByKey, siteBundle } from "@/lib/cms/db";
 
 // Studio renderer bundle: everything one site render needs (meta, preset,
 // theme overrides, settings, pages with content, assets) in a single call. The
@@ -41,7 +41,11 @@ export async function GET(
 ) {
   const { site: siteKey } = await params;
   try {
-    const site = await getSiteByKey(siteKey);
+    // Optional ?project=<key> scopes the lookup to that project; the no-query
+    // case relies on getSiteByKey's transitional global fallback.
+    const projectKey = req.nextUrl.searchParams.get("project");
+    const project = projectKey ? await getProjectByKey(projectKey) : null;
+    const site = await getSiteByKey(siteKey, { projectId: project?.id ?? null });
     if (!site) {
       return NextResponse.json(
         { error: "not found" },

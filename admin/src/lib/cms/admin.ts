@@ -9,8 +9,8 @@ import { assembleDict, type ContentBySectionLocale } from "./dict";
 import { listSections, type Section, type Site } from "./db";
 import type { Field } from "./seed";
 
-export { listSections } from "./db";
-export type { Section, Site } from "./db";
+export { listSections, getProjectByKey } from "./db";
+export type { Section, Site, Project } from "./db";
 
 // localeAll is the pseudo-locale for non-localized sections (cms/model.go).
 export const localeAll = "*";
@@ -36,31 +36,67 @@ function mapSite(r: Record<string, unknown>): Site {
     dispatchEvent: r.dispatch_event as string,
     createdAt: r.created_at as Date,
     ownerUserId: (r.owner_user_id as number | null) ?? null,
+    projectId: (r.project_id as string | null) ?? null,
+    // Present only on rows from list queries that JOIN projects.
+    projectKey: (r.project_key as string | null) ?? null,
   };
 }
 
-const SITE_COLS = `id, key, name, locales, default_locale, github_repo, dispatch_event, created_at, owner_user_id`;
+const SITE_COLS = `id, key, name, locales, default_locale, github_repo, dispatch_event, created_at, owner_user_id, project_id`;
+
+// SITE_COLS_J selects the same columns plus the joined project key, for list
+// queries that group sites by project (aliased table `s`, projects as `p`).
+const SITE_COLS_J = `s.id, s.key, s.name, s.locales, s.default_locale, s.github_repo, s.dispatch_event, s.created_at, s.owner_user_id, s.project_id, p.key AS project_key`;
 
 // ---- Sites ----
 
 // listSites returns all sites ordered by creation (cms/store.go ListSites).
-export async function listSites(): Promise<Site[]> {
+// An optional projectId filters to one project (null = the global namespace).
+export async function listSites(opts?: {
+  projectId?: string | null;
+}): Promise<Site[]> {
+  const projectId = opts?.projectId;
+  if (projectId !== undefined) {
+    const clause =
+      projectId === null ? `s.project_id IS NULL` : `s.project_id = $1`;
+    const args = projectId === null ? [] : [projectId];
+    const { rows } = await pool.query(
+      `SELECT ${SITE_COLS_J} FROM sites s LEFT JOIN projects p ON p.id = s.project_id
+       WHERE ${clause} ORDER BY s.created_at`,
+      args
+    );
+    return rows.map(mapSite);
+  }
   const { rows } = await pool.query(
-    `SELECT ${SITE_COLS} FROM sites ORDER BY created_at`
+    `SELECT ${SITE_COLS_J} FROM sites s LEFT JOIN projects p ON p.id = s.project_id
+     ORDER BY s.created_at`
   );
   return rows.map(mapSite);
 }
 
 // listSitesForUser returns every site for admins, or only the sites a non-admin
-// (editor) owns.
+// (editor) owns. An optional projectId filters to one project (null = global).
 export async function listSitesForUser(
   role: string,
-  userId: number
+  userId: number,
+  opts?: { projectId?: string | null }
 ): Promise<Site[]> {
-  if (role === "admin") return listSites();
+  if (role === "admin") return listSites(opts);
+  const projectId = opts?.projectId;
+  const filters = [`s.owner_user_id = $1`];
+  const args: unknown[] = [userId];
+  if (projectId !== undefined) {
+    if (projectId === null) {
+      filters.push(`s.project_id IS NULL`);
+    } else {
+      args.push(projectId);
+      filters.push(`s.project_id = $${args.length}`);
+    }
+  }
   const { rows } = await pool.query(
-    `SELECT ${SITE_COLS} FROM sites WHERE owner_user_id = $1 ORDER BY created_at`,
-    [userId]
+    `SELECT ${SITE_COLS_J} FROM sites s LEFT JOIN projects p ON p.id = s.project_id
+     WHERE ${filters.join(" AND ")} ORDER BY s.created_at`,
+    args
   );
   return rows.map(mapSite);
 }
@@ -78,7 +114,25 @@ export async function assignSiteOwner(
 
 // getSiteByKey returns the site with the given key or null (cms/store.go
 // GetSite).
-export async function getSiteByKey(key: string): Promise<Site | null> {
+//
+// Project-aware with a TRANSITIONAL GLOBAL FALLBACK: when a projectId is given,
+// it first looks for the site in that project; if none is found it falls back to
+// a global key lookup so reads keep working before practa sends a project.
+//
+// TODO: remove the transitional fallback after practa sends project.
+export async function getSiteByKey(
+  key: string,
+  opts?: { projectId?: string | null }
+): Promise<Site | null> {
+  const projectId = opts?.projectId;
+  if (projectId !== undefined && projectId !== null) {
+    const scoped = await pool.query(
+      `SELECT ${SITE_COLS} FROM sites WHERE key = $1 AND project_id = $2`,
+      [key, projectId]
+    );
+    if (scoped.rows.length) return mapSite(scoped.rows[0]);
+    // TODO: remove transitional fallback after practa sends project.
+  }
   const { rows } = await pool.query(
     `SELECT ${SITE_COLS} FROM sites WHERE key = $1`,
     [key]
@@ -93,6 +147,8 @@ export interface CreateSiteInput {
   defaultLocale?: string;
   githubRepo?: string;
   dispatchEvent?: string;
+  // Optional project scope; default null = the global (console) namespace.
+  projectId?: string | null;
 }
 
 // createSite inserts a new site, defaulting locales/defaultLocale the same way
@@ -106,8 +162,8 @@ export async function createSite(input: CreateSiteInput): Promise<Site> {
   const defaultLocale = input.defaultLocale || locales[0];
   const name = input.name || input.key;
   const { rows } = await pool.query(
-    `INSERT INTO sites (id, key, name, locales, default_locale, github_repo, dispatch_event)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)
+    `INSERT INTO sites (id, key, name, locales, default_locale, github_repo, dispatch_event, project_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
      RETURNING ${SITE_COLS}`,
     [
       id,
@@ -117,6 +173,7 @@ export async function createSite(input: CreateSiteInput): Promise<Site> {
       defaultLocale,
       input.githubRepo ?? "",
       input.dispatchEvent ?? "",
+      input.projectId ?? null,
     ]
   );
   return mapSite(rows[0]);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getSiteByKey,
+  getProjectByKey,
   siteContent,
   maxPublishedAt,
 } from "@/lib/cms/db";
@@ -25,7 +26,11 @@ export async function GET(
 ) {
   const { site: siteKey } = await params;
   try {
-    const site = await getSiteByKey(siteKey);
+    // Optional ?project=<key> scopes the lookup to that project; the no-query
+    // case relies on getSiteByKey's transitional global fallback.
+    const projectKey = req.nextUrl.searchParams.get("project");
+    const project = projectKey ? await getProjectByKey(projectKey) : null;
+    const site = await getSiteByKey(siteKey, { projectId: project?.id ?? null });
     if (!site) {
       return NextResponse.json(
         { error: "not found" },

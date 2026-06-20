@@ -30,6 +30,9 @@ export async function middleware(req: NextRequest) {
     // service token), called server-to-server by the renderer — not a session
     // cookie. (The admin global dashboard uses /api/admin/analytics, still gated.)
     pathname.startsWith("/api/analytics/") ||
+    // Sentry verification endpoint: self-gates to dev / NEXT_PUBLIC_SENTRY_DEBUG
+    // (404s in production regardless), so it needs no session.
+    pathname === "/api/sentry-example" ||
     pathname.startsWith("/api/experimentation/v1")
   ) {
     return NextResponse.next();

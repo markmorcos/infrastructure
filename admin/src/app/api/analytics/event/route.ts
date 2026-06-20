@@ -40,9 +40,7 @@ export async function POST(req: NextRequest) {
   const props = body.props && typeof body.props === "object" ? body.props : null;
   // Derive country from the forwarded IP, then discard the IP — it's never
   // stored. Falls back to a client-provided country (or null) when geo is off.
-  const ipDbg = s(body.ip, 45);
-  const country = (await countryOf(ipDbg)) ?? s(body.country, 2);
-  console.warn("geo-debug", JSON.stringify({ ipPrefix: ipDbg ? ipDbg.split(/[.:]/).slice(0, 2).join(".") : null, country }));
+  const country = (await countryOf(s(body.ip, 45))) ?? s(body.country, 2);
 
   try {
     await pool.query(

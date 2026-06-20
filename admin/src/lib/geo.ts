@@ -1,38 +1,47 @@
-import { open, type Reader, type CountryResponse } from "maxmind";
-import { x as tarExtract } from "tar";
-import { mkdtemp, readdir, writeFile } from "fs/promises";
-import { tmpdir } from "os";
-import { join } from "path";
+import { Reader, type CountryResponse } from "maxmind";
+import { Client as MinioClient } from "minio";
 
 // Centralised IP → country lookup (GeoLite2-Country) for the analytics backend.
-// Lives in admin so EVERY product that posts events gets country enrichment with
-// no per-product setup. The DB is lazy-downloaded with the MaxMind license key on
-// first use and cached in /tmp, refreshed weekly. The raw IP is used only for the
+// The DB is refreshed weekly into a private MinIO bucket by the geoip-update
+// CronJob (k8s/08-geoip-update.yaml) — the app never calls MaxMind. Here we just
+// pull the .mmdb from MinIO into memory and cache it; a pod restart costs one
+// fast internal read, not a MaxMind download. The raw IP is used only for the
 // lookup and never stored.
 
-const EDITION = "GeoLite2-Country";
-const REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
+const BUCKET = process.env.GEOIP_BUCKET || "geoip";
+const OBJECT = "GeoLite2-Country.mmdb";
+const REFRESH_MS = 24 * 60 * 60 * 1000; // re-pull from MinIO daily (cheap, internal)
 
 let reader: Reader<CountryResponse> | null = null;
 let loadedAt = 0;
 let loading: Promise<void> | null = null;
 
+function minio(): { client: MinioClient } | null {
+  const endpoint = process.env.S3_ENDPOINT;
+  const accessKey = process.env.S3_ACCESS_KEY;
+  const secretKey = process.env.S3_SECRET_KEY;
+  if (!endpoint || !accessKey || !secretKey) return null;
+  const colon = endpoint.lastIndexOf(":");
+  const port = colon !== -1 ? Number(endpoint.slice(colon + 1)) : NaN;
+  const host = Number.isNaN(port) ? endpoint : endpoint.slice(0, colon);
+  return {
+    client: new MinioClient({
+      endPoint: host,
+      port: Number.isNaN(port) ? undefined : port,
+      useSSL: process.env.S3_SECURE === "true",
+      accessKey,
+      secretKey,
+    }),
+  };
+}
+
 async function load(): Promise<void> {
-  const key = process.env.MAXMIND_LICENSE_KEY;
-  if (!key) return; // geo disabled until the key is present
-  const url = `https://download.maxmind.com/app/geoip_download?edition_id=${EDITION}&license_key=${encodeURIComponent(key)}&suffix=tar.gz`;
-  const dir = await mkdtemp(join(tmpdir(), "geolite-"));
-  const tgz = join(dir, "db.tar.gz");
-
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`maxmind download ${res.status}`);
-  await writeFile(tgz, Buffer.from(await res.arrayBuffer()));
-  await tarExtract({ file: tgz, cwd: dir });
-
-  // The archive extracts to GeoLite2-Country_<date>/GeoLite2-Country.mmdb.
-  const sub = (await readdir(dir)).find((n) => n.startsWith(EDITION) && !n.endsWith(".tar.gz"));
-  if (!sub) throw new Error("mmdb folder missing");
-  reader = await open<CountryResponse>(join(dir, sub, `${EDITION}.mmdb`));
+  const m = minio();
+  if (!m) return; // geo off until S3 is configured + the cron has populated it
+  const stream = await m.client.getObject(BUCKET, OBJECT);
+  const chunks: Buffer[] = [];
+  for await (const c of stream) chunks.push(c as Buffer);
+  reader = new Reader<CountryResponse>(Buffer.concat(chunks));
   loadedAt = Date.now();
 }
 

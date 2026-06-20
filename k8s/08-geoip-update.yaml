@@ -1,0 +1,53 @@
+# Weekly refresh of the GeoLite2-Country DB into a private MinIO bucket (`geoip`),
+# which the analytics ingest reads for IP→country enrichment. This is the ONLY
+# thing that talks to MaxMind (once a week), so app pods never download the DB.
+# Runs in the `admin` namespace where both secrets live: maxmind-secrets (the
+# license key) and cms-secrets (MinIO S3 creds). MaxMind updates GeoLite2 ~weekly.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: geoip-update
+  namespace: admin
+spec:
+  schedule: "17 4 * * 1" # Mondays 04:17
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: geoip-update
+              image: alpine:3.20
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  apk add --no-cache curl tar >/dev/null
+                  echo "downloading GeoLite2-Country…"
+                  curl -sfSL "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-Country&license_key=${MAXMIND_LICENSE_KEY}&suffix=tar.gz" -o /tmp/db.tgz
+                  mkdir -p /tmp/x && tar -xzf /tmp/db.tgz -C /tmp/x
+                  MMDB="$(find /tmp/x -name GeoLite2-Country.mmdb | head -1)"
+                  test -n "$MMDB"
+                  curl -sfSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+                  chmod +x /usr/local/bin/mc
+                  mc alias set m "http://${S3_ENDPOINT}" "${S3_ACCESS_KEY}" "${S3_SECRET_KEY}" >/dev/null
+                  mc mb --ignore-existing m/geoip >/dev/null
+                  mc cp "$MMDB" m/geoip/GeoLite2-Country.mmdb
+                  echo "geoip bucket updated"
+              env:
+                - name: MAXMIND_LICENSE_KEY
+                  valueFrom: { secretKeyRef: { name: maxmind-secrets, key: MAXMIND_LICENSE_KEY } }
+                - name: S3_ENDPOINT
+                  value: "minio.data.svc.cluster.local:9000"
+                - name: S3_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: cms-secrets, key: S3_ACCESS_KEY } }
+                - name: S3_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: cms-secrets, key: S3_SECRET_KEY } }
+              resources:
+                requests: { cpu: "50m", memory: "64Mi" }
+                limits: { memory: "256Mi" }

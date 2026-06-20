@@ -1,0 +1,139 @@
+# Self-hosted Photon geocoder (Germany-only), privacy-first address autocomplete
+# for practa's LegalForm. Photon is OSM-based and runs an embedded OpenSearch, so
+# it is RAM-hungry; we cap the Java heap and pod limits to protect the single
+# m720q node. The Germany prebuilt index (~10GB compressed / ~25GB extracted) is
+# downloaded once by the container into a PVC and refreshed per UPDATE_INTERVAL.
+#
+# Photon is INTERNAL ONLY — no Ingress. practa proxies to it server-side via
+# http://photon.geo.svc.cluster.local:2322 (see practa /api/geo/autocomplete),
+# which keeps it off the public internet and avoids CORS/GDPR exposure.
+#
+# Image: rtuszik/photon-docker (komoot/photon packaged). REGION=germany makes it
+# pull the country-specific dump from GraphHopper instead of the full planet.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: geo
+  labels:
+    name: geo
+---
+# Index lives on the node's local-path storage. First boot downloads + extracts
+# the Germany dump here; subsequent restarts reuse it. 60Gi gives headroom for a
+# download + extract happening side by side, plus index growth over time.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: photon-data
+  namespace: geo
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 60Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: photon
+  namespace: geo
+  labels:
+    app: photon
+spec:
+  # Single replica: RWO PVC + a single-node cluster. Recreate avoids two pods
+  # fighting over the same PVC/index during rollouts.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: photon
+  template:
+    metadata:
+      labels:
+        app: photon
+    spec:
+      # Index download + OpenSearch startup can take several minutes on first
+      # boot; give the kubelet room before it considers the pod failed.
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: photon
+          image: rtuszik/photon-docker:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 2322
+          env:
+            # Country-specific index (GraphHopper by-country-code/de dump) instead
+            # of the ~60GB planet — keeps disk + RAM sane on a mini-PC.
+            - name: REGION
+              value: "germany"
+            # Prebuilt DB import (no local OSM build step).
+            - name: IMPORT_MODE
+              value: "db"
+            # Refresh the index monthly, in the background, without blocking serves.
+            - name: UPDATE_STRATEGY
+              value: "PARALLEL"
+            - name: UPDATE_INTERVAL
+              value: "720h"
+            # Cap the embedded OpenSearch/Java heap so Photon can't balloon and
+            # OOM the node. ~2.5G heap is enough for the Germany index.
+            - name: JAVA_PARAMS
+              value: "-Xms512m -Xmx2560m"
+          volumeMounts:
+            - name: data
+              mountPath: /photon/data
+          resources:
+            # Requests stay modest so the scheduler doesn't over-reserve; the
+            # limit (heap + JVM/OpenSearch overhead) is the real guardrail.
+            requests:
+              cpu: "100m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "3584Mi"
+          # Photon answers /api once the index is loaded. Long initial-delay +
+          # generous failure budget covers the first-boot download/extract.
+          startupProbe:
+            httpGet:
+              path: /api?q=berlin&limit=1
+              port: 2322
+            periodSeconds: 30
+            failureThreshold: 120 # up to ~60min for first index download/build
+          readinessProbe:
+            httpGet:
+              path: /api?q=berlin&limit=1
+              port: 2322
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 4
+          livenessProbe:
+            httpGet:
+              path: /api?q=berlin&limit=1
+              port: 2322
+            periodSeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: photon-data
+---
+# Internal ClusterIP only. NO Ingress — practa is the only consumer and reaches
+# it at photon.geo.svc.cluster.local:2322.
+apiVersion: v1
+kind: Service
+metadata:
+  name: photon
+  namespace: geo
+  labels:
+    app: photon
+spec:
+  type: ClusterIP
+  selector:
+    app: photon
+  ports:
+    - name: http
+      port: 2322
+      targetPort: 2322

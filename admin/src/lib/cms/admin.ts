@@ -195,30 +195,18 @@ export async function setSiteProject(
 }
 
 // getSiteByKey returns the site with the given key or null (cms/store.go
-// GetSite).
-//
-// Project-aware with a TRANSITIONAL GLOBAL FALLBACK: when a projectId is given,
-// it first looks for the site in that project; if none is found it falls back to
-// a global key lookup so reads keep working before practa sends a project.
-//
-// TODO: remove the transitional fallback after practa sends project.
+// GetSite). Project-aware: when a projectId is given the lookup is strictly
+// scoped to that project; when omitted (console / NULL-project sites) it's a
+// global key lookup.
 export async function getSiteByKey(
   key: string,
   opts?: { projectId?: string | null }
 ): Promise<Site | null> {
   const projectId = opts?.projectId;
-  if (projectId !== undefined && projectId !== null) {
-    const scoped = await pool.query(
-      `SELECT ${SITE_COLS} FROM sites WHERE key = $1 AND project_id = $2`,
-      [key, projectId]
-    );
-    if (scoped.rows.length) return mapSite(scoped.rows[0]);
-    // TODO: remove transitional fallback after practa sends project.
-  }
-  const { rows } = await pool.query(
-    `SELECT ${SITE_COLS} FROM sites WHERE key = $1`,
-    [key]
-  );
+  const { rows } =
+    projectId !== undefined && projectId !== null
+      ? await pool.query(`SELECT ${SITE_COLS} FROM sites WHERE key = $1 AND project_id = $2`, [key, projectId])
+      : await pool.query(`SELECT ${SITE_COLS} FROM sites WHERE key = $1`, [key]);
   return rows.length ? mapSite(rows[0]) : null;
 }
 

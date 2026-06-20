@@ -56,15 +56,9 @@ export interface Section extends DictSection {
 }
 
 // getSiteByKey returns the site with the given public key, or null when none
-// matches (cms/store.go GetSite).
-//
-// Project-aware with a TRANSITIONAL GLOBAL FALLBACK: when a projectId is given,
-// it first looks for the site in that project; if none is found it falls back to
-// a global key lookup so reads keep working before callers (practa) start
-// passing a project. When projectId is undefined the lookup is global.
-//
-// TODO: remove the transitional fallback after practa sends ?project=practa /
-// resolves its project on every read+write path.
+// matches (cms/store.go GetSite). Project-aware: a given projectId scopes the
+// lookup strictly to that project; when omitted (console / NULL-project sites)
+// the lookup is global.
 export async function getSiteByKey(
   key: string,
   opts?: { projectId?: string | null }
@@ -72,18 +66,10 @@ export async function getSiteByKey(
   const cols = `id, key, name, locales, default_locale, github_repo, dispatch_event,
             created_at, owner_user_id, project_id`;
   const projectId = opts?.projectId;
-  if (projectId !== undefined && projectId !== null) {
-    const scoped = await pool.query(
-      `SELECT ${cols} FROM sites WHERE key = $1 AND project_id = $2`,
-      [key, projectId]
-    );
-    if (scoped.rows.length) return mapDbSite(scoped.rows[0]);
-    // TODO: remove transitional fallback after practa sends project.
-  }
-  const { rows } = await pool.query(
-    `SELECT ${cols} FROM sites WHERE key = $1`,
-    [key]
-  );
+  const { rows } =
+    projectId !== undefined && projectId !== null
+      ? await pool.query(`SELECT ${cols} FROM sites WHERE key = $1 AND project_id = $2`, [key, projectId])
+      : await pool.query(`SELECT ${cols} FROM sites WHERE key = $1`, [key]);
   return rows.length ? mapDbSite(rows[0]) : null;
 }
 

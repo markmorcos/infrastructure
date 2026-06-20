@@ -30,11 +30,24 @@ export async function summarize(site: string | null, days: number): Promise<Anal
       params
     ),
     pool.query(
-      `SELECT to_char(date_trunc('day', ts), 'YYYY-MM-DD') AS day,
-              count(*)::int AS pageviews,
-              count(DISTINCT visitor_id)::int AS visitors
-         FROM analytics_events WHERE ${pv}
-        GROUP BY 1 ORDER BY 1`,
+      // Zero-fill every day in the window via generate_series so the chart
+      // shows one bar per day (empty days at 0), not just the days with data.
+      `SELECT to_char(d.day, 'YYYY-MM-DD') AS day,
+              coalesce(e.pageviews, 0) AS pageviews,
+              coalesce(e.visitors, 0) AS visitors
+         FROM generate_series(
+                date_trunc('day', now() - ($1 || ' days')::interval),
+                date_trunc('day', now()),
+                '1 day'
+              ) AS d(day)
+         LEFT JOIN (
+           SELECT date_trunc('day', ts) AS day,
+                  count(*)::int AS pageviews,
+                  count(DISTINCT visitor_id)::int AS visitors
+             FROM analytics_events WHERE ${pv}
+            GROUP BY 1
+         ) e ON e.day = d.day
+        ORDER BY d.day`,
       params
     ),
     pool.query(

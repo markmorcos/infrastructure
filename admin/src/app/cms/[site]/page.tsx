@@ -109,24 +109,6 @@ export default function SiteDashboard() {
     }
   };
 
-  const openBranding = async () => {
-    setMsg(null);
-    const tab = window.open("about:blank", "_blank");
-    if (tab) tab.opener = null;
-    const res = await fetch(
-      `/api/cms/sites/${encodeURIComponent(siteKey)}/manage-token`,
-      { method: "POST" }
-    );
-    if (!res.ok) {
-      tab?.close();
-      setMsg({ kind: "err", text: "Could not open branding — please try again." });
-      return;
-    }
-    const { url } = await res.json();
-    if (tab) tab.location.replace(url);
-    else window.open(url, "_blank", "noopener");
-  };
-
   const publish = async () => {
     setPublishing(true);
     setMsg(null);
@@ -204,15 +186,6 @@ export default function SiteDashboard() {
           className="px-[14px]! text-[12px]!"
         >
           <span className="msym" style={{ fontSize: 17 }}>image</span>images
-        </Button>
-        <Button
-          variant="soft"
-          size="md"
-          onClick={openBranding}
-          className="px-[14px]! text-[12px]!"
-          title="edit colour, cal.com & contact email"
-        >
-          <span className="msym" style={{ fontSize: 17 }}>palette</span>branding
         </Button>
         <Button
           variant="soft"

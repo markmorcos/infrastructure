@@ -20,6 +20,7 @@ export async function middleware(req: NextRequest) {
   if (
     pathname.startsWith("/api/auth") ||
     pathname === "/api/verify" ||
+    pathname === "/api/health" ||
     pathname.startsWith("/api/webhooks") ||
     pathname.startsWith("/api/cms/v1") ||
     // Internal CMS service API: authed by its own shared secret (not a session

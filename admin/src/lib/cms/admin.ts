@@ -270,6 +270,13 @@ export async function deleteSite(id: string): Promise<void> {
   await pool.query(`DELETE FROM sites WHERE id=$1`, [id]);
 }
 
+// deleteSiteAnalytics removes a site's analytics events (public.analytics_events,
+// not FK-linked to sites, so it needs an explicit purge). cmsPool's search_path
+// is "cms,public" so the unqualified name resolves to the public table.
+export async function deleteSiteAnalytics(siteKey: string): Promise<void> {
+  await pool.query(`DELETE FROM analytics_events WHERE site_key = $1`, [siteKey]);
+}
+
 // ---- Sections ----
 
 // getSection returns one section by (site, key) or null (cms/store.go

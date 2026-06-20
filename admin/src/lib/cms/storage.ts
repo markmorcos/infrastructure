@@ -259,6 +259,26 @@ export async function uploadFile(
   return { ok: true, asset };
 }
 
+// deleteSiteAssets removes every MinIO object under the site's prefix
+// ({siteKey}/…). Best-effort: storage failures are logged, not fatal — the DB
+// asset rows are removed by the sites cascade regardless. Used by sites.delete.
+export async function deleteSiteAssets(siteKey: string): Promise<void> {
+  const store = assetStore();
+  if (!store) return;
+  try {
+    const keys: string[] = [];
+    const stream = store.client.listObjectsV2(store.bucket, `${siteKey}/`, true);
+    await new Promise<void>((resolve, reject) => {
+      stream.on("data", (o) => { if (o.name) keys.push(o.name); });
+      stream.on("end", () => resolve());
+      stream.on("error", reject);
+    });
+    if (keys.length) await store.client.removeObjects(store.bucket, keys);
+  } catch (e) {
+    console.error(`assets: delete site ${siteKey}: ${(e as Error).message}`);
+  }
+}
+
 // deleteAsset removes the object from MinIO (best-effort) then the DB row
 // (cms/assets.go deleteAsset).
 export async function deleteAsset(asset: Asset): Promise<void> {

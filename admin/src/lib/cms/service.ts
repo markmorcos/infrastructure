@@ -2,6 +2,8 @@ import {
   createSite,
   getSiteByKey,
   getProjectByKey,
+  deleteSite,
+  deleteSiteAnalytics,
   getSection,
   createSection,
   updateSection,
@@ -16,7 +18,7 @@ import {
   type Site,
 } from "./admin";
 import { upsertSections, type SeedSection } from "./seed";
-import { uploadFile } from "./storage";
+import { uploadFile, deleteSiteAssets } from "./storage";
 
 // Internal CMS service API: the single shared-secret write path that the admin
 // console and the practa product both call, so there's no second copy of the
@@ -190,6 +192,17 @@ export async function handleServiceAction(
       if (!sec) throw new ServiceError("section not found", 404);
       await deleteSection(sec.id);
       return { ok: true };
+    }
+
+    case "sites.delete": {
+      // Full tenant teardown: MinIO objects + analytics rows + the site row
+      // (which cascades sections/contents/assets/publishes). Scoped to the
+      // caller's project so a token can only delete its own tenant's sites.
+      const site = await requireSite(params.key, projectId);
+      await deleteSiteAssets(site.key);
+      await deleteSiteAnalytics(site.key);
+      await deleteSite(site.id);
+      return { ok: true, key: site.key };
     }
 
     case "content.putDraft": {

@@ -11,8 +11,9 @@ import { requireSiteAccess, requireAdmin } from "@/lib/cms/authz";
 
 // projectIdFromQuery resolves an optional ?project=<key> into a project id (or
 // null for the global namespace) so single-site console routes can scope their
-// lookups. Absent query => null (global), which getSiteByKey's transitional
-// fallback widens to a global key lookup.
+// lookups. Absent query => null; the console's getSiteByKey (admin.ts) then does
+// a global key lookup — fine for the admin-only console (unlike the tenant-facing
+// db.ts path, which is strictly project-scoped).
 async function projectIdFromQuery(req: NextRequest): Promise<string | null> {
   const key = req.nextUrl.searchParams.get("project");
   if (!key) return null;

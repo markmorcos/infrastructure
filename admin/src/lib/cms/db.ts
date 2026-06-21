@@ -56,9 +56,11 @@ export interface Section extends DictSection {
 }
 
 // getSiteByKey returns the site with the given public key, or null when none
-// matches (cms/store.go GetSite). Project-aware: a given projectId scopes the
-// lookup strictly to that project; when omitted (console / NULL-project sites)
-// the lookup is global.
+// matches (cms/store.go GetSite). Strictly project-scoped: a non-null projectId
+// resolves only within that project; a null/omitted projectId resolves only the
+// global namespace (project_id IS NULL). A project site (e.g. practa's) therefore
+// never resolves without its project — consumers (practa) always send ?project /
+// carry a tenant token, so the old global-widening fallback is gone.
 export async function getSiteByKey(
   key: string,
   opts?: { projectId?: string | null }
@@ -69,7 +71,7 @@ export async function getSiteByKey(
   const { rows } =
     projectId !== undefined && projectId !== null
       ? await pool.query(`SELECT ${cols} FROM sites WHERE key = $1 AND project_id = $2`, [key, projectId])
-      : await pool.query(`SELECT ${cols} FROM sites WHERE key = $1`, [key]);
+      : await pool.query(`SELECT ${cols} FROM sites WHERE key = $1 AND project_id IS NULL`, [key]);
   return rows.length ? mapDbSite(rows[0]) : null;
 }
 

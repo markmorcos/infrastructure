@@ -10,9 +10,8 @@ import type { Project, Site } from "./types";
 // project selectors — it maps to project_id = NULL on the wire.
 const UNASSIGNED = "";
 
-// CMS sites list (/cms). Sections are code-owned, so there is no create-section
-// UI here. A single site links straight through to its dashboard, mirroring
-// cms/ui.go uiSites.
+// CMS sites list (/cms). Admin-only control plane (no editor tier). Sections are
+// code-owned, so there is no create-section UI here.
 
 export default function CmsSitesPage() {
   const router = useRouter();
@@ -47,14 +46,8 @@ export default function CmsSitesPage() {
       return;
     }
     const data: Site[] = await res.json();
-    // Editors with a single site go straight to its dashboard; admins always see
-    // the list so they can create and manage other sites.
-    if (!isAdmin && data.length === 1) {
-      router.replace(siteHref(data[0]));
-      return;
-    }
     setSites(data);
-  }, [router, isAdmin]);
+  }, []);
 
   useEffect(() => {
     Promise.all([load(), isAdmin ? loadProjects() : Promise.resolve()]).finally(

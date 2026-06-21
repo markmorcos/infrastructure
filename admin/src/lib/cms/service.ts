@@ -77,9 +77,10 @@ export async function handleServiceAction(
   params: Params,
   ctx: ServiceContext = {}
 ): Promise<unknown> {
-  // Resolve the caller's project from its tenant once. A null projectId means
-  // the global namespace (and getSiteByKey's transitional fallback still applies
-  // when a project is set but the site isn't yet assigned to it).
+  // Resolve the caller's project from its tenant once. A non-null projectId
+  // scopes every lookup/create to that project; a null projectId (tenant-less
+  // token) resolves only the global namespace — it can no longer reach project
+  // sites (the old global-widening fallback is gone).
   const project = ctx.tenant ? await getProjectByKey(ctx.tenant) : null;
   const projectId = project?.id ?? null;
   switch (action) {

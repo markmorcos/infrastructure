@@ -41,8 +41,8 @@ export async function GET(
 ) {
   const { site: siteKey } = await params;
   try {
-    // Optional ?project=<key> scopes the lookup to that project; the no-query
-    // case relies on getSiteByKey's transitional global fallback.
+    // ?project=<key> scopes the lookup to that project (practa always sends it);
+    // no query resolves only the global namespace (project_id IS NULL).
     const projectKey = req.nextUrl.searchParams.get("project");
     const project = projectKey ? await getProjectByKey(projectKey) : null;
     const site = await getSiteByKey(siteKey, { projectId: project?.id ?? null });

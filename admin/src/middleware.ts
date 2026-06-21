@@ -3,10 +3,8 @@ import { jwtVerify } from "jose";
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
-// Routes restricted to admins. The control-plane APIs (projects/builds/runtime)
-// live under /api/admin/*; the experimentation console is admin-only too.
-// Editors are confined to /api/cms/* (with per-site ownership enforced in those
-// handlers); other authenticated routes only need a valid session.
+// The control plane is admin-only (no editor tier): every authenticated route
+// requires the admin role. Public, unauthenticated endpoints are carved out below.
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 

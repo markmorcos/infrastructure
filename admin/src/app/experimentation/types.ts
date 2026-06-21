@@ -50,12 +50,28 @@ export type Experiment = {
   variants: Variant[];
 };
 
+export type Cohort = {
+  id: string;
+  key: string;
+  name: string;
+  createdAt: string;
+  members: string[];
+};
+
+export type FeatureRule = {
+  cohortId: string | null;
+  entityId: string | null;
+  enabled: boolean;
+  value: unknown;
+};
+
 export type ProjectDetail = {
   project: Project;
   environments: Environment[];
   sdkKeys: SdkKey[];
   features: Feature[];
   experiments: Experiment[];
+  cohorts: Cohort[];
 };
 
 export type VariantResult = {

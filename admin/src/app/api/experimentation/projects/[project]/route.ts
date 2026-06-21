@@ -6,6 +6,8 @@ import {
   listFeatures,
   listFeatureValues,
   listExperiments,
+  listCohorts,
+  listCohortMembers,
   renameProject,
   deleteProject,
 } from "@/lib/experimentation/admin";
@@ -22,12 +24,14 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
   try {
     const p = await getProject(project);
     if (!p) return text("project not found", 404);
-    const [environments, sdkKeys, features, experiments] = await Promise.all([
-      listEnvironments(p.id),
-      listSdkKeys(p.id),
-      listFeatures(p.id),
-      listExperiments(p.id),
-    ]);
+    const [environments, sdkKeys, features, experiments, cohorts] =
+      await Promise.all([
+        listEnvironments(p.id),
+        listSdkKeys(p.id),
+        listFeatures(p.id),
+        listExperiments(p.id),
+        listCohorts(p.id),
+      ]);
     // The Go project page renders each feature with its per-environment values
     // (ui.go featureView). Embed those here so the console can render them in a
     // single round trip, mirroring that screen.
@@ -37,12 +41,20 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
         values: await listFeatureValues(f.id),
       }))
     );
+    // Embed each cohort's members so the console can manage them inline.
+    const cohortsWithMembers = await Promise.all(
+      cohorts.map(async (c) => ({
+        ...c,
+        members: (await listCohortMembers(c.id)).map((m) => m.entityId),
+      }))
+    );
     return json({
       project: p,
       environments,
       sdkKeys,
       features: featuresWithValues,
       experiments,
+      cohorts: cohortsWithMembers,
     });
   } catch (e) {
     console.error(e);

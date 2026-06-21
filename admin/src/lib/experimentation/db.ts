@@ -76,6 +76,63 @@ export async function featuresForEval(
   }));
 }
 
+// cohortsForEntity returns the set of cohort ids (within the given project) that
+// the entity/device belongs to. Used by the SDK config route to resolve
+// cohort-based targeting rules for one device.
+export async function cohortsForEntity(
+  projectId: string,
+  device: string
+): Promise<Set<string>> {
+  const { rows } = await pool.query(
+    `SELECT cm.cohort_id
+     FROM cohort_members cm
+     JOIN cohorts c ON c.id = cm.cohort_id
+     WHERE c.project_id = $1 AND cm.entity_id = $2`,
+    [projectId, device]
+  );
+  return new Set(rows.map((r) => r.cohort_id as string));
+}
+
+// FeatureRule is one targeting rule for a feature in an environment. A rule
+// matches a device when entityId === device OR the device is a member of
+// cohortId. value is the JSON the matched-enabled rule should yield.
+export type FeatureRule = {
+  cohortId: string | null;
+  entityId: string | null;
+  enabled: boolean;
+  value: unknown;
+};
+
+// featureRulesForEval returns every feature_rule in a project for one
+// environment, grouped by feature KEY and ordered by position. Features with no
+// rules are absent from the map (the SDK route falls back to plain rollout
+// evaluation for those).
+export async function featureRulesForEval(
+  projectId: string,
+  envId: string
+): Promise<Map<string, FeatureRule[]>> {
+  const { rows } = await pool.query(
+    `SELECT f.key AS feature_key, fr.cohort_id, fr.entity_id, fr.enabled, fr.value
+     FROM feature_rules fr
+     JOIN features f ON f.id = fr.feature_id
+     WHERE f.project_id = $1 AND fr.environment_id = $2
+     ORDER BY fr.position`,
+    [projectId, envId]
+  );
+  const out = new Map<string, FeatureRule[]>();
+  for (const r of rows) {
+    const list = out.get(r.feature_key) ?? [];
+    list.push({
+      cohortId: r.cohort_id,
+      entityId: r.entity_id,
+      enabled: r.enabled,
+      value: r.value,
+    });
+    out.set(r.feature_key, list);
+  }
+  return out;
+}
+
 export type ExperimentVariant = { key: string; weight: number; position: number };
 
 export type RunningExperiment = {

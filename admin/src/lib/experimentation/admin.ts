@@ -414,6 +414,165 @@ export async function deleteFeatureValue(
   );
 }
 
+// ---- cohorts ----
+
+export type Cohort = {
+  id: string;
+  key: string;
+  name: string;
+  createdAt: string;
+};
+
+export type CohortMember = {
+  entityId: string;
+  createdAt: string;
+};
+
+export async function listCohorts(projectId: string): Promise<Cohort[]> {
+  const { rows } = await pool.query(
+    `SELECT id, key, name, created_at FROM cohorts WHERE project_id = $1 ORDER BY created_at`,
+    [projectId]
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    key: r.key,
+    name: r.name,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function getCohort(
+  projectId: string,
+  key: string
+): Promise<Cohort | null> {
+  const { rows } = await pool.query(
+    `SELECT id, key, name, created_at FROM cohorts WHERE project_id = $1 AND key = $2`,
+    [projectId, key]
+  );
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return { id: r.id, key: r.key, name: r.name, createdAt: r.created_at };
+}
+
+export async function createCohort(
+  projectId: string,
+  key: string,
+  name: string
+): Promise<Cohort> {
+  const id = newId();
+  const { rows } = await pool.query(
+    `INSERT INTO cohorts (id, project_id, key, name) VALUES ($1,$2,$3,$4) RETURNING created_at`,
+    [id, projectId, key, name]
+  );
+  return { id, key, name, createdAt: rows[0].created_at };
+}
+
+export async function deleteCohort(id: string): Promise<void> {
+  await pool.query(`DELETE FROM cohorts WHERE id=$1`, [id]);
+}
+
+export async function listCohortMembers(
+  cohortId: string
+): Promise<CohortMember[]> {
+  const { rows } = await pool.query(
+    `SELECT entity_id, created_at FROM cohort_members WHERE cohort_id = $1 ORDER BY created_at`,
+    [cohortId]
+  );
+  return rows.map((r) => ({ entityId: r.entity_id, createdAt: r.created_at }));
+}
+
+export async function addCohortMember(
+  cohortId: string,
+  entityId: string
+): Promise<void> {
+  await pool.query(
+    `INSERT INTO cohort_members (cohort_id, entity_id) VALUES ($1,$2)
+     ON CONFLICT (cohort_id, entity_id) DO NOTHING`,
+    [cohortId, entityId]
+  );
+}
+
+export async function removeCohortMember(
+  cohortId: string,
+  entityId: string
+): Promise<void> {
+  await pool.query(
+    `DELETE FROM cohort_members WHERE cohort_id=$1 AND entity_id=$2`,
+    [cohortId, entityId]
+  );
+}
+
+// ---- feature targeting rules ----
+
+export type FeatureRule = {
+  cohortId: string | null;
+  entityId: string | null;
+  enabled: boolean;
+  value: unknown;
+};
+
+// listFeatureRules returns the ordered targeting rules for a feature in one
+// environment (by position).
+export async function listFeatureRules(
+  featureId: string,
+  envId: string
+): Promise<FeatureRule[]> {
+  const { rows } = await pool.query(
+    `SELECT cohort_id, entity_id, enabled, value
+     FROM feature_rules
+     WHERE feature_id = $1 AND environment_id = $2
+     ORDER BY position`,
+    [featureId, envId]
+  );
+  return rows.map((r) => ({
+    cohortId: r.cohort_id,
+    entityId: r.entity_id,
+    enabled: r.enabled,
+    value: r.value,
+  }));
+}
+
+// setFeatureRules replaces ALL rules for a feature+environment in a single
+// transaction (delete then re-insert with positions matching array order).
+export async function setFeatureRules(
+  featureId: string,
+  envId: string,
+  rules: FeatureRule[]
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `DELETE FROM feature_rules WHERE feature_id=$1 AND environment_id=$2`,
+      [featureId, envId]
+    );
+    for (let i = 0; i < rules.length; i++) {
+      const r = rules[i];
+      await client.query(
+        `INSERT INTO feature_rules
+           (id, feature_id, environment_id, position, cohort_id, entity_id, enabled, value)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [
+          newId(),
+          featureId,
+          envId,
+          i,
+          r.cohortId,
+          r.entityId,
+          r.enabled,
+          r.value === undefined ? null : JSON.stringify(r.value),
+        ]
+      );
+    }
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 // ---- experiments ----
 
 async function loadVariants(

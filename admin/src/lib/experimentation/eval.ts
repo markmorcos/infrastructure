@@ -89,3 +89,42 @@ export function evalFeature(
   }
   return feature.default_value;
 }
+
+// EvalRule is one targeting rule: it matches a device by exact entity id or by
+// cohort membership. value is what a matched-enabled rule yields (null means
+// "no explicit value", which for a boolean flag is treated as `true`).
+export type EvalRule = {
+  cohortId: string | null;
+  entityId: string | null;
+  enabled: boolean;
+  value: unknown;
+};
+
+// evalFeatureWithRules applies ordered targeting rules BEFORE the rollout. Rules
+// are walked in order; the first one that matches the device (by entity id or
+// cohort membership) decides the result:
+//   * matched + enabled  -> rule.value if it set one, else `true` (boolean flag)
+//   * matched + disabled -> the feature's default_value
+// When NO rule matches, evaluation falls through to plain rollout evaluation
+// (evalFeature), preserving back-compat for features without targeting.
+export function evalFeatureWithRules(
+  feature: EvalFeature,
+  value: EvalFeatureValue | null,
+  rules: EvalRule[],
+  device: string,
+  memberCohortIds: Set<string>
+): unknown {
+  for (const rule of rules) {
+    const matches =
+      (rule.entityId !== null && rule.entityId === device) ||
+      (rule.cohortId !== null && memberCohortIds.has(rule.cohortId));
+    if (!matches) continue;
+    if (!rule.enabled) {
+      return feature.default_value;
+    }
+    // An enabled rule yields its explicit value when set; for a boolean flag a
+    // bare enabled rule (no value) means "on" -> `true`.
+    return rule.value !== null && rule.value !== undefined ? rule.value : true;
+  }
+  return evalFeature(feature, value, device);
+}

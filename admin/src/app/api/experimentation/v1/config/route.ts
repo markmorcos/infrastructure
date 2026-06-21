@@ -3,8 +3,14 @@ import {
   resolveSdkKey,
   featuresForEval,
   runningExperiments,
+  cohortsForEntity,
+  featureRulesForEval,
 } from "@/lib/experimentation/db";
-import { evalFeature, assignVariant } from "@/lib/experimentation/eval";
+import {
+  evalFeature,
+  evalFeatureWithRules,
+  assignVariant,
+} from "@/lib/experimentation/eval";
 
 // Public SDK config endpoint, ported from the Go service's handleConfig.
 // GET /api/v1/config?key=<sdkKey>&device=<id> returns every evaluated flag plus
@@ -43,18 +49,21 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const [feats, exps] = await Promise.all([
+    const [feats, exps, memberCohorts, ruleMap] = await Promise.all([
       featuresForEval(rk.projectId, rk.environmentId),
       runningExperiments(rk.projectId),
+      cohortsForEntity(rk.projectId, device),
+      featureRulesForEval(rk.projectId, rk.environmentId),
     ]);
 
     const features: Record<string, unknown> = {};
     for (const fe of feats) {
-      features[fe.key] = evalFeature(
-        { key: fe.key, default_value: fe.default_value },
-        { enabled: fe.enabled, value: fe.value, rollout: fe.rollout },
-        device
-      );
+      const feature = { key: fe.key, default_value: fe.default_value };
+      const value = { enabled: fe.enabled, value: fe.value, rollout: fe.rollout };
+      const rules = ruleMap.get(fe.key);
+      features[fe.key] = rules
+        ? evalFeatureWithRules(feature, value, rules, device, memberCohorts)
+        : evalFeature(feature, value, device);
     }
 
     const experiments: Record<string, { variant: string }> = {};

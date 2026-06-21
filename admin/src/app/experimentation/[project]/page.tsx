@@ -6,6 +6,8 @@ import {
   ProjectDetail,
   Feature,
   FeatureValue,
+  FeatureRule,
+  Cohort,
   Environment,
   SdkKey,
   FEATURE_TYPES,
@@ -79,7 +81,7 @@ export default function ProjectDetailPage() {
       </div>
     );
 
-  const { project, environments, sdkKeys, features, experiments } = data;
+  const { project, environments, sdkKeys, features, experiments, cohorts } = data;
 
   const rename = async () => {
     const name = prompt("new name", project.name);
@@ -123,7 +125,9 @@ export default function ProjectDetailPage() {
 
       <Environments base={base} environments={environments} sdkKeys={sdkKeys} onChange={reload} />
 
-      <Features base={base} features={features} environments={environments} onChange={reload} />
+      <Cohorts base={base} cohorts={cohorts ?? []} onChange={reload} />
+
+      <Features base={base} features={features} environments={environments} cohorts={cohorts ?? []} onChange={reload} />
 
       <Experiments base={base} projectKey={project.key} experiments={experiments} />
     </div>
@@ -248,17 +252,151 @@ function KeyRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+// ---- Cohorts ----
+
+function Cohorts({
+  base,
+  cohorts,
+  onChange,
+}: {
+  base: string;
+  cohorts: Cohort[];
+  onChange: () => void;
+}) {
+  const [key, setKey] = useState("");
+  const [name, setName] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  const create = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr(null);
+    const res = await fetch(`${base}/cohorts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: key.trim(), name: name.trim() }),
+    });
+    if (!res.ok) {
+      setErr((await res.text()) || "could not create cohort");
+      return;
+    }
+    setKey("");
+    setName("");
+    onChange();
+  };
+
+  const remove = async (c: Cohort) => {
+    if (!confirm(`Delete cohort ${c.key}? This removes its members and any targeting rules using it.`)) return;
+    await fetch(`${base}/cohorts/${encodeURIComponent(c.key)}`, { method: "DELETE" });
+    onChange();
+  };
+
+  return (
+    <Section icon="groups" title="COHORTS">
+      <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+        {cohorts.length === 0 && <Empty icon="groups" text="no cohorts" />}
+        {cohorts.map((c) => (
+          <CohortCard key={c.id} base={base} cohort={c} onChange={onChange} onDelete={() => remove(c)} />
+        ))}
+      </div>
+
+      <form onSubmit={create} style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+        <Input value={key} onChange={(e) => setKey(e.target.value)} placeholder="key (e.g. pilot)" style={{ height: 40, flex: "1 1 140px", minWidth: 0, fontFamily: "var(--cp-mono)" }} />
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="name" style={{ height: 40, flex: "1 1 140px", minWidth: 0 }} />
+        <Button type="submit" variant="tonal" disabled={!key.trim()} className="h-[40px] px-4 text-[12px]">
+          <span className="msym" style={{ fontSize: 16 }}>add</span>add cohort
+        </Button>
+      </form>
+      {err && <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--cp-err)", marginTop: 8 }}>{err}</div>}
+    </Section>
+  );
+}
+
+function CohortCard({
+  base,
+  cohort,
+  onChange,
+  onDelete,
+}: {
+  base: string;
+  cohort: Cohort;
+  onChange: () => void;
+  onDelete: () => void;
+}) {
+  const [entity, setEntity] = useState("");
+  const membersPath = `${base}/cohorts/${encodeURIComponent(cohort.key)}/members`;
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const entity_id = entity.trim();
+    if (!entity_id) return;
+    await fetch(membersPath, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entity_id }),
+    });
+    setEntity("");
+    onChange();
+  };
+
+  const removeMember = async (entity_id: string) => {
+    await fetch(membersPath, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entity_id }),
+    });
+    onChange();
+  };
+
+  return (
+    <div style={{ border: "1px solid var(--md-sys-color-outline-variant)", borderRadius: 11, overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 13px", background: "var(--md-sys-color-surface-container)" }}>
+        <span className="msym" style={{ fontSize: 16, color: "var(--md-sys-color-primary)" }}>groups</span>
+        <span style={{ fontFamily: "var(--cp-mono)", fontSize: 13, fontWeight: 600 }}>{cohort.name}</span>
+        <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-on-surface-variant)" }}>{cohort.key}</span>
+        <span style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, color: "var(--md-sys-color-on-surface-variant)" }}>{cohort.members.length} members</span>
+        <div style={{ flex: 1 }} />
+        <Button variant="soft" onClick={onDelete} className="h-[28px] w-[28px] p-0" title="delete">
+          <span className="msym" style={{ fontSize: 15 }}>delete</span>
+        </Button>
+      </div>
+      <div style={{ padding: "11px 13px", display: "flex", flexDirection: "column", gap: 9 }}>
+        {cohort.members.length === 0 && <Empty icon="person_off" text="no members" />}
+        {cohort.members.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {cohort.members.map((m) => (
+              <span key={m} style={{ display: "inline-flex", alignItems: "center", gap: 5, height: 26, padding: "0 6px 0 10px", borderRadius: 9999, background: "var(--md-sys-color-surface-container-highest)", fontFamily: "var(--cp-mono)", fontSize: 11 }}>
+                {m}
+                <button type="button" onClick={() => removeMember(m)} title="remove" style={{ display: "inline-flex", alignItems: "center", border: "none", background: "transparent", cursor: "pointer", color: "var(--md-sys-color-on-surface-variant)", padding: 2 }}>
+                  <span className="msym" style={{ fontSize: 14 }}>close</span>
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <form onSubmit={add} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Input value={entity} onChange={(e) => setEntity(e.target.value)} placeholder="entity id (e.g. lea)" style={{ height: 34, flex: "1 1 160px", minWidth: 0, fontFamily: "var(--cp-mono)", fontSize: 11.5 }} />
+          <Button type="submit" variant="tonal" disabled={!entity.trim()} className="h-[34px] px-3 text-[11px]">
+            <span className="msym" style={{ fontSize: 15 }}>person_add</span>add
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ---- Features ----
 
 function Features({
   base,
   features,
   environments,
+  cohorts,
   onChange,
 }: {
   base: string;
   features: Feature[];
   environments: Environment[];
+  cohorts: Cohort[];
   onChange: () => void;
 }) {
   const [key, setKey] = useState("");
@@ -308,6 +446,7 @@ function Features({
             base={base}
             feature={f}
             environments={environments}
+            cohorts={cohorts}
             values={f.values ?? []}
             onChange={onChange}
             onDelete={() => remove(f)}
@@ -342,6 +481,7 @@ function FeatureCard({
   base,
   feature,
   environments,
+  cohorts,
   values,
   onChange,
   onDelete,
@@ -349,6 +489,7 @@ function FeatureCard({
   base: string;
   feature: Feature;
   environments: Environment[];
+  cohorts: Cohort[];
   values: FeatureValue[];
   onChange: () => void;
   onDelete: () => void;
@@ -373,16 +514,213 @@ function FeatureCard({
       <div style={{ padding: "11px 13px", display: "flex", flexDirection: "column", gap: 9 }}>
         {environments.length === 0 && <Empty icon="dns" text="no environments to configure" />}
         {environments.map((env) => (
-          <FeatureValueRow
-            key={env.id}
-            base={base}
-            feature={feature}
-            env={env}
-            value={valueFor(env.key)}
-            onChange={onChange}
-          />
+          <div key={env.id} style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+            <TargetingEditor base={base} feature={feature} env={env} cohorts={cohorts} />
+            <FeatureValueRow base={base} feature={feature} env={env} value={valueFor(env.key)} onChange={onChange} />
+          </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ---- Targeting (per-feature, per-environment ordered rules) ----
+
+type RuleDraft = {
+  mode: "cohort" | "entity";
+  cohortId: string;
+  entityId: string;
+  enabled: boolean;
+  value: string;
+};
+
+function TargetingEditor({
+  base,
+  feature,
+  env,
+  cohorts,
+}: {
+  base: string;
+  feature: Feature;
+  env: Environment;
+  cohorts: Cohort[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [rules, setRules] = useState<RuleDraft[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const rulesPath = `${base}/features/${encodeURIComponent(feature.key)}/rules/${encodeURIComponent(env.key)}`;
+
+  const load = useCallback(async () => {
+    const res = await fetch(rulesPath);
+    if (!res.ok) {
+      setLoaded(true);
+      return;
+    }
+    const raw: FeatureRule[] = await res.json();
+    setRules(
+      raw.map((r) => ({
+        mode: r.cohortId ? "cohort" : "entity",
+        cohortId: r.cohortId ?? (cohorts[0]?.id ?? ""),
+        entityId: r.entityId ?? "",
+        enabled: r.enabled,
+        value: r.value === null || r.value === undefined ? "" : jsonStr(r.value),
+      }))
+    );
+    setLoaded(true);
+  }, [rulesPath, cohorts]);
+
+  const toggleOpen = () => {
+    const next = !open;
+    setOpen(next);
+    if (next && !loaded) load();
+  };
+
+  const addRule = () => {
+    setRules((rs) => [
+      ...rs,
+      { mode: cohorts.length ? "cohort" : "entity", cohortId: cohorts[0]?.id ?? "", entityId: "", enabled: true, value: "" },
+    ]);
+  };
+
+  const updateRule = (i: number, patch: Partial<RuleDraft>) => {
+    setRules((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  };
+
+  const removeRule = (i: number) => {
+    setRules((rs) => rs.filter((_, idx) => idx !== i));
+  };
+
+  const move = (i: number, dir: -1 | 1) => {
+    setRules((rs) => {
+      const j = i + dir;
+      if (j < 0 || j >= rs.length) return rs;
+      const next = [...rs];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  };
+
+  const save = async () => {
+    setErr(null);
+    setSaved(false);
+    const payload: Record<string, unknown>[] = [];
+    for (const r of rules) {
+      const out: Record<string, unknown> = { enabled: r.enabled };
+      if (r.mode === "cohort") {
+        if (!r.cohortId) {
+          setErr("pick a cohort for every cohort rule");
+          return;
+        }
+        out.cohortId = r.cohortId;
+      } else {
+        if (!r.entityId.trim()) {
+          setErr("entity id required for every entity rule");
+          return;
+        }
+        out.entityId = r.entityId.trim();
+      }
+      if (r.value.trim() !== "") {
+        const parsed = parseTyped(feature.type, r.value);
+        if (parsed.error) {
+          setErr(parsed.error);
+          return;
+        }
+        out.value = parsed.value;
+      }
+      payload.push(out);
+    }
+    let res: Response;
+    try {
+      res = await fetch(rulesPath, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rules: payload }),
+      });
+    } catch {
+      setErr("could not save rules");
+      return;
+    }
+    if (!res.ok) {
+      setErr((await res.text()) || "could not save rules");
+      return;
+    }
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1200);
+    load();
+  };
+
+  const cohortName = (id: string) => cohorts.find((c) => c.id === id)?.key ?? id;
+
+  return (
+    <div style={{ border: "1px dashed var(--md-sys-color-outline-variant)", borderRadius: 9, padding: "8px 10px" }}>
+      <button
+        type="button"
+        onClick={toggleOpen}
+        style={{ display: "flex", alignItems: "center", gap: 7, border: "none", background: "transparent", cursor: "pointer", padding: 0, width: "100%", color: "var(--md-sys-color-on-surface-variant)" }}
+      >
+        <span className="msym" style={{ fontSize: 15, color: "var(--md-sys-color-primary)" }}>my_location</span>
+        <span style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, letterSpacing: ".05em" }}>TARGETING · {env.key}</span>
+        {loaded && rules.length > 0 && (
+          <span style={{ fontFamily: "var(--cp-mono)", fontSize: 10, color: "var(--md-sys-color-on-surface-variant)" }}>{rules.length} rule{rules.length === 1 ? "" : "s"}</span>
+        )}
+        <div style={{ flex: 1 }} />
+        <span className="msym" style={{ fontSize: 17 }}>{open ? "expand_less" : "expand_more"}</span>
+      </button>
+
+      {open && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 9 }}>
+          {!loaded && <div style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-on-surface-variant)" }}>loading…</div>}
+          {loaded && rules.length === 0 && (
+            <div style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, color: "var(--md-sys-color-on-surface-variant)" }}>no rules — falls back to rollout below</div>
+          )}
+          {rules.map((r, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <span style={{ fontFamily: "var(--cp-mono)", fontSize: 10, color: "var(--md-sys-color-outline)", width: 16, textAlign: "right" }}>{i + 1}</span>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <Button variant="ghost" onClick={() => move(i, -1)} disabled={i === 0} className="h-[16px] w-[20px] p-0" title="up">
+                  <span className="msym" style={{ fontSize: 13 }}>arrow_drop_up</span>
+                </Button>
+                <Button variant="ghost" onClick={() => move(i, 1)} disabled={i === rules.length - 1} className="h-[16px] w-[20px] p-0" title="down">
+                  <span className="msym" style={{ fontSize: 13 }}>arrow_drop_down</span>
+                </Button>
+              </div>
+              <Select value={r.mode} onChange={(e) => updateRule(i, { mode: e.target.value as "cohort" | "entity" })} style={{ height: 32, flex: "0 1 90px", fontFamily: "var(--cp-mono)", fontSize: 11 }}>
+                <option value="cohort">cohort</option>
+                <option value="entity">entity</option>
+              </Select>
+              {r.mode === "cohort" ? (
+                cohorts.length ? (
+                  <Select value={r.cohortId} onChange={(e) => updateRule(i, { cohortId: e.target.value })} style={{ height: 32, flex: "1 1 120px", fontFamily: "var(--cp-mono)", fontSize: 11 }}>
+                    {cohorts.map((c) => (
+                      <option key={c.id} value={c.id}>{cohortName(c.id)}</option>
+                    ))}
+                  </Select>
+                ) : (
+                  <span style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, color: "var(--cp-err)", flex: "1 1 120px" }}>create a cohort first</span>
+                )
+              ) : (
+                <Input value={r.entityId} onChange={(e) => updateRule(i, { entityId: e.target.value })} placeholder="entity id" style={{ height: 32, flex: "1 1 120px", minWidth: 0, fontFamily: "var(--cp-mono)", fontSize: 11 }} />
+              )}
+              <Switch on={r.enabled} onClick={() => updateRule(i, { enabled: !r.enabled })} />
+              <Input value={r.value} onChange={(e) => updateRule(i, { value: e.target.value })} placeholder={`value (${defPlaceholder(feature.type)})`} style={{ height: 32, flex: "1 1 90px", minWidth: 0, fontFamily: "var(--cp-mono)", fontSize: 11 }} />
+              <Button variant="ghost" onClick={() => removeRule(i)} className="h-[32px] w-[28px] p-0" title="remove rule">
+                <span className="msym" style={{ fontSize: 15 }}>delete</span>
+              </Button>
+            </div>
+          ))}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <Button variant="ghost" onClick={addRule} className="h-[30px] px-3 text-[11px]">
+              <span className="msym" style={{ fontSize: 15 }}>add</span>add rule
+            </Button>
+            <Button variant="tonal" onClick={save} className="h-[30px] px-3 text-[11px]">save rules</Button>
+            {saved && <span style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, color: "var(--cp-ok)" }}>saved</span>}
+          </div>
+          {err && <div style={{ fontFamily: "var(--cp-mono)", fontSize: 10.5, color: "var(--cp-err)" }}>{err}</div>}
+        </div>
+      )}
     </div>
   );
 }

@@ -140,6 +140,9 @@ metadata:
 {{- if $ing.proxyBodySize }}
     nginx.ingress.kubernetes.io/proxy-body-size: {{ $ing.proxyBodySize | quote }}
 {{- end }}
+{{- with $ing.annotations }}
+{{ toYaml . | indent 4 }}
+{{- end }}
 spec:
   ingressClassName: nginx
   tls:

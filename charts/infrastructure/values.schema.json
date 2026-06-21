@@ -225,6 +225,10 @@
                 "type": "string",
                 "description": "Override the TLS secret name. Defaults to <namespace>-<service>-tls so each ingress gets its own certificate. Set this to a shared value only when several services intentionally serve the same host/cert."
               },
+              "proxyBodySize": {
+                "type": "string",
+                "description": "Max request body size (nginx proxy-body-size, e.g. \"8m\"). Defaults to nginx's 1m when unset. Raise for services that accept uploads; it also caps oversized bodies as a DoS guard."
+              },
               "path": {
                 "type": "string",
                 "description": "Ingress path for this service"

@@ -126,6 +126,9 @@ metadata:
     nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
 {{- end }}
     nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
+{{- if $ing.proxyBodySize }}
+    nginx.ingress.kubernetes.io/proxy-body-size: {{ $ing.proxyBodySize | quote }}
+{{- end }}
 spec:
   ingressClassName: nginx
   tls:

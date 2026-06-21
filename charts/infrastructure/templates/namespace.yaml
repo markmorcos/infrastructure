@@ -1,0 +1,16 @@
+{{- if .Values.manageNamespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+  annotations:
+    # Shared infra — never auto-delete the namespace on `helm uninstall`.
+    helm.sh/resource-policy: keep
+  labels:
+    kubernetes.io/metadata.name: {{ .Values.namespace }}
+{{- with .Values.podSecurity }}
+    pod-security.kubernetes.io/enforce: {{ .enforce | default "baseline" | quote }}
+    pod-security.kubernetes.io/warn: {{ .warn | default "restricted" | quote }}
+    pod-security.kubernetes.io/audit: {{ .audit | default "restricted" | quote }}
+{{- end }}
+{{- end }}

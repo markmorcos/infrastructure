@@ -26,10 +26,17 @@ spec:
         app: {{ $resourceName }}
         build-timestamp: '{{ now | date "20060102150405" }}'
     spec:
+{{- if .podSecurityContext }}
+      securityContext:
+{{ toYaml .podSecurityContext | indent 8 }}
+{{- end }}
       imagePullSecrets:
         - name: {{ $.Values.imagePullSecret | default "ghcr-pull" }}
 {{- if .serviceAccountName }}
       serviceAccountName: {{ .serviceAccountName }}
+{{- end }}
+{{- if hasKey . "automountServiceAccountToken" }}
+      automountServiceAccountToken: {{ .automountServiceAccountToken }}
 {{- end }}
 {{- if .terminationGracePeriodSeconds }}
       terminationGracePeriodSeconds: {{ .terminationGracePeriodSeconds }}
@@ -57,6 +64,10 @@ spec:
         - name: {{ .name }}
           image: "{{ .image }}:{{ .tag | default (printf "%s-latest" $.Values.namespace) }}"
           imagePullPolicy: {{ .pullPolicy | default "Always" }}
+{{- if .securityContext }}
+          securityContext:
+{{ toYaml .securityContext | indent 12 }}
+{{- end }}
 {{- if .args }}
           args:
 {{ toYaml .args | indent 12 }}

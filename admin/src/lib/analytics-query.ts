@@ -14,6 +14,9 @@ export interface AnalyticsSummary {
   // form. (The practa business funnel — signup/publish/paid — is admin-only and
   // lives in the admin route, not here, so it's never exposed to tenants.)
   enquiries: number;
+  // Distinct visitors who completed a Cal.com booking (the `booking` event the
+  // embedded booker emits to the first-party collector).
+  bookings: number;
 }
 
 // summarize aggregates events for an optional site (null = all tenants) over a
@@ -23,7 +26,7 @@ export async function summarize(site: string | null, days: number): Promise<Anal
   const scope = "ts >= now() - ($1 || ' days')::interval AND ($2::text IS NULL OR site_key = $2)";
   const pv = `${scope} AND name = 'pageview'`;
 
-  const [kpis, series, pages, referrers, countries, enquiries] = await Promise.all([
+  const [kpis, series, pages, referrers, countries, enquiries, bookings] = await Promise.all([
     pool.query(
       `SELECT count(*)::int AS pageviews, count(DISTINCT visitor_id)::int AS visitors
          FROM analytics_events WHERE ${pv}`,
@@ -74,6 +77,11 @@ export async function summarize(site: string | null, days: number): Promise<Anal
          FROM analytics_events WHERE ${scope} AND name = 'enquiry'`,
       params
     ),
+    pool.query(
+      `SELECT count(DISTINCT visitor_id)::int AS n
+         FROM analytics_events WHERE ${scope} AND name = 'booking'`,
+      params
+    ),
   ]);
 
   return {
@@ -83,6 +91,7 @@ export async function summarize(site: string | null, days: number): Promise<Anal
     topReferrers: referrers.rows,
     topCountries: countries.rows,
     enquiries: enquiries.rows[0]?.n ?? 0,
+    bookings: bookings.rows[0]?.n ?? 0,
   };
 }
 

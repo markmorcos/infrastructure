@@ -54,9 +54,11 @@ export async function summarize(site: string | null, days: number): Promise<Anal
       params
     ),
     pool.query(
-      // Hide internal/debug paths (/__*) from Top Pages.
+      // Hide internal/debug paths (/__*) from Top Pages. Regex (not LIKE): in
+      // LIKE, '_' is a single-char wildcard, so '/__%' matched almost EVERY path
+      // and collapsed Top Pages to just '/'. '^/__' matches the literal prefix.
       `SELECT path, count(*)::int AS pageviews, count(DISTINCT visitor_id)::int AS visitors
-         FROM analytics_events WHERE ${pv} AND path NOT LIKE '/__%'
+         FROM analytics_events WHERE ${pv} AND path !~ '^/__'
         GROUP BY path ORDER BY pageviews DESC LIMIT 10`,
       params
     ),

@@ -3,6 +3,7 @@ name: deploy-app
 on:
   repository_dispatch:
     types:
+      - deploy-cms
       - deploy-auth
       - deploy-sites
       - deploy-practa

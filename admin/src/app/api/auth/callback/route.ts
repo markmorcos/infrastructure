@@ -91,8 +91,12 @@ export async function GET(req: NextRequest) {
     { expiresIn: "7d" }
   );
 
-  const res = NextResponse.redirect(new URL("/", req.url));
-  res.headers.append(
+  // Relative Location so the browser resolves it against the public host
+  // (admin.morcos.tech). Using new URL("/", req.url) would resolve against the
+  // container's internal origin (localhost:3000) behind the proxy.
+  const headers = new Headers();
+  headers.append("Location", "/");
+  headers.append(
     "Set-Cookie",
     serialize("token", token, {
       httpOnly: true,
@@ -104,7 +108,7 @@ export async function GET(req: NextRequest) {
   );
   // Clear the one-shot PKCE cookies.
   const clear = { path: "/", maxAge: 0 };
-  res.headers.append("Set-Cookie", serialize("oidc_verifier", "", clear));
-  res.headers.append("Set-Cookie", serialize("oidc_state", "", clear));
-  return res;
+  headers.append("Set-Cookie", serialize("oidc_verifier", "", clear));
+  headers.append("Set-Cookie", serialize("oidc_state", "", clear));
+  return new Response(null, { status: 302, headers });
 }

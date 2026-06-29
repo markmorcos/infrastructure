@@ -3,6 +3,7 @@ import { pool } from "@/lib/db";
 import { mintDeploymentToken } from "@/lib/jwt";
 import {
   GITHUB_OWNER,
+  parseRepo,
   repoExists,
   createRepo,
   putRepoSecret,
@@ -91,10 +92,11 @@ export async function POST(req: NextRequest) {
 
   const token = mintDeploymentToken(projectName);
 
-  // 1. Repo
+  // 1. Repo (created in the org when repo's owner is one; else under the PAT user)
+  const repoOwner = parseRepo(repo).owner;
   await run("repo", async () => {
     if (await repoExists(repo)) return "exists";
-    await createRepo(repoName, isPrivate);
+    await createRepo(repoName, isPrivate, repoOwner);
     return "created";
   });
 

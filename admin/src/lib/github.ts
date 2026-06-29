@@ -1,7 +1,11 @@
 import { Octokit, type RestEndpointMethodTypes } from "@octokit/rest";
 import _sodium from "libsodium-wrappers";
 
-export const GITHUB_OWNER = "markmorcos";
+// Default owner for NEW repos. Set GITHUB_OWNER=<org> (env) to provision into an
+// org; GITHUB_USER stays the personal account that owns the PAT (the
+// createForAuthenticatedUser target). Defaults preserve the pre-org behavior.
+export const GITHUB_OWNER = process.env.GITHUB_OWNER ?? "markmorcos";
+const GITHUB_USER = process.env.GITHUB_USER ?? "markmorcos";
 
 let _octokit: Octokit | null = null;
 export function octokit(): Octokit {
@@ -72,9 +76,24 @@ export async function repoExists(repoFull: string): Promise<boolean> {
   }
 }
 
-// Create a repo under the authenticated user (markmorcos). auto_init gives it a
-// default branch so files can be committed immediately.
-export async function createRepo(name: string, isPrivate = true): Promise<void> {
+// Create a repo (auto_init gives it a default branch so files can be committed
+// immediately). When `owner` is an org — i.e. it differs from the PAT's personal
+// account GITHUB_USER — the repo is created in that org (PAT needs admin:org);
+// otherwise under the authenticated user, preserving the pre-org behavior.
+export async function createRepo(
+  name: string,
+  isPrivate = true,
+  owner: string = GITHUB_USER
+): Promise<void> {
+  if (owner && owner !== GITHUB_USER) {
+    await octokit().rest.repos.createInOrg({
+      org: owner,
+      name,
+      private: isPrivate,
+      auto_init: true,
+    });
+    return;
+  }
   await octokit().rest.repos.createForAuthenticatedUser({
     name,
     private: isPrivate,

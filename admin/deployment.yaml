@@ -84,6 +84,19 @@ services:
         valueFrom: { secretKeyRef: { name: resend, key: RESEND_SENDER_EMAIL, optional: true } }
       - name: RESEND_SENDER_NAME
         valueFrom: { secretKeyRef: { name: resend, key: RESEND_SENDER_NAME, optional: true } }
+
+      # OIDC (Zitadel) login — enables /api/auth/oidc/start + /api/auth/callback as an
+      # ALTERNATE login that mints the same `token` session cookie. The password login
+      # stays the live default; enabling these routes does not change it. Client ID is a
+      # public PKCE client (no secret). Cutover to OIDC-by-default happens later.
+      - name: AUTH_OIDC_ENABLED
+        value: "true"
+      - name: AUTH_OIDC_ISSUER
+        value: https://auth.morcos.tech
+      - name: AUTH_OIDC_CLIENT_ID
+        value: "379583189284356153"
+      - name: AUTH_OIDC_REDIRECT_URI
+        value: https://admin.morcos.tech/api/auth/callback
     # GeoLite2 IP→country: the app reads the .mmdb from the private `geoip` MinIO
     # bucket via the existing S3_* creds (no MaxMind calls). The geoip-update
     # CronJob (k8s/08-geoip-update.yaml) refreshes that bucket weekly.

@@ -19,6 +19,7 @@ interface Props {
   swapText?: string;
   swapHref?: string;
   swapLabel?: string;
+  oidcHref?: string;
 }
 
 export default function AuthScreen(p: Props) {
@@ -55,6 +56,22 @@ export default function AuthScreen(p: Props) {
         <form onSubmit={p.onSubmit} style={{ width: "100%", maxWidth: 360 }}>
           <h2 style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-.4px" }}>{p.title}</h2>
           <p style={{ margin: "8px 0 30px", fontSize: 14, color: "var(--md-sys-color-on-surface-variant)" }}>{p.sub}</p>
+
+          {p.oidcHref && (
+            <>
+              <a
+                href={p.oidcHref}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, height: 48, borderRadius: 999, background: "var(--md-sys-color-primary)", color: "var(--md-sys-color-on-primary)", fontSize: 14, fontWeight: 600, textDecoration: "none" }}
+              >
+                Continue with Zitadel
+              </a>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "22px 0" }}>
+                <span style={{ flex: 1, height: 1, background: "var(--md-sys-color-outline-variant)" }} />
+                <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-outline)", letterSpacing: ".08em" }}>OR EMAIL</span>
+                <span style={{ flex: 1, height: 1, background: "var(--md-sys-color-outline-variant)" }} />
+              </div>
+            </>
+          )}
 
           <Label>EMAIL</Label>
           <Input type="email" value={p.email} onChange={(e) => p.setEmail(e.target.value)} placeholder="you@domain.tech" required className="h-[46px]!" style={{ margin: "8px 0 18px" }} />

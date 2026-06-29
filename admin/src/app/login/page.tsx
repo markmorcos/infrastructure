@@ -38,6 +38,7 @@ export default function LoginPage() {
       setEmail={setEmail}
       setPassword={setPassword}
       onSubmit={handleSubmit}
+      oidcHref="/api/auth/oidc/start"
     />
   );
 }

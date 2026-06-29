@@ -3,6 +3,7 @@ name: deploy-app
 on:
   repository_dispatch:
     types:
+      - deploy-sites
       - deploy-practa
       - deploy-figchore
       - deploy-ghchore

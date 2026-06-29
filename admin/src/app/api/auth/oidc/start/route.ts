@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { serialize } from "cookie";
 import {
   OIDC_ENABLED,
@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 
 // Begin the PKCE Authorization Code flow: stash the verifier + state in short-lived
 // cookies and redirect to Zitadel's authorize endpoint.
-export async function GET(req: NextRequest) {
+export async function GET() {
   if (!OIDC_ENABLED) {
     return NextResponse.json({ error: "oidc disabled" }, { status: 404 });
   }

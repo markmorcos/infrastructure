@@ -1,32 +1,9 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
 import { Brand } from "../AppShell";
-import { Button, Input, Label } from "@/components/ui";
 
-interface Props {
-  title: string;
-  sub: string;
-  // Email/password form props — optional so an oidcOnly screen can omit them.
-  cta?: string;
-  loading?: boolean;
-  error?: string | null;
-  email?: string;
-  password?: string;
-  setEmail?: (v: string) => void;
-  setPassword?: (v: string) => void;
-  onSubmit?: (e: React.FormEvent) => void;
-  swapText?: string;
-  swapHref?: string;
-  swapLabel?: string;
-  // When set, renders a "Continue with Zitadel" button. With oidcOnly, that is
-  // the only option (the email/password form is hidden).
-  oidcHref?: string;
-  oidcOnly?: boolean;
-}
-
-export default function AuthScreen(p: Props) {
+export default function AuthScreen() {
   return (
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.1fr_1fr]" style={{ background: "var(--md-sys-color-surface)" }}>
       <div className="relative hidden flex-col justify-between p-10 lg:flex" style={{ background: "radial-gradient(100% 80% at 20% 10%, #11231f 0%, #0A0D11 60%)", overflow: "hidden" }}>
@@ -58,52 +35,14 @@ export default function AuthScreen(p: Props) {
 
       <div className="flex items-center justify-center px-6 py-8 lg:p-10">
         <div style={{ width: "100%", maxWidth: 360 }}>
-          <h2 style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-.4px" }}>{p.title}</h2>
-          <p style={{ margin: "8px 0 30px", fontSize: 14, color: "var(--md-sys-color-on-surface-variant)" }}>{p.sub}</p>
-
-          {p.oidcHref && (
-            <>
-              <a
-                href={p.oidcHref}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, height: 48, borderRadius: 999, background: "var(--md-sys-color-primary)", color: "var(--md-sys-color-on-primary)", fontSize: 14, fontWeight: 600, textDecoration: "none" }}
-              >
-                Continue with Zitadel
-              </a>
-              {!p.oidcOnly && (
-                <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "22px 0" }}>
-                  <span style={{ flex: 1, height: 1, background: "var(--md-sys-color-outline-variant)" }} />
-                  <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-outline)", letterSpacing: ".08em" }}>OR EMAIL</span>
-                  <span style={{ flex: 1, height: 1, background: "var(--md-sys-color-outline-variant)" }} />
-                </div>
-              )}
-            </>
-          )}
-
-          {!p.oidcOnly && (
-            <form onSubmit={p.onSubmit}>
-              <Label>EMAIL</Label>
-              <Input type="email" value={p.email ?? ""} onChange={(e) => p.setEmail?.(e.target.value)} placeholder="you@domain.tech" required className="h-[46px]!" style={{ margin: "8px 0 18px" }} />
-
-              <Label>PASSWORD</Label>
-              <Input type="password" value={p.password ?? ""} onChange={(e) => p.setPassword?.(e.target.value)} placeholder="••••••••" required className="h-[46px]!" style={{ margin: "8px 0 26px" }} />
-
-              {p.error && (
-                <div style={{ marginBottom: 16, fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--cp-err)", display: "flex", alignItems: "center", gap: 8 }}>
-                  <span className="msym" style={{ fontSize: 15 }}>error</span>{p.error}
-                </div>
-              )}
-
-              <Button type="submit" disabled={p.loading} className="w-full h-[48px]! text-[14px]!">
-                {p.loading ? "…" : p.cta}
-              </Button>
-            </form>
-          )}
-
-          {p.swapHref && (
-            <div style={{ textAlign: "center", marginTop: 18, fontSize: 13, color: "var(--md-sys-color-on-surface-variant)", fontFamily: "var(--cp-mono)" }}>
-              {p.swapText} <Link href={p.swapHref} style={{ color: "var(--md-sys-color-primary)" }}>{p.swapLabel}</Link>
-            </div>
-          )}
+          <h2 style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-.4px" }}>Sign in</h2>
+          <p style={{ margin: "8px 0 30px", fontSize: 14, color: "var(--md-sys-color-on-surface-variant)" }}>Access your control plane.</p>
+          <a
+            href="/api/auth/oidc/start"
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, height: 48, borderRadius: 999, background: "var(--md-sys-color-primary)", color: "var(--md-sys-color-on-primary)", fontSize: 14, fontWeight: 600, textDecoration: "none" }}
+          >
+            Continue with Zitadel
+          </a>
         </div>
       </div>
     </div>

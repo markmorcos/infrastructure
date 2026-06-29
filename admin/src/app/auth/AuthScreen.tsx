@@ -8,18 +8,22 @@ import { Button, Input, Label } from "@/components/ui";
 interface Props {
   title: string;
   sub: string;
-  cta: string;
-  loading: boolean;
-  error: string | null;
-  email: string;
-  password: string;
-  setEmail: (v: string) => void;
-  setPassword: (v: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  // Email/password form props — optional so an oidcOnly screen can omit them.
+  cta?: string;
+  loading?: boolean;
+  error?: string | null;
+  email?: string;
+  password?: string;
+  setEmail?: (v: string) => void;
+  setPassword?: (v: string) => void;
+  onSubmit?: (e: React.FormEvent) => void;
   swapText?: string;
   swapHref?: string;
   swapLabel?: string;
+  // When set, renders a "Continue with Zitadel" button. With oidcOnly, that is
+  // the only option (the email/password form is hidden).
   oidcHref?: string;
+  oidcOnly?: boolean;
 }
 
 export default function AuthScreen(p: Props) {
@@ -53,7 +57,7 @@ export default function AuthScreen(p: Props) {
       </div>
 
       <div className="flex items-center justify-center px-6 py-8 lg:p-10">
-        <form onSubmit={p.onSubmit} style={{ width: "100%", maxWidth: 360 }}>
+        <div style={{ width: "100%", maxWidth: 360 }}>
           <h2 style={{ margin: 0, fontSize: 28, fontWeight: 500, letterSpacing: "-.4px" }}>{p.title}</h2>
           <p style={{ margin: "8px 0 30px", fontSize: 14, color: "var(--md-sys-color-on-surface-variant)" }}>{p.sub}</p>
 
@@ -65,36 +69,42 @@ export default function AuthScreen(p: Props) {
               >
                 Continue with Zitadel
               </a>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "22px 0" }}>
-                <span style={{ flex: 1, height: 1, background: "var(--md-sys-color-outline-variant)" }} />
-                <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-outline)", letterSpacing: ".08em" }}>OR EMAIL</span>
-                <span style={{ flex: 1, height: 1, background: "var(--md-sys-color-outline-variant)" }} />
-              </div>
+              {!p.oidcOnly && (
+                <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "22px 0" }}>
+                  <span style={{ flex: 1, height: 1, background: "var(--md-sys-color-outline-variant)" }} />
+                  <span style={{ fontFamily: "var(--cp-mono)", fontSize: 11, color: "var(--md-sys-color-outline)", letterSpacing: ".08em" }}>OR EMAIL</span>
+                  <span style={{ flex: 1, height: 1, background: "var(--md-sys-color-outline-variant)" }} />
+                </div>
+              )}
             </>
           )}
 
-          <Label>EMAIL</Label>
-          <Input type="email" value={p.email} onChange={(e) => p.setEmail(e.target.value)} placeholder="you@domain.tech" required className="h-[46px]!" style={{ margin: "8px 0 18px" }} />
+          {!p.oidcOnly && (
+            <form onSubmit={p.onSubmit}>
+              <Label>EMAIL</Label>
+              <Input type="email" value={p.email ?? ""} onChange={(e) => p.setEmail?.(e.target.value)} placeholder="you@domain.tech" required className="h-[46px]!" style={{ margin: "8px 0 18px" }} />
 
-          <Label>PASSWORD</Label>
-          <Input type="password" value={p.password} onChange={(e) => p.setPassword(e.target.value)} placeholder="••••••••" required className="h-[46px]!" style={{ margin: "8px 0 26px" }} />
+              <Label>PASSWORD</Label>
+              <Input type="password" value={p.password ?? ""} onChange={(e) => p.setPassword?.(e.target.value)} placeholder="••••••••" required className="h-[46px]!" style={{ margin: "8px 0 26px" }} />
 
-          {p.error && (
-            <div style={{ marginBottom: 16, fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--cp-err)", display: "flex", alignItems: "center", gap: 8 }}>
-              <span className="msym" style={{ fontSize: 15 }}>error</span>{p.error}
-            </div>
+              {p.error && (
+                <div style={{ marginBottom: 16, fontFamily: "var(--cp-mono)", fontSize: 12, color: "var(--cp-err)", display: "flex", alignItems: "center", gap: 8 }}>
+                  <span className="msym" style={{ fontSize: 15 }}>error</span>{p.error}
+                </div>
+              )}
+
+              <Button type="submit" disabled={p.loading} className="w-full h-[48px]! text-[14px]!">
+                {p.loading ? "…" : p.cta}
+              </Button>
+            </form>
           )}
-
-          <Button type="submit" disabled={p.loading} className="w-full h-[48px]! text-[14px]!">
-            {p.loading ? "…" : p.cta}
-          </Button>
 
           {p.swapHref && (
             <div style={{ textAlign: "center", marginTop: 18, fontSize: 13, color: "var(--md-sys-color-on-surface-variant)", fontFamily: "var(--cp-mono)" }}>
               {p.swapText} <Link href={p.swapHref} style={{ color: "var(--md-sys-color-primary)" }}>{p.swapLabel}</Link>
             </div>
           )}
-        </form>
+        </div>
       </div>
     </div>
   );

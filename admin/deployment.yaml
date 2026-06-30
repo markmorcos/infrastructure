@@ -94,7 +94,7 @@ services:
       - name: AUTH_OIDC_ISSUER
         value: https://auth.morcos.tech
       - name: AUTH_OIDC_CLIENT_ID
-        value: "379766918757744765"
+        value: "379768137924542589"
       - name: AUTH_OIDC_REDIRECT_URI
         value: https://admin.morcos.tech/api/auth/callback
     # GeoLite2 IP→country: the app reads the .mmdb from the private `geoip` MinIO
